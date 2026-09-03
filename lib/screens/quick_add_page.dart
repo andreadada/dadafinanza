@@ -62,20 +62,19 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final state = AppScope.of(context);
     if (state.accounts.isNotEmpty) {
       accountId ??= state.accounts.first.id;
-      if (state.accounts.length > 1) {
-        toAccountId ??= state.accounts[1].id;
-      }
+      if (state.accounts.length > 1) toAccountId ??= state.accounts[1].id;
     }
     final categories = state.categoriesFor(type);
     if (widget.initialCategoryName != null) {
-      for (final c in categories) {
-        if (c.name.toLowerCase() == widget.initialCategoryName!.toLowerCase()) {
-          categoryId = c.id;
+      for (final category in categories) {
+        if (category.name.toLowerCase() ==
+            widget.initialCategoryName!.toLowerCase()) {
+          categoryId = category.id;
           break;
         }
       }
     }
-    categoryId ??= categories.isEmpty ? null : categories.first.id;
+    categoryId ??= categories.firstOrNull?.id;
   }
 
   @override
@@ -87,49 +86,107 @@ class _QuickAddPageState extends State<QuickAddPage> {
   }
 
   void _changeType(TransactionType value) {
+    final state = AppScope.of(context);
     setState(() {
       type = value;
-      final categories = AppScope.of(context).categoriesFor(value);
-      categoryId = categories.isEmpty ? null : categories.first.id;
+      categoryId = state.categoriesFor(value).firstOrNull?.id;
+      if (value == TransactionType.transfer && state.accounts.length > 1) {
+        toAccountId ??= state.accounts.where((a) => a.id != accountId).first.id;
+      }
     });
   }
 
-  Future<void> _createFirstAccount() async {
+  Future<void> _createAccount() async {
     final state = AppScope.of(context);
-    final controller = TextEditingController();
-    await showDialog<void>(
+    final name = TextEditingController();
+    final balance = TextEditingController(text: '0');
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Crea un conto'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Es. Portafoglio'),
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 20,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (controller.text.trim().isEmpty) return;
-              await state.addAccount(
-                controller.text.trim(),
-                0,
-                0xFF8E8E93,
-              );
-              if (context.mounted) Navigator.pop(context);
-              if (mounted && state.accounts.isNotEmpty) {
-                setState(() => accountId = state.accounts.first.id);
-              }
-            },
-            child: const Text('Crea a 0 €'),
-          ),
-        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Nuovo conto',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: name,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nome',
+                hintText: 'Es. Portafoglio',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: balance,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                labelText: 'Saldo iniziale',
+                suffixText: '€',
+              ),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  final accountName = name.text.trim();
+                  if (accountName.isEmpty) return;
+                  final initial =
+                      double.tryParse(balance.text.replaceAll(',', '.')) ?? 0;
+                  await state.addAccount(accountName, initial, 0xFF8E8E93);
+                  if (!context.mounted) return;
+                  Navigator.pop(context);
+                  if (mounted) {
+                    setState(() {
+                      accountId = state.accounts.last.id;
+                      if (type == TransactionType.transfer &&
+                          state.accounts.length > 1) {
+                        toAccountId = state.accounts
+                            .where((a) => a.id != accountId)
+                            .first
+                            .id;
+                      }
+                    });
+                  }
+                },
+                child: const Text('Crea conto'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
-    controller.dispose();
+
+    name.dispose();
+    balance.dispose();
+  }
+
+  Future<void> _createCategory() async {
+    if (type == TransactionType.transfer) return;
+    final created = await showCategoryCreator(
+      context,
+      AppScope.of(context),
+      initialType: type,
+      lockType: true,
+    );
+    if (created != null && mounted) {
+      setState(() => categoryId = created.id);
+    }
   }
 
   Future<void> _pickReceipt(ImageSource source) async {
@@ -144,17 +201,21 @@ class _QuickAddPageState extends State<QuickAddPage> {
   Future<void> _save() async {
     final state = AppScope.of(context);
     final parsed = double.tryParse(amount.text.replaceAll(',', '.'));
-    if (parsed == null || parsed <= 0 || accountId == null) {
+    if (parsed == null || parsed <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Inserisci un importo valido e scegli il conto.'),
-        ),
+        const SnackBar(content: Text('Inserisci un importo maggiore di 0.')),
+      );
+      return;
+    }
+    if (accountId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scegli o crea un conto.')),
       );
       return;
     }
     if (type != TransactionType.transfer && categoryId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Crea e scegli una categoria.')),
+        const SnackBar(content: Text('Scegli o crea una categoria.')),
       );
       return;
     }
@@ -165,6 +226,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
       );
       return;
     }
+
     setState(() => saving = true);
     await state.addTransaction(
       type: type,
@@ -192,58 +254,52 @@ class _QuickAddPageState extends State<QuickAddPage> {
             : categories.isNotEmpty);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuovo movimento')),
+      appBar: AppBar(
+        title: Text(switch (type) {
+          TransactionType.expense => 'Nuova spesa',
+          TransactionType.income => 'Nuova entrata',
+          TransactionType.transfer => 'Nuovo giroconto',
+        }),
+      ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
         children: [
-          SizedBox(
-            width: double.infinity,
-            child: SegmentedButton<TransactionType>(
-              showSelectedIcon: false,
-              segments: const [
-                ButtonSegment(
-                  value: TransactionType.expense,
-                  icon: Icon(Icons.arrow_upward_rounded),
-                  label: Text('Spesa'),
-                ),
-                ButtonSegment(
-                  value: TransactionType.income,
-                  icon: Icon(Icons.arrow_downward_rounded),
-                  label: Text('Entrata'),
-                ),
-                ButtonSegment(
-                  value: TransactionType.transfer,
-                  icon: Icon(Icons.swap_horiz_rounded),
-                  label: Text('Giroconto'),
-                ),
-              ],
-              selected: {type},
-              onSelectionChanged: (value) => _changeType(value.first),
-            ),
+          SegmentedButton<TransactionType>(
+            showSelectedIcon: false,
+            segments: const [
+              ButtonSegment(
+                value: TransactionType.expense,
+                icon: Icon(Icons.arrow_upward_rounded),
+                label: Text('Spesa'),
+              ),
+              ButtonSegment(
+                value: TransactionType.income,
+                icon: Icon(Icons.arrow_downward_rounded),
+                label: Text('Entrata'),
+              ),
+              ButtonSegment(
+                value: TransactionType.transfer,
+                icon: Icon(Icons.swap_horiz_rounded),
+                label: Text('Giroconto'),
+              ),
+            ],
+            selected: {type},
+            onSelectionChanged: (value) => _changeType(value.first),
           ),
-          const SizedBox(height: 26),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-            decoration: BoxDecoration(
-              color: AppTheme.surface,
-              borderRadius: BorderRadius.circular(26),
-              border: Border.all(color: AppTheme.border),
-            ),
+          const SizedBox(height: 28),
+          Semantics(
+            label: 'Importo del movimento in euro',
+            textField: true,
             child: TextField(
               controller: amount,
               autofocus: true,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    fontSize: 44,
+                    fontSize: 48,
                     fontWeight: FontWeight.w800,
                   ),
               decoration: const InputDecoration(
-                filled: false,
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
                 hintText: '0,00',
                 suffixText: '€',
                 suffixStyle: TextStyle(
@@ -254,25 +310,34 @@ class _QuickAddPageState extends State<QuickAddPage> {
               ),
             ),
           ),
-          const SizedBox(height: 26),
-          const SectionTitle('Conto'),
+          const SizedBox(height: 30),
+          _SectionHeader(
+            title: 'Conto',
+            action: TextButton.icon(
+              onPressed: _createAccount,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('Nuovo conto'),
+            ),
+          ),
           if (state.accounts.isEmpty)
-            _SetupNotice(
+            _InlineMessage(
               icon: Icons.account_balance_wallet_outlined,
-              title: 'Serve un conto',
-              subtitle: 'Crealo ora con saldo iniziale 0 €.',
-              label: 'Crea conto',
-              onTap: _createFirstAccount,
+              text: 'Non hai ancora conti. Creane uno per continuare.',
+              actionLabel: 'Crea conto',
+              onTap: _createAccount,
             )
           else
             DropdownButtonFormField<int>(
               initialValue: accountId,
-              hint: const Text('Seleziona conto'),
+              hint: const Text('Scegli un conto'),
               items: state.accounts
                   .map(
-                    (a) => DropdownMenuItem(
-                      value: a.id,
-                      child: Text('${a.name}  •  ${money(a.balance)}'),
+                    (account) => DropdownMenuItem(
+                      value: account.id,
+                      child: Text(
+                        '${account.name}  ·  ${money(account.balance)}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(),
@@ -286,144 +351,120 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 }
               }),
             ),
-          if (type == TransactionType.transfer && state.accounts.length > 1) ...[
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              key: ValueKey('destination-$accountId-$toAccountId'),
-              initialValue: toAccountId,
-              hint: const Text('Conto di destinazione'),
-              decoration: const InputDecoration(labelText: 'Destinazione'),
-              items: state.accounts
-                  .where((a) => a.id != accountId)
-                  .map(
-                    (a) => DropdownMenuItem(value: a.id, child: Text(a.name)),
-                  )
-                  .toList(),
-              onChanged: (value) => setState(() => toAccountId = value),
-            ),
-          ],
-          if (type == TransactionType.transfer && state.accounts.length == 1) ...[
-            const SizedBox(height: 12),
-            const _SetupNotice(
-              icon: Icons.swap_horiz_rounded,
-              title: 'Serve un secondo conto',
-              subtitle: 'Un giroconto richiede un conto di origine e uno di arrivo.',
-            ),
-          ],
-          if (type != TransactionType.transfer) ...[
-            const SizedBox(height: 26),
-            const SectionTitle('Categoria'),
-            if (categories.isEmpty)
-              const _SetupNotice(
-                icon: Icons.category_outlined,
-                title: 'Nessuna categoria',
-                subtitle: 'Creala da Altro → Categorie scegliendo anche l’icona.',
+          if (type == TransactionType.transfer) ...[
+            const SizedBox(height: 18),
+            if (state.accounts.length < 2)
+              _InlineMessage(
+                icon: Icons.swap_horiz_rounded,
+                text: 'Per un giroconto servono almeno due conti.',
+                actionLabel: 'Aggiungi conto',
+                onTap: _createAccount,
               )
             else
-              Wrap(
-                spacing: 10,
-                runSpacing: 10,
-                children: categories.map((category) {
-                  final selected = category.id == categoryId;
-                  final color = Color(category.colorValue);
-                  return InkWell(
-                    onTap: () => setState(() => categoryId = category.id),
-                    borderRadius: BorderRadius.circular(18),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      width: 104,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 13,
+              DropdownButtonFormField<int>(
+                key: ValueKey('destination-$accountId-$toAccountId'),
+                initialValue: toAccountId,
+                decoration: const InputDecoration(labelText: 'Destinazione'),
+                items: state.accounts
+                    .where((a) => a.id != accountId)
+                    .map(
+                      (account) => DropdownMenuItem(
+                        value: account.id,
+                        child: Text(account.name),
                       ),
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? Colors.white.withValues(alpha: .08)
-                            : AppTheme.surface,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: selected ? Colors.white : AppTheme.border,
-                          width: selected ? 1.5 : 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: .18),
-                              borderRadius: BorderRadius.circular(13),
-                            ),
-                            child: Icon(
-                              categoryIcon(category.iconKey),
-                              color: color,
-                              size: 21,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            category.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
+                    )
+                    .toList(),
+                onChanged: (value) => setState(() => toAccountId = value),
               ),
           ],
-          const SizedBox(height: 26),
-          const SectionTitle('Dettagli'),
-          Card(
-            child: Column(
-              children: [
-                ListTile(
-                  leading: const Icon(Icons.calendar_today_outlined),
-                  title: const Text('Data'),
-                  trailing: Text(DateFormat('dd/MM/yyyy').format(date)),
-                  onTap: () async {
-                    final picked = await showDatePicker(
-                      context: context,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 365)),
-                      initialDate: date,
-                    );
-                    if (picked != null) {
-                      setState(
-                        () => date = DateTime(
-                          picked.year,
-                          picked.month,
-                          picked.day,
-                          DateTime.now().hour,
-                          DateTime.now().minute,
+          if (type != TransactionType.transfer) ...[
+            const SizedBox(height: 30),
+            _SectionHeader(
+              title: 'Categoria',
+              action: TextButton.icon(
+                onPressed: _createCategory,
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Nuova'),
+              ),
+            ),
+            if (categories.isEmpty)
+              _InlineMessage(
+                icon: Icons.category_outlined,
+                text: 'Nessuna categoria ${type == TransactionType.expense ? 'di spesa' : 'di entrata'}.',
+                actionLabel: 'Crea categoria',
+                onTap: _createCategory,
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = (constraints.maxWidth - 24) / 4;
+                  return Wrap(
+                    spacing: 8,
+                    runSpacing: 10,
+                    children: [
+                      ...categories.map(
+                        (category) => _CategoryChoice(
+                          width: width,
+                          category: category,
+                          selected: category.id == categoryId,
+                          onTap: () => setState(() => categoryId = category.id),
                         ),
-                      );
-                    }
-                  },
-                ),
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: TextField(
-                    controller: note,
-                    minLines: 1,
-                    maxLines: 3,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.notes_rounded),
-                      hintText: 'Nota opzionale',
-                    ),
+                      ),
+                      _NewCategoryChoice(width: width, onTap: _createCategory),
+                    ],
+                  );
+                },
+              ),
+          ],
+          const SizedBox(height: 32),
+          const SectionTitle('Dettagli'),
+          InkWell(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+                initialDate: date,
+              );
+              if (picked != null) {
+                setState(() => date = DateTime(
+                      picked.year,
+                      picked.month,
+                      picked.day,
+                      DateTime.now().hour,
+                      DateTime.now().minute,
+                    ));
+              }
+            },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 13),
+              child: Row(
+                children: [
+                  const Icon(Icons.calendar_today_outlined, size: 20),
+                  const SizedBox(width: 12),
+                  const Expanded(child: Text('Data')),
+                  Text(
+                    DateFormat('dd/MM/yyyy').format(date),
+                    style: const TextStyle(color: AppTheme.muted),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 22),
+          const Divider(height: 1),
+          TextField(
+            controller: note,
+            minLines: 1,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Nota opzionale',
+              hintText: 'Aggiungi una nota',
+            ),
+          ),
+          const SizedBox(height: 24),
           const SectionTitle('Tag'),
           Row(
             children: [
@@ -432,22 +473,22 @@ class _QuickAddPageState extends State<QuickAddPage> {
                   controller: tag,
                   onSubmitted: (_) => _addTag(),
                   decoration: const InputDecoration(
-                    hintText: 'Es. Netflix, Vinted, Aperitivo',
+                    hintText: 'Netflix, Vinted, aperitivo…',
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              IconButton.filledTonal(
+              IconButton(
+                tooltip: 'Aggiungi tag',
                 onPressed: _addTag,
                 icon: const Icon(Icons.add_rounded),
               ),
             ],
           ),
           if (tags.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: 6,
+              runSpacing: 6,
               children: tags
                   .map(
                     (value) => InputChip(
@@ -458,25 +499,21 @@ class _QuickAddPageState extends State<QuickAddPage> {
                   .toList(),
             ),
           ],
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           const SectionTitle('Ricevuta'),
           if (receipt == null)
             Row(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickReceipt(ImageSource.camera),
-                    icon: const Icon(Icons.photo_camera_outlined),
-                    label: const Text('Scatta'),
-                  ),
+                TextButton.icon(
+                  onPressed: () => _pickReceipt(ImageSource.camera),
+                  icon: const Icon(Icons.photo_camera_outlined),
+                  label: const Text('Fotocamera'),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _pickReceipt(ImageSource.gallery),
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Galleria'),
-                  ),
+                const SizedBox(width: 6),
+                TextButton.icon(
+                  onPressed: () => _pickReceipt(ImageSource.gallery),
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: const Text('Galleria'),
                 ),
               ],
             )
@@ -484,18 +521,19 @@ class _QuickAddPageState extends State<QuickAddPage> {
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                   child: Image.file(
                     File(receipt!.path),
-                    height: 170,
+                    height: 160,
                     width: double.infinity,
                     fit: BoxFit.cover,
                   ),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 6,
+                  right: 6,
                   child: IconButton.filled(
+                    tooltip: 'Rimuovi ricevuta',
                     onPressed: () => setState(() => receipt = null),
                     icon: const Icon(Icons.close_rounded),
                   ),
@@ -505,7 +543,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
         ],
       ),
       bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+        minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
         child: FilledButton.icon(
           onPressed: saving || !canSave ? null : _save,
           icon: saving
@@ -514,10 +552,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.check_rounded),
-          label: Text(
-            saving ? 'Salvataggio…' : 'Salva movimento',
-            style: const TextStyle(fontWeight: FontWeight.w900),
-          ),
+          label: Text(saving ? 'Salvataggio…' : 'Salva'),
         ),
       ),
     );
@@ -533,46 +568,142 @@ class _QuickAddPageState extends State<QuickAddPage> {
   }
 }
 
-class _SetupNotice extends StatelessWidget {
-  const _SetupNotice({
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.action});
+
+  final String title;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          action,
+        ],
+      );
+}
+
+class _InlineMessage extends StatelessWidget {
+  const _InlineMessage({
     required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.label,
-    this.onTap,
+    required this.text,
+    required this.actionLabel,
+    required this.onTap,
   });
 
   final IconData icon;
-  final String title;
-  final String subtitle;
-  final String? label;
-  final VoidCallback? onTap;
+  final String text;
+  final String actionLabel;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.border),
-        ),
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: AppTheme.muted),
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(icon, color: AppTheme.muted, size: 21),
+            ),
             const SizedBox(width: 12),
-            Expanded(
+            Expanded(child: Text(text)),
+            TextButton(onPressed: onTap, child: Text(actionLabel)),
+          ],
+        ),
+      );
+}
+
+class _CategoryChoice extends StatelessWidget {
+  const _CategoryChoice({
+    required this.width,
+    required this.category,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final double width;
+  final Category category;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = Color(category.colorValue);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Categoria ${category.name}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 120),
+          width: width,
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: selected ? Colors.white.withValues(alpha: .10) : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              Icon(categoryIcon(category.iconKey), color: color, size: 27),
+              const SizedBox(height: 7),
+              Text(
+                category.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+              if (selected) ...[
+                const SizedBox(height: 4),
+                const Icon(Icons.check_circle_rounded, size: 14),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NewCategoryChoice extends StatelessWidget {
+  const _NewCategoryChoice({required this.width, required this.onTap});
+
+  final double width;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Crea nuova categoria',
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: width,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 10, horizontal: 4),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 3),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                  Icon(Icons.add_circle_outline_rounded, size: 27),
+                  SizedBox(height: 7),
+                  Text(
+                    'Nuova',
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
                 ],
               ),
             ),
-            if (label != null && onTap != null)
-              TextButton(onPressed: onTap, child: Text(label!)),
-          ],
+          ),
         ),
       );
 }
