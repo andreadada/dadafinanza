@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../app_state.dart';
 import '../models/models.dart';
+import '../theme/app_theme.dart';
 
 String money(double value, {bool signed = false}) {
   final formatter = NumberFormat.currency(
@@ -104,6 +106,239 @@ Color transactionColor(BuildContext context, TransactionType type) => switch (ty
       TransactionType.transfer => const Color(0xFFD4D4D8),
     };
 
+Future<bool> confirmDestructiveAction(
+  BuildContext context, {
+  required String title,
+  required String message,
+  String confirmLabel = 'Elimina',
+}) async {
+  return await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.error,
+                foregroundColor: Colors.black,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(confirmLabel),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}
+
+Future<Category?> showCategoryCreator(
+  BuildContext context,
+  AppState state, {
+  TransactionType initialType = TransactionType.expense,
+  bool lockType = false,
+}) async {
+  final controller = TextEditingController();
+  var type = initialType;
+  var iconKey = categoryIconOptions.first.key;
+  var color = categoryPalette.first;
+
+  final result = await showModalBottomSheet<Category>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setSheetState) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 20,
+        ),
+        child: SizedBox(
+          height: MediaQuery.sizeOf(context).height * .78,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      initialType == TransactionType.income
+                          ? 'Nuova categoria entrata'
+                          : initialType == TransactionType.expense
+                              ? 'Nuova categoria spesa'
+                              : 'Nuova categoria',
+                      style: const TextStyle(
+                        fontSize: 23,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Chiudi',
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  labelText: 'Nome categoria',
+                  hintText: 'Es. Benzina',
+                ),
+              ),
+              if (!lockType) ...[
+                const SizedBox(height: 16),
+                SegmentedButton<TransactionType>(
+                  showSelectedIcon: false,
+                  segments: const [
+                    ButtonSegment(
+                      value: TransactionType.expense,
+                      label: Text('Spesa'),
+                    ),
+                    ButtonSegment(
+                      value: TransactionType.income,
+                      label: Text('Entrata'),
+                    ),
+                  ],
+                  selected: {type},
+                  onSelectionChanged: (value) =>
+                      setSheetState(() => type = value.first),
+                ),
+              ],
+              const SizedBox(height: 18),
+              const Text('Colore', style: TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: List.generate(categoryPalette.length, (index) {
+                  final item = categoryPalette[index];
+                  final selected = item == color;
+                  return Semantics(
+                    button: true,
+                    selected: selected,
+                    label: 'Colore ${index + 1}',
+                    child: InkWell(
+                      onTap: () => setSheetState(() => color = item),
+                      customBorder: const CircleBorder(),
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Center(
+                          child: Container(
+                            width: 30,
+                            height: 30,
+                            decoration: BoxDecoration(
+                              color: item,
+                              shape: BoxShape.circle,
+                            ),
+                            child: selected
+                                ? Icon(
+                                    Icons.check_rounded,
+                                    size: 18,
+                                    color: item.computeLuminance() > .6
+                                        ? Colors.black
+                                        : Colors.white,
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Icona', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                  Text(
+                    '${categoryIconOptions.length} disponibili',
+                    style: const TextStyle(color: AppTheme.muted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Expanded(
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 6,
+                    mainAxisSpacing: 4,
+                    crossAxisSpacing: 4,
+                  ),
+                  itemCount: categoryIconOptions.length,
+                  itemBuilder: (context, index) {
+                    final option = categoryIconOptions[index];
+                    final selected = option.key == iconKey;
+                    return Tooltip(
+                      message: option.label,
+                      child: Semantics(
+                        button: true,
+                        selected: selected,
+                        label: option.label,
+                        child: InkWell(
+                          onTap: () => setSheetState(() => iconKey = option.key),
+                          borderRadius: BorderRadius.circular(12),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 120),
+                            decoration: BoxDecoration(
+                              color: selected
+                                  ? Colors.white.withValues(alpha: .12)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(
+                              option.icon,
+                              color: selected ? Colors.white : AppTheme.muted,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    final name = controller.text.trim();
+                    if (name.isEmpty) return;
+                    final created = await state.addCategory(
+                      name: name,
+                      type: type,
+                      iconKey: iconKey,
+                      colorValue: color.toARGB32(),
+                    );
+                    if (context.mounted) Navigator.pop(context, created);
+                  },
+                  icon: const Icon(Icons.add_rounded),
+                  label: const Text('Crea categoria'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+
+  controller.dispose();
+  return result;
+}
+
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.title, {this.trailing, super.key});
 
@@ -112,7 +347,7 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 10),
         child: Row(
           children: [
             Expanded(
