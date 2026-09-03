@@ -15,79 +15,74 @@ class AnalyticsScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Analisi')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
           const SectionTitle('Ultimi 6 mesi'),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 22, 14, 14),
-              child: SizedBox(
-                height: 250,
-                child: BarChart(
-                  BarChartData(
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                    barTouchData: BarTouchData(enabled: true),
-                    titlesData: FlTitlesData(
-                      leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          getTitlesWidget: (value, meta) {
-                            final i = value.toInt();
-                            if (i < 0 || i >= months.length) {
-                              return const SizedBox.shrink();
-                            }
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat('MMM', 'it_IT').format(months[i]),
-                                style: const TextStyle(color: AppTheme.muted),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
+          SizedBox(
+            height: 250,
+            child: BarChart(
+              BarChartData(
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barTouchData: BarTouchData(enabled: true),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.toInt();
+                        if (i < 0 || i >= months.length) {
+                          return const SizedBox.shrink();
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            DateFormat('MMM', 'it_IT').format(months[i]),
+                            style: const TextStyle(color: AppTheme.muted),
+                          ),
+                        );
+                      },
                     ),
-                    barGroups: List.generate(months.length, (i) {
-                      final month = months[i];
-                      final income = state.monthTotal(
-                        TransactionType.income,
-                        month: month,
-                      );
-                      final expense = state.monthTotal(
-                        TransactionType.expense,
-                        month: month,
-                      );
-                      return BarChartGroupData(
-                        x: i,
-                        barsSpace: 4,
-                        barRods: [
-                          BarChartRodData(
-                            toY: income,
-                            width: 10,
-                            borderRadius: BorderRadius.circular(5),
-                            color: const Color(0xFF7CA7FF),
-                          ),
-                          BarChartRodData(
-                            toY: expense,
-                            width: 10,
-                            borderRadius: BorderRadius.circular(5),
-                            color: const Color(0xFFFF7A7A),
-                          ),
-                        ],
-                      );
-                    }),
                   ),
                 ),
+                barGroups: List.generate(months.length, (i) {
+                  final month = months[i];
+                  final income = state.monthTotal(
+                    TransactionType.income,
+                    month: month,
+                  );
+                  final expense = state.monthTotal(
+                    TransactionType.expense,
+                    month: month,
+                  );
+                  return BarChartGroupData(
+                    x: i,
+                    barsSpace: 4,
+                    barRods: [
+                      BarChartRodData(
+                        toY: income,
+                        width: 10,
+                        borderRadius: BorderRadius.circular(5),
+                        color: const Color(0xFF7CA7FF),
+                      ),
+                      BarChartRodData(
+                        toY: expense,
+                        width: 10,
+                        borderRadius: BorderRadius.circular(5),
+                        color: const Color(0xFFFF7A7A),
+                      ),
+                    ],
+                  );
+                }),
               ),
             ),
           ),
@@ -100,7 +95,7 @@ class AnalyticsScreen extends StatelessWidget {
               _LegendDot(color: Color(0xFFFF7A7A), label: 'Spese'),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 34),
           const SectionTitle('Categorie del mese'),
           if (top.isEmpty)
             const _EmptyCard(
@@ -109,29 +104,21 @@ class AnalyticsScreen extends StatelessWidget {
               subtitle: 'Le categorie compariranno quando registri le prime spese.',
             )
           else
-            ...top.map((entry) {
+            ...List.generate(top.length, (index) {
+              final entry = top[index];
               final max = top.first.value;
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Row(
                       children: [
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Color(entry.key.colorValue)
-                                .withValues(alpha: .18),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Icon(
-                            categoryIcon(entry.key.iconKey),
-                            color: Color(entry.key.colorValue),
-                          ),
+                        Icon(
+                          categoryIcon(entry.key.iconKey),
+                          color: Color(entry.key.colorValue),
+                          size: 25,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,18 +128,16 @@ class AnalyticsScreen extends StatelessWidget {
                                   Expanded(
                                     child: Text(
                                       entry.key.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                                      style: const TextStyle(fontWeight: FontWeight.w800),
                                     ),
                                   ),
                                   Text(money(entry.value)),
                                 ],
                               ),
-                              const SizedBox(height: 9),
+                              const SizedBox(height: 8),
                               LinearProgressIndicator(
                                 value: entry.value / max,
-                                minHeight: 6,
+                                minHeight: 5,
                                 color: Color(entry.key.colorValue),
                                 borderRadius: BorderRadius.circular(10),
                               ),
@@ -162,7 +147,8 @@ class AnalyticsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                ),
+                  if (index != top.length - 1) const Divider(height: 1),
+                ],
               );
             }),
         ],
@@ -198,67 +184,101 @@ class AccountsScreen extends StatelessWidget {
     final state = AppScope.of(context);
     final name = TextEditingController();
     final balance = TextEditingController(text: '0');
-    await showDialog<void>(
+
+    await showModalBottomSheet<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Nuovo conto'),
-        content: Column(
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          8,
+          20,
+          MediaQuery.viewInsetsOf(context).bottom + 20,
+        ),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: name,
-              autofocus: true,
-              decoration: const InputDecoration(labelText: 'Nome'),
+            const Text(
+              'Nuovo conto',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 10),
             TextField(
+              controller: name,
+              autofocus: true,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: const InputDecoration(
+                labelText: 'Nome',
+                hintText: 'Es. Portafoglio',
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
               controller: balance,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
               decoration: const InputDecoration(
                 labelText: 'Saldo iniziale',
                 suffixText: '€',
               ),
             ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  final accountName = name.text.trim();
+                  if (accountName.isEmpty) return;
+                  final value =
+                      double.tryParse(balance.text.replaceAll(',', '.')) ?? 0;
+                  await state.addAccount(accountName, value, 0xFF8E8E93);
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('Crea conto'),
+              ),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Annulla'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final value =
-                  double.tryParse(balance.text.replaceAll(',', '.')) ?? 0;
-              if (name.text.trim().isEmpty) return;
-              await state.addAccount(
-                name.text.trim(),
-                value,
-                0xFF8E8E93,
-              );
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Crea'),
-          ),
-        ],
       ),
     );
+
     name.dispose();
     balance.dispose();
+  }
+
+  Future<void> _deleteAccount(BuildContext context, Account account) async {
+    final state = AppScope.of(context);
+    final movementCount = state.transactionCountForAccount(account.id);
+    final recurringCount = state.recurringCountForAccount(account.id);
+    final impact = [
+      if (movementCount > 0) '$movementCount moviment${movementCount == 1 ? 'o' : 'i'}',
+      if (recurringCount > 0)
+        '$recurringCount pagamento${recurringCount == 1 ? ' regolare' : 'i regolari'}',
+    ].join(' e ');
+
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: 'Eliminare “${account.name}”?',
+      message: impact.isEmpty
+          ? 'Il conto verrà eliminato definitivamente.'
+          : 'Verranno eliminati anche $impact collegati a questo conto. Gli eventuali giroconti verranno annullati e i saldi degli altri conti corretti. L’operazione non può essere annullata.',
+    );
+    if (confirmed) await state.deleteAccount(account);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final allBalances =
-        state.accounts.fold<double>(0, (sum, a) => sum + a.balance);
+        state.accounts.fold<double>(0, (sum, account) => sum + account.balance);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Conti'),
         actions: [
           IconButton(
+            tooltip: 'Crea conto',
             onPressed: () => _addAccount(context),
             icon: const Icon(Icons.add_rounded),
           ),
@@ -266,62 +286,58 @@ class AccountsScreen extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'PATRIMONIO',
-                    style: TextStyle(
-                      color: AppTheme.muted,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 9),
-                  Text(
-                    state.hideBalance ? '••••••' : money(state.totalBalance),
-                    style: Theme.of(context)
-                        .textTheme
-                        .headlineLarge
-                        ?.copyWith(fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    'Tutti i conti: ${state.hideBalance ? '••••' : money(allBalances)}',
-                    style: const TextStyle(color: AppTheme.muted),
-                  ),
-                  if (state.accounts.length > 1) ...[
-                    const SizedBox(height: 18),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const QuickAddPage(
-                            initialTypeName: 'transfer',
-                          ),
-                        ),
-                      ),
-                      icon: const Icon(Icons.swap_horiz_rounded),
-                      label: const Text('Nuovo giroconto'),
-                    ),
-                  ],
-                ],
-              ),
+          const Text(
+            'PATRIMONIO',
+            style: TextStyle(
+              color: AppTheme.muted,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 26),
-          const SectionTitle('I tuoi conti'),
+          const SizedBox(height: 8),
+          Text(
+            state.hideBalance ? '••••••' : money(state.totalBalance),
+            style: Theme.of(context).textTheme.headlineLarge,
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tutti i conti: ${state.hideBalance ? '••••' : money(allBalances)}',
+            style: const TextStyle(color: AppTheme.muted),
+          ),
+          if (state.accounts.length > 1) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const QuickAddPage(initialTypeName: 'transfer'),
+                  ),
+                ),
+                icon: const Icon(Icons.swap_horiz_rounded),
+                label: const Text('Nuovo giroconto'),
+              ),
+            ),
+          ],
+          const SizedBox(height: 30),
+          Row(
+            children: [
+              const Expanded(child: SectionTitle('I tuoi conti')),
+              TextButton.icon(
+                onPressed: () => _addAccount(context),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Nuovo'),
+              ),
+            ],
+          ),
           if (state.accounts.isEmpty)
             _EmptyCard(
               icon: Icons.account_balance_wallet_outlined,
               title: 'Nessun conto',
-              subtitle:
-                  'Crea il primo conto. Il saldo iniziale è impostato a 0 €.',
+              subtitle: 'Crea il primo conto per iniziare a registrare movimenti.',
               action: FilledButton.icon(
                 onPressed: () => _addAccount(context),
                 icon: const Icon(Icons.add_rounded),
@@ -329,22 +345,14 @@ class AccountsScreen extends StatelessWidget {
               ),
             )
           else
-            ...state.accounts.map(
-              (account) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Card(
-                  child: ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    leading: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Icon(Icons.account_balance_wallet_outlined),
-                    ),
+            ...List.generate(state.accounts.length, (index) {
+              final account = state.accounts[index];
+              return Column(
+                children: [
+                  ListTile(
+                    minVerticalPadding: 12,
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.account_balance_wallet_outlined),
                     title: Text(
                       account.name,
                       style: const TextStyle(fontWeight: FontWeight.w800),
@@ -362,15 +370,20 @@ class AccountsScreen extends StatelessWidget {
                           style: const TextStyle(fontWeight: FontWeight.w900),
                         ),
                         PopupMenuButton<String>(
-                          onSelected: (value) {
+                          tooltip: 'Azioni per ${account.name}',
+                          onSelected: (value) async {
                             if (value == 'toggle') {
-                              state.setAccountIncluded(
+                              await state.setAccountIncluded(
                                 account,
                                 !account.includeInTotal,
                               );
+                            } else if (value == 'delete') {
+                              if (context.mounted) {
+                                await _deleteAccount(context, account);
+                              }
                             }
                           },
-                          itemBuilder: (_) => [
+                          itemBuilder: (menuContext) => [
                             PopupMenuItem(
                               value: 'toggle',
                               child: Text(
@@ -379,14 +392,25 @@ class AccountsScreen extends StatelessWidget {
                                     : 'Includi nel totale',
                               ),
                             ),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Text(
+                                'Elimina conto',
+                                style: TextStyle(
+                                  color: Theme.of(menuContext).colorScheme.error,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                ),
-              ),
-            ),
+                  if (index != state.accounts.length - 1)
+                    const Divider(height: 1),
+                ],
+              );
+            }),
         ],
       ),
     );

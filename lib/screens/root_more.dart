@@ -7,17 +7,18 @@ class MoreScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Altro')),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
           children: [
             _MoreTile(
               icon: Icons.category_outlined,
               title: 'Categorie',
-              subtitle: 'Nome, colore e tante icone diverse',
+              subtitle: 'Crea, personalizza o elimina categorie',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const CategoriesScreen()),
               ),
             ),
+            const Divider(height: 1),
             _MoreTile(
               icon: Icons.repeat_rounded,
               title: 'Pagamenti regolari',
@@ -27,15 +28,17 @@ class MoreScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const RecurringScreen()),
               ),
             ),
+            const Divider(height: 1),
             _MoreTile(
               icon: Icons.notifications_none_rounded,
               title: 'Promemoria',
-              subtitle: 'Scadenze e controlli da non dimenticare',
+              subtitle: 'Scadenze da tenere sotto controllo',
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const RemindersScreen()),
               ),
             ),
+            const Divider(height: 1),
             _MoreTile(
               icon: Icons.settings_outlined,
               title: 'Impostazioni',
@@ -45,19 +48,15 @@ class MoreScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
               ),
             ),
-            const SizedBox(height: 18),
-            const Card(
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                leading: Icon(Icons.lock_outline_rounded),
-                title: Text(
-                  'Privato sul dispositivo',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-                subtitle: Text(
-                  'Nessun account obbligatorio. Il database resta locale.',
-                ),
+            const SizedBox(height: 34),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.lock_outline_rounded),
+              title: Text(
+                'Privato sul dispositivo',
+                style: TextStyle(fontWeight: FontWeight.w800),
               ),
+              subtitle: Text('Nessun account obbligatorio. Il database resta locale.'),
             ),
           ],
         ),
@@ -78,26 +77,14 @@ class _MoreTile extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Card(
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-            leading: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .08),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon),
-            ),
-            title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text(subtitle),
-            trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
-            onTap: onTap,
-          ),
-        ),
+  Widget build(BuildContext context) => ListTile(
+        minVerticalPadding: 12,
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(icon),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text(subtitle),
+        trailing: const Icon(Icons.chevron_right_rounded, color: AppTheme.muted),
+        onTap: onTap,
       );
 }
 
@@ -112,38 +99,54 @@ class RecurringScreen extends StatelessWidget {
       );
       return;
     }
+
     final name = TextEditingController();
     final amount = TextEditingController();
-    TransactionType type = TransactionType.expense;
-    int accountId = state.accounts.first.id;
+    var type = TransactionType.expense;
+    var accountId = state.accounts.first.id;
     int? categoryId = state.categoriesFor(type).firstOrNull?.id;
-    String frequency = 'Mensile';
-    DateTime nextDate = DateTime.now();
-    await showDialog<void>(
+    var frequency = 'Mensile';
+    var nextDate = DateTime.now();
+
+    await showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Pagamento regolare'),
-          content: SingleChildScrollView(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            20,
+            8,
+            20,
+            MediaQuery.viewInsetsOf(context).bottom + 20,
+          ),
+          child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: name,
-                  decoration: const InputDecoration(labelText: 'Nome'),
+                const Text(
+                  'Nuovo pagamento regolare',
+                  style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 10),
                 TextField(
+                  controller: name,
+                  autofocus: true,
+                  decoration: const InputDecoration(labelText: 'Nome'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
                   controller: amount,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   decoration: const InputDecoration(
                     labelText: 'Importo',
                     suffixText: '€',
                   ),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 16),
                 SegmentedButton<TransactionType>(
+                  showSelectedIcon: false,
                   segments: const [
                     ButtonSegment(
                       value: TransactionType.expense,
@@ -155,62 +158,77 @@ class RecurringScreen extends StatelessWidget {
                     ),
                   ],
                   selected: {type},
-                  onSelectionChanged: (value) => setDialogState(() {
+                  onSelectionChanged: (value) => setSheetState(() {
                     type = value.first;
                     categoryId = state.categoriesFor(type).firstOrNull?.id;
                   }),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   initialValue: accountId,
                   decoration: const InputDecoration(labelText: 'Conto'),
                   items: state.accounts
                       .map(
-                        (a) => DropdownMenuItem(
-                          value: a.id,
-                          child: Text(a.name),
+                        (account) => DropdownMenuItem(
+                          value: account.id,
+                          child: Text(account.name),
                         ),
                       )
                       .toList(),
                   onChanged: (value) => accountId = value ?? accountId,
                 ),
-                if (state.categoriesFor(type).isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  DropdownButtonFormField<int>(
-                    initialValue: categoryId,
-                    decoration: const InputDecoration(labelText: 'Categoria'),
-                    items: state
-                        .categoriesFor(type)
-                        .map(
-                          (c) => DropdownMenuItem(
-                            value: c.id,
-                            child: Text(c.name),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (value) => categoryId = value,
-                  ),
-                ],
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<int>(
+                        key: ValueKey('category-$type-$categoryId'),
+                        initialValue: categoryId,
+                        decoration: const InputDecoration(labelText: 'Categoria'),
+                        items: state
+                            .categoriesFor(type)
+                            .map(
+                              (category) => DropdownMenuItem(
+                                value: category.id,
+                                child: Text(category.name),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) => categoryId = value,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Nuova categoria',
+                      onPressed: () async {
+                        final created = await showCategoryCreator(
+                          context,
+                          state,
+                          initialType: type,
+                          lockType: true,
+                        );
+                        if (created != null) {
+                          setSheetState(() => categoryId = created.id);
+                        }
+                      },
+                      icon: const Icon(Icons.add_rounded),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
                   initialValue: frequency,
                   decoration: const InputDecoration(labelText: 'Frequenza'),
-                  items: const [
-                    'Settimanale',
-                    'Mensile',
-                    'Trimestrale',
-                    'Annuale',
-                  ]
-                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
+                  items: const ['Settimanale', 'Mensile', 'Trimestrale', 'Annuale']
+                      .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                       .toList(),
                   onChanged: (value) => frequency = value ?? frequency,
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.calendar_today_outlined),
                   title: const Text('Prossima data'),
-                  subtitle: Text(DateFormat('dd/MM/yyyy').format(nextDate)),
-                  trailing: const Icon(Icons.calendar_month_rounded),
+                  trailing: Text(DateFormat('dd/MM/yyyy').format(nextDate)),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
@@ -219,43 +237,55 @@ class RecurringScreen extends StatelessWidget {
                       initialDate: nextDate,
                     );
                     if (picked != null) {
-                      setDialogState(() => nextDate = picked);
+                      setSheetState(() => nextDate = picked);
                     }
                   },
+                ),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () async {
+                      final parsed =
+                          double.tryParse(amount.text.replaceAll(',', '.'));
+                      if (name.text.trim().isEmpty ||
+                          parsed == null ||
+                          parsed <= 0) {
+                        return;
+                      }
+                      await state.addRecurring(
+                        name: name.text.trim(),
+                        amount: parsed,
+                        type: type,
+                        accountId: accountId,
+                        categoryId: categoryId,
+                        frequency: frequency,
+                        nextDate: nextDate,
+                      );
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    child: const Text('Salva'),
+                  ),
                 ),
               ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Annulla'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final parsed = double.tryParse(amount.text.replaceAll(',', '.'));
-                if (name.text.trim().isEmpty || parsed == null || parsed <= 0) {
-                  return;
-                }
-                await state.addRecurring(
-                  name: name.text.trim(),
-                  amount: parsed,
-                  type: type,
-                  accountId: accountId,
-                  categoryId: categoryId,
-                  frequency: frequency,
-                  nextDate: nextDate,
-                );
-                if (context.mounted) Navigator.pop(context);
-              },
-              child: const Text('Salva'),
-            ),
-          ],
         ),
       ),
     );
+
     name.dispose();
     amount.dispose();
+  }
+
+  Future<void> _delete(BuildContext context, RecurringPayment item) async {
+    final state = AppScope.of(context);
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: 'Eliminare “${item.name}”?',
+      message: 'Il pagamento regolare verrà eliminato definitivamente.',
+    );
+    if (confirmed) await state.deleteRecurring(item);
   }
 
   @override
@@ -266,58 +296,83 @@ class RecurringScreen extends StatelessWidget {
         title: const Text('Pagamenti regolari'),
         actions: [
           IconButton(
+            tooltip: 'Nuovo pagamento regolare',
             onPressed: () => _add(context),
             icon: const Icon(Icons.add_rounded),
           ),
+          const SizedBox(width: 6),
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: state.recurring.isEmpty
-            ? const [
+            ? [
                 _EmptyCard(
                   icon: Icons.repeat_rounded,
                   title: 'Nessun pagamento regolare',
                   subtitle: 'Aggiungi abbonamenti, rate o entrate ricorrenti.',
+                  action: FilledButton.icon(
+                    onPressed: () => _add(context),
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('Aggiungi'),
+                  ),
                 ),
               ]
-            : state.recurring.map((item) {
+            : List.generate(state.recurring.length, (index) {
+                final item = state.recurring[index];
                 final category = state.categoryById(item.categoryId);
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Card(
-                    child: SwitchListTile(
-                      value: item.enabled,
-                      onChanged: (value) => state.setRecurringEnabled(item, value),
-                      secondary: Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: category == null
-                              ? Colors.white.withValues(alpha: .08)
-                              : Color(category.colorValue).withValues(alpha: .18),
-                          borderRadius: BorderRadius.circular(13),
-                        ),
-                        child: Icon(
-                          category == null
-                              ? Icons.repeat_rounded
-                              : categoryIcon(category.iconKey),
-                          color: category == null
-                              ? Colors.white
-                              : Color(category.colorValue),
-                        ),
+                return Column(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        category == null
+                            ? Icons.repeat_rounded
+                            : categoryIcon(category.iconKey),
+                        color: category == null
+                            ? AppTheme.muted
+                            : Color(category.colorValue),
                       ),
                       title: Text(
                         item.name,
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       subtitle: Text(
-                        '${item.frequency} • prossima ${DateFormat('d MMM', 'it_IT').format(item.nextDate)}',
+                        '${item.frequency} · ${DateFormat('d MMM', 'it_IT').format(item.nextDate)}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: item.enabled,
+                            onChanged: (value) =>
+                                state.setRecurringEnabled(item, value),
+                          ),
+                          PopupMenuButton<String>(
+                            tooltip: 'Azioni per ${item.name}',
+                            onSelected: (value) {
+                              if (value == 'delete') _delete(context, item);
+                            },
+                            itemBuilder: (menuContext) => [
+                              PopupMenuItem(
+                                value: 'delete',
+                                child: Text(
+                                  'Elimina',
+                                  style: TextStyle(
+                                    color: Theme.of(menuContext).colorScheme.error,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                  ),
+                    if (index != state.recurring.length - 1)
+                      const Divider(height: 1),
+                  ],
                 );
-              }).toList(),
+              }),
       ),
     );
   }
@@ -327,196 +382,20 @@ class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
   Future<void> _add(BuildContext context) async {
-    final state = AppScope.of(context);
-    final controller = TextEditingController();
-    TransactionType type = TransactionType.expense;
-    String iconKey = categoryIconOptions.first.key;
-    Color color = categoryPalette.first;
+    await showCategoryCreator(context, AppScope.of(context));
+  }
 
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setSheetState) => SafeArea(
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              20,
-              8,
-              20,
-              MediaQuery.viewInsetsOf(context).bottom + 20,
-            ),
-            child: SizedBox(
-              height: MediaQuery.sizeOf(context).height * .78,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Nuova categoria',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: .18),
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        child: Icon(categoryIcon(iconKey), color: color, size: 28),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: controller,
-                          autofocus: true,
-                          decoration: const InputDecoration(
-                            hintText: 'Nome categoria',
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    width: double.infinity,
-                    child: SegmentedButton<TransactionType>(
-                      showSelectedIcon: false,
-                      segments: const [
-                        ButtonSegment(
-                          value: TransactionType.expense,
-                          label: Text('Spesa'),
-                        ),
-                        ButtonSegment(
-                          value: TransactionType.income,
-                          label: Text('Entrata'),
-                        ),
-                      ],
-                      selected: {type},
-                      onSelectionChanged: (value) =>
-                          setSheetState(() => type = value.first),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'Colore',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: categoryPalette.map((item) {
-                      final selected = item == color;
-                      return InkWell(
-                        onTap: () => setSheetState(() => color = item),
-                        borderRadius: BorderRadius.circular(99),
-                        child: Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: item,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: selected ? Colors.white : Colors.transparent,
-                              width: 3,
-                            ),
-                          ),
-                          child: selected
-                              ? Icon(
-                                  Icons.check_rounded,
-                                  size: 17,
-                                  color: item.computeLuminance() > .6
-                                      ? Colors.black
-                                      : Colors.white,
-                                )
-                              : null,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Icona',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      Text(
-                        '${categoryIconOptions.length} disponibili',
-                        style: const TextStyle(color: AppTheme.muted),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: GridView.builder(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 6,
-                        mainAxisSpacing: 9,
-                        crossAxisSpacing: 9,
-                      ),
-                      itemCount: categoryIconOptions.length,
-                      itemBuilder: (context, index) {
-                        final option = categoryIconOptions[index];
-                        final selected = option.key == iconKey;
-                        return Tooltip(
-                          message: option.label,
-                          child: InkWell(
-                            onTap: () =>
-                                setSheetState(() => iconKey = option.key),
-                            borderRadius: BorderRadius.circular(14),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 140),
-                              decoration: BoxDecoration(
-                                color: selected
-                                    ? Colors.white.withValues(alpha: .12)
-                                    : AppTheme.surfaceRaised,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: selected ? Colors.white : AppTheme.border,
-                                ),
-                              ),
-                              child: Icon(
-                                option.icon,
-                                color: selected ? Colors.white : AppTheme.muted,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: () async {
-                        if (controller.text.trim().isEmpty) return;
-                        await state.addCategory(
-                          name: controller.text.trim(),
-                          type: type,
-                          iconKey: iconKey,
-                          colorValue: color.toARGB32(),
-                        );
-                        if (context.mounted) Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Crea categoria'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
+  Future<void> _delete(BuildContext context, Category category) async {
+    final state = AppScope.of(context);
+    final linked = state.transactionCountForCategory(category.id);
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: 'Eliminare “${category.name}”?',
+      message: linked == 0
+          ? 'La categoria verrà eliminata definitivamente.'
+          : 'La categoria verrà eliminata, ma i $linked movimenti già registrati resteranno nello storico come “Senza categoria”.',
     );
-    controller.dispose();
+    if (confirmed) await state.deleteCategory(category);
   }
 
   @override
@@ -527,6 +406,7 @@ class CategoriesScreen extends StatelessWidget {
         title: const Text('Categorie'),
         actions: [
           IconButton(
+            tooltip: 'Nuova categoria',
             onPressed: () => _add(context),
             icon: const Icon(Icons.add_rounded),
           ),
@@ -534,14 +414,13 @@ class CategoriesScreen extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
           if (state.categories.isEmpty)
             _EmptyCard(
               icon: Icons.category_outlined,
               title: 'Nessuna categoria',
-              subtitle:
-                  'Creane una e scegli tra decine di icone per riconoscerla subito.',
+              subtitle: 'Creane una scegliendo nome, colore e icona.',
               action: FilledButton.icon(
                 onPressed: () => _add(context),
                 icon: const Icon(Icons.add_rounded),
@@ -550,12 +429,12 @@ class CategoriesScreen extends StatelessWidget {
             )
           else
             ...TransactionType.values
-                .where((t) => t != TransactionType.transfer)
+                .where((type) => type != TransactionType.transfer)
                 .expand((type) sync* {
               final items = state.categoriesFor(type);
               if (items.isEmpty) return;
               yield Padding(
-                padding: const EdgeInsets.only(top: 10, bottom: 12),
+                padding: const EdgeInsets.only(top: 12, bottom: 6),
                 child: Text(
                   type == TransactionType.expense ? 'SPESE' : 'ENTRATE',
                   style: const TextStyle(
@@ -566,36 +445,45 @@ class CategoriesScreen extends StatelessWidget {
                   ),
                 ),
               );
-              for (final category in items) {
-                yield Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Card(
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 7,
-                      ),
-                      leading: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Color(category.colorValue)
-                              .withValues(alpha: .18),
-                          borderRadius: BorderRadius.circular(14),
+              for (var index = 0; index < items.length; index++) {
+                final category = items[index];
+                yield ListTile(
+                  minVerticalPadding: 11,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    categoryIcon(category.iconKey),
+                    color: Color(category.colorValue),
+                  ),
+                  title: Text(
+                    category.name,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  subtitle: Text(
+                    '${state.transactionCountForCategory(category.id)} movimenti',
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Azioni per ${category.name}',
+                    onSelected: (value) {
+                      if (value == 'delete') _delete(context, category);
+                    },
+                    itemBuilder: (menuContext) => [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Elimina categoria',
+                          style: TextStyle(
+                            color: Theme.of(menuContext).colorScheme.error,
+                          ),
                         ),
-                        child: Icon(
-                          categoryIcon(category.iconKey),
-                          color: Color(category.colorValue),
-                        ),
                       ),
-                      title: Text(
-                        category.name,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                    ),
+                    ],
                   ),
                 );
+                if (index != items.length - 1) {
+                  yield const Divider(height: 1);
+                }
               }
+              yield const SizedBox(height: 18);
             }),
         ],
       ),
@@ -609,36 +497,38 @@ class RemindersScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final upcoming = state.recurring.where((r) => r.enabled).take(5).toList();
+    final upcoming = state.recurring.where((item) => item.enabled).take(5).toList();
     return Scaffold(
       appBar: AppBar(title: const Text('Promemoria')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
           const _EmptyCard(
             icon: Icons.notifications_none_rounded,
-            title: 'Promemoria intelligenti',
+            title: 'Promemoria',
             subtitle:
-                'Questa sezione usa i pagamenti regolari come scadenze. Le notifiche locali verranno collegate nella fase successiva.',
+                'Per ora qui vengono mostrate le prossime scadenze dei pagamenti regolari. Le notifiche locali saranno collegate successivamente.',
           ),
           if (upcoming.isNotEmpty) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 28),
             const SectionTitle('Prossime scadenze'),
-            ...upcoming.map(
-              (r) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Card(
-                  child: ListTile(
+            ...List.generate(upcoming.length, (index) {
+              final item = upcoming[index];
+              return Column(
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.event_outlined),
-                    title: Text(r.name),
+                    title: Text(item.name),
                     subtitle: Text(
-                      DateFormat('EEEE d MMMM', 'it_IT').format(r.nextDate),
+                      DateFormat('EEEE d MMMM', 'it_IT').format(item.nextDate),
                     ),
-                    trailing: Text(money(r.amount)),
+                    trailing: Text(money(item.amount)),
                   ),
-                ),
-              ),
-            ),
+                  if (index != upcoming.length - 1) const Divider(height: 1),
+                ],
+              );
+            }),
           ],
         ],
       ),
@@ -676,73 +566,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Impostazioni')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
-          Card(
-            child: SwitchListTile(
-              value: state.hideBalance,
-              onChanged: state.setHideBalance,
-              secondary: const Icon(Icons.visibility_off_outlined),
-              title: const Text('Nascondi saldi'),
-              subtitle: const Text('Oscura gli importi nelle schermate principali.'),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            value: state.hideBalance,
+            onChanged: state.setHideBalance,
+            secondary: const Icon(Icons.visibility_off_outlined),
+            title: const Text('Nascondi saldi'),
+            subtitle: const Text('Oscura gli importi nelle schermate principali.'),
+          ),
+          const Divider(height: 1),
+          const SizedBox(height: 18),
+          const Text(
+            'Budget mensile',
+            style: TextStyle(fontWeight: FontWeight.w800),
+          ),
+          TextField(
+            controller: budget!,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              hintText: '0',
+              suffixText: '€',
+            ),
+            onSubmitted: (value) {
+              final parsed = double.tryParse(value.replaceAll(',', '.'));
+              if (parsed != null && parsed >= 0) state.setMonthlyBudget(parsed);
+            },
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            '0 € disattiva il budget.',
+            style: TextStyle(color: AppTheme.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 20),
+          const Divider(height: 1),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.widgets_outlined),
+            title: const Text('Widget Android'),
+            subtitle: const Text(
+              'Saldo e scorciatoie sulle prime quattro categorie di spesa.',
+            ),
+            trailing: IconButton(
+              tooltip: 'Aggiorna widget',
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: state.syncWidget,
             ),
           ),
-          const SizedBox(height: 10),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Budget mensile',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 9),
-                  TextField(
-                    controller: budget!,
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(suffixText: '€'),
-                    onSubmitted: (value) {
-                      final parsed = double.tryParse(value.replaceAll(',', '.'));
-                      if (parsed != null && parsed >= 0) {
-                        state.setMonthlyBudget(parsed);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 7),
-                  const Text(
-                    '0 € disattiva il budget.',
-                    style: TextStyle(color: AppTheme.muted, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.widgets_outlined),
-              title: const Text('Widget Android'),
-              subtitle: const Text(
-                'Saldo e scorciatoie sulle prime quattro categorie di spesa.',
-              ),
-              trailing: IconButton(
-                icon: const Icon(Icons.refresh_rounded),
-                onPressed: state.syncWidget,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          const Card(
-            child: ListTile(
-              leading: Icon(Icons.shield_outlined),
-              title: Text('Privacy'),
-              subtitle: Text(
-                'Database SQLite locale. Nessun cloud o login richiesto.',
-              ),
-            ),
+          const Divider(height: 1),
+          const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.shield_outlined),
+            title: Text('Privacy'),
+            subtitle: Text('Database SQLite locale. Nessun cloud o login richiesto.'),
           ),
         ],
       ),
@@ -764,38 +641,26 @@ class _EmptyCard extends StatelessWidget {
   final Widget? action;
 
   @override
-  Widget build(BuildContext context) => Card(
-        child: Padding(
-          padding: const EdgeInsets.all(22),
-          child: Column(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .08),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Icon(icon, size: 27),
-              ),
-              const SizedBox(height: 14),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              if (action != null) ...[
-                const SizedBox(height: 16),
-                action!,
-              ],
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 32, color: AppTheme.muted),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 5),
+            Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+            if (action != null) ...[
+              const SizedBox(height: 16),
+              action!,
             ],
-          ),
+          ],
         ),
       );
 }
