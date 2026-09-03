@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [main]
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'build/**'
 
 concurrency:
   group: flutter-${{ github.ref }}
@@ -21,6 +23,6 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: dart format lib
+      - run: dart format --output=none --set-exit-if-changed lib
       - run: flutter analyze
       - run: flutter build apk --debug
