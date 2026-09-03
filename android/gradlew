@@ -1,0 +1,25 @@
+#!/bin/sh
+
+APP_HOME=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P) || exit 1
+JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+WRAPPER_URL="https://raw.githubusercontent.com/gradle/gradle/v8.12.1/gradle/wrapper/gradle-wrapper.jar"
+
+if [ ! -f "$JAR" ]; then
+  mkdir -p "$(dirname "$JAR")"
+  if command -v curl >/dev/null 2>&1; then
+    curl --fail --location --retry 3 --silent --show-error "$WRAPPER_URL" -o "$JAR" || exit 1
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q "$WRAPPER_URL" -O "$JAR" || exit 1
+  else
+    echo "Gradle wrapper JAR missing and neither curl nor wget is available." >&2
+    exit 1
+  fi
+fi
+
+if [ -n "$JAVA_HOME" ]; then
+  JAVACMD="$JAVA_HOME/bin/java"
+else
+  JAVACMD=java
+fi
+
+exec "$JAVACMD" -classpath "$JAR" org.gradle.wrapper.GradleWrapperMain "$@"
