@@ -139,18 +139,79 @@ class AppDatabase {
     );
   }
 
+  Future<void> deleteAccount(int id) async {
+    await db.transaction((txn) async {
+      final linkedRows = await txn.query(
+        'transactions',
+        where: 'account_id = ? OR to_account_id = ?',
+        whereArgs: [id, id],
+        orderBy: 'date DESC, id DESC',
+      );
+
+      for (final row in linkedRows) {
+        final item = FinanceTransaction.fromMap(row);
+        await _applyBalance(
+          txn,
+          item.type,
+          item.amount,
+          item.accountId,
+          item.toAccountId,
+          -1,
+        );
+      }
+
+      await txn.delete(
+        'transactions',
+        where: 'account_id = ? OR to_account_id = ?',
+        whereArgs: [id, id],
+      );
+      await txn.delete('recurring', where: 'account_id = ?', whereArgs: [id]);
+      await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
   Future<int> addCategory({
     required String name,
     required TransactionType type,
     required String iconKey,
     required int colorValue,
-  }) async =>
-      db.insert('categories', {
-        'name': name,
-        'type': type.dbValue,
-        'icon_key': iconKey,
-        'color': colorValue,
-      });
+  }) async {
+    final quickCount = Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM categories WHERE type = ? AND quick_order IS NOT NULL',
+            [type.dbValue],
+          ),
+        ) ??
+        0;
+
+    return db.insert('categories', {
+      'name': name,
+      'type': type.dbValue,
+      'icon_key': iconKey,
+      'color': colorValue,
+      'quick_order': type == TransactionType.expense && quickCount < 4
+          ? quickCount
+          : null,
+    });
+  }
+
+  Future<void> deleteCategory(int id) async {
+    await db.transaction((txn) async {
+      await txn.update(
+        'transactions',
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      await txn.update(
+        'recurring',
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
+    });
+  }
 
   Future<int> addTransaction({
     required TransactionType type,
@@ -252,6 +313,10 @@ class AppDatabase {
       where: 'id = ?',
       whereArgs: [id],
     );
+  }
+
+  Future<void> deleteRecurring(int id) async {
+    await db.delete('recurring', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<double> getMonthlyBudget() async {
