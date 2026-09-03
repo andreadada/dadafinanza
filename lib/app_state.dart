@@ -90,6 +90,16 @@ class AppState extends ChangeNotifier {
       ? 0
       : math.min(1, monthTotal(TransactionType.expense) / monthlyBudget);
 
+  int transactionCountForAccount(int accountId) => transactions
+      .where((t) => t.accountId == accountId || t.toAccountId == accountId)
+      .length;
+
+  int recurringCountForAccount(int accountId) =>
+      recurring.where((r) => r.accountId == accountId).length;
+
+  int transactionCountForCategory(int categoryId) =>
+      transactions.where((t) => t.categoryId == categoryId).length;
+
   Future<void> addTransaction({
     required TransactionType type,
     required double amount,
@@ -127,6 +137,15 @@ class AppState extends ChangeNotifier {
     await syncWidget();
   }
 
+  Future<void> deleteAccount(Account account) async {
+    await database.deleteAccount(account.id);
+    accounts = await database.accounts();
+    transactions = await database.transactions();
+    recurring = await database.recurring();
+    notifyListeners();
+    await syncWidget();
+  }
+
   Future<void> setAccountIncluded(Account account, bool included) async {
     await database.setAccountIncluded(account.id, included);
     accounts = await database.accounts();
@@ -134,19 +153,30 @@ class AppState extends ChangeNotifier {
     await syncWidget();
   }
 
-  Future<void> addCategory({
+  Future<Category> addCategory({
     required String name,
     required TransactionType type,
     required String iconKey,
     required int colorValue,
   }) async {
-    await database.addCategory(
+    final id = await database.addCategory(
       name: name,
       type: type,
       iconKey: iconKey,
       colorValue: colorValue,
     );
     categories = await database.categories();
+    final created = categoryById(id)!;
+    notifyListeners();
+    await syncWidget();
+    return created;
+  }
+
+  Future<void> deleteCategory(Category category) async {
+    await database.deleteCategory(category.id);
+    categories = await database.categories();
+    transactions = await database.transactions();
+    recurring = await database.recurring();
     notifyListeners();
     await syncWidget();
   }
@@ -175,6 +205,12 @@ class AppState extends ChangeNotifier {
 
   Future<void> setRecurringEnabled(RecurringPayment item, bool enabled) async {
     await database.setRecurringEnabled(item.id, enabled);
+    recurring = await database.recurring();
+    notifyListeners();
+  }
+
+  Future<void> deleteRecurring(RecurringPayment item) async {
+    await database.deleteRecurring(item.id);
     recurring = await database.recurring();
     notifyListeners();
   }
