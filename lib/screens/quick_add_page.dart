@@ -10,7 +10,11 @@ import '../theme/app_theme.dart';
 import '../widgets/ui_helpers.dart';
 
 class QuickAddPage extends StatefulWidget {
-  const QuickAddPage({this.initialCategoryName, this.initialTypeName, super.key});
+  const QuickAddPage({
+    this.initialCategoryName,
+    this.initialTypeName,
+    super.key,
+  });
 
   final String? initialCategoryName;
   final String? initialTypeName;
@@ -58,7 +62,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final state = AppScope.of(context);
     if (state.accounts.isNotEmpty) {
       accountId ??= state.accounts.first.id;
-      if (state.accounts.length > 1) toAccountId ??= state.accounts[1].id;
+      if (state.accounts.length > 1) {
+        toAccountId ??= state.accounts[1].id;
+      }
     }
     final categories = state.categoriesFor(type);
     if (widget.initialCategoryName != null) {
@@ -88,8 +94,50 @@ class _QuickAddPageState extends State<QuickAddPage> {
     });
   }
 
+  Future<void> _createFirstAccount() async {
+    final state = AppScope.of(context);
+    final controller = TextEditingController();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Crea un conto'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Es. Portafoglio'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annulla'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              if (controller.text.trim().isEmpty) return;
+              await state.addAccount(
+                controller.text.trim(),
+                0,
+                0xFF8E8E93,
+              );
+              if (context.mounted) Navigator.pop(context);
+              if (mounted && state.accounts.isNotEmpty) {
+                setState(() => accountId = state.accounts.first.id);
+              }
+            },
+            child: const Text('Crea a 0 €'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+  }
+
   Future<void> _pickReceipt(ImageSource source) async {
-    final result = await picker.pickImage(source: source, imageQuality: 82, maxWidth: 1800);
+    final result = await picker.pickImage(
+      source: source,
+      imageQuality: 82,
+      maxWidth: 1800,
+    );
     if (result != null && mounted) setState(() => receipt = result);
   }
 
@@ -97,15 +145,24 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final state = AppScope.of(context);
     final parsed = double.tryParse(amount.text.replaceAll(',', '.'));
     if (parsed == null || parsed <= 0 || accountId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Inserisci un importo valido e scegli il conto.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Inserisci un importo valido e scegli il conto.'),
+        ),
+      );
       return;
     }
     if (type != TransactionType.transfer && categoryId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scegli una categoria.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Crea e scegli una categoria.')),
+      );
       return;
     }
-    if (type == TransactionType.transfer && (toAccountId == null || toAccountId == accountId)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Scegli due conti diversi per il giroconto.')));
+    if (type == TransactionType.transfer &&
+        (toAccountId == null || toAccountId == accountId)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Scegli due conti diversi.')),
+      );
       return;
     }
     setState(() => saving = true);
@@ -126,137 +183,323 @@ class _QuickAddPageState extends State<QuickAddPage> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final categories = type == TransactionType.transfer ? const <Category>[] : state.categoriesFor(type);
+    final categories = type == TransactionType.transfer
+        ? const <Category>[]
+        : state.categoriesFor(type);
+    final canSave = state.accounts.isNotEmpty &&
+        (type == TransactionType.transfer
+            ? state.accounts.length > 1
+            : categories.isNotEmpty);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Nuovo movimento')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
-          SegmentedButton<TransactionType>(
-            showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: TransactionType.expense, icon: Icon(Icons.remove_rounded), label: Text('Spesa')),
-              ButtonSegment(value: TransactionType.income, icon: Icon(Icons.add_rounded), label: Text('Entrata')),
-              ButtonSegment(value: TransactionType.transfer, icon: Icon(Icons.swap_horiz_rounded), label: Text('Giroconto')),
-            ],
-            selected: {type},
-            onSelectionChanged: (value) => _changeType(value.first),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<TransactionType>(
+              showSelectedIcon: false,
+              segments: const [
+                ButtonSegment(
+                  value: TransactionType.expense,
+                  icon: Icon(Icons.arrow_upward_rounded),
+                  label: Text('Spesa'),
+                ),
+                ButtonSegment(
+                  value: TransactionType.income,
+                  icon: Icon(Icons.arrow_downward_rounded),
+                  label: Text('Entrata'),
+                ),
+                ButtonSegment(
+                  value: TransactionType.transfer,
+                  icon: Icon(Icons.swap_horiz_rounded),
+                  label: Text('Giroconto'),
+                ),
+              ],
+              selected: {type},
+              onSelectionChanged: (value) => _changeType(value.first),
+            ),
           ),
-          const SizedBox(height: 24),
-          TextField(
-            controller: amount,
-            autofocus: true,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.displayMedium?.copyWith(fontWeight: FontWeight.w900),
-            decoration: const InputDecoration(hintText: '0,00', suffixText: '€', suffixStyle: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 26),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+            decoration: BoxDecoration(
+              color: AppTheme.surface,
+              borderRadius: BorderRadius.circular(26),
+              border: Border.all(color: AppTheme.border),
+            ),
+            child: TextField(
+              controller: amount,
+              autofocus: true,
+              keyboardType:
+                  const TextInputType.numberWithOptions(decimal: true),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                    fontSize: 44,
+                    fontWeight: FontWeight.w800,
+                  ),
+              decoration: const InputDecoration(
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                hintText: '0,00',
+                suffixText: '€',
+                suffixStyle: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: AppTheme.muted,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 26),
           const SectionTitle('Conto'),
-          DropdownButtonFormField<int>(
-            initialValue: accountId,
-            hint: const Text('Seleziona conto'),
-            items: state.accounts.map((a) => DropdownMenuItem(value: a.id, child: Row(mainAxisSize: MainAxisSize.min, children: [CircleAvatar(radius: 9, backgroundColor: Color(a.colorValue)), const SizedBox(width: 10), Text('${a.name} • ${money(a.balance)}')]))).toList(),
-            onChanged: (value) => setState(() {
-              accountId = value;
-              if (toAccountId == value) {
-                toAccountId = state.accounts.where((a) => a.id != value).firstOrNull?.id;
-              }
-            }),
-          ),
-          if (type == TransactionType.transfer) ...[
-            const SizedBox(height: 14),
+          if (state.accounts.isEmpty)
+            _SetupNotice(
+              icon: Icons.account_balance_wallet_outlined,
+              title: 'Serve un conto',
+              subtitle: 'Crealo ora con saldo iniziale 0 €.',
+              label: 'Crea conto',
+              onTap: _createFirstAccount,
+            )
+          else
+            DropdownButtonFormField<int>(
+              initialValue: accountId,
+              hint: const Text('Seleziona conto'),
+              items: state.accounts
+                  .map(
+                    (a) => DropdownMenuItem(
+                      value: a.id,
+                      child: Text('${a.name}  •  ${money(a.balance)}'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (value) => setState(() {
+                accountId = value;
+                if (toAccountId == value) {
+                  toAccountId = state.accounts
+                      .where((a) => a.id != value)
+                      .firstOrNull
+                      ?.id;
+                }
+              }),
+            ),
+          if (type == TransactionType.transfer && state.accounts.length > 1) ...[
+            const SizedBox(height: 12),
             DropdownButtonFormField<int>(
               key: ValueKey('destination-$accountId-$toAccountId'),
               initialValue: toAccountId,
               hint: const Text('Conto di destinazione'),
               decoration: const InputDecoration(labelText: 'Destinazione'),
-              items: state.accounts.where((a) => a.id != accountId).map((a) => DropdownMenuItem(value: a.id, child: Text(a.name))).toList(),
+              items: state.accounts
+                  .where((a) => a.id != accountId)
+                  .map(
+                    (a) => DropdownMenuItem(value: a.id, child: Text(a.name)),
+                  )
+                  .toList(),
               onChanged: (value) => setState(() => toAccountId = value),
             ),
           ],
-          if (type != TransactionType.transfer) ...[
-            const SizedBox(height: 24),
-            const SectionTitle('Categoria'),
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: categories.map((category) {
-                final selected = category.id == categoryId;
-                return InkWell(
-                  onTap: () => setState(() => categoryId = category.id),
-                  borderRadius: BorderRadius.circular(18),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 102,
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 13),
-                    decoration: BoxDecoration(
-                      color: selected ? Color(category.colorValue).withValues(alpha: .24) : const Color(0xFF13201B),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: selected ? Color(category.colorValue) : Colors.white.withValues(alpha: .06), width: selected ? 1.8 : 1),
-                    ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(backgroundColor: Color(category.colorValue), child: Icon(categoryIcon(category.iconKey), color: Colors.white)),
-                        const SizedBox(height: 8),
-                        Text(category.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+          if (type == TransactionType.transfer && state.accounts.length == 1) ...[
+            const SizedBox(height: 12),
+            const _SetupNotice(
+              icon: Icons.swap_horiz_rounded,
+              title: 'Serve un secondo conto',
+              subtitle: 'Un giroconto richiede un conto di origine e uno di arrivo.',
             ),
           ],
-          const SizedBox(height: 24),
+          if (type != TransactionType.transfer) ...[
+            const SizedBox(height: 26),
+            const SectionTitle('Categoria'),
+            if (categories.isEmpty)
+              const _SetupNotice(
+                icon: Icons.category_outlined,
+                title: 'Nessuna categoria',
+                subtitle: 'Creala da Altro → Categorie scegliendo anche l’icona.',
+              )
+            else
+              Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: categories.map((category) {
+                  final selected = category.id == categoryId;
+                  final color = Color(category.colorValue);
+                  return InkWell(
+                    onTap: () => setState(() => categoryId = category.id),
+                    borderRadius: BorderRadius.circular(18),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      width: 104,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 13,
+                      ),
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? Colors.white.withValues(alpha: .08)
+                            : AppTheme.surface,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: selected ? Colors.white : AppTheme.border,
+                          width: selected ? 1.5 : 1,
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: .18),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(
+                              categoryIcon(category.iconKey),
+                              color: color,
+                              size: 21,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            category.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+          ],
+          const SizedBox(height: 26),
           const SectionTitle('Dettagli'),
           Card(
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.calendar_today_rounded),
+                  leading: const Icon(Icons.calendar_today_outlined),
                   title: const Text('Data'),
                   trailing: Text(DateFormat('dd/MM/yyyy').format(date)),
                   onTap: () async {
-                    final picked = await showDatePicker(context: context, firstDate: DateTime(2020), lastDate: DateTime.now().add(const Duration(days: 365)), initialDate: date);
-                    if (picked != null) setState(() => date = DateTime(picked.year, picked.month, picked.day, DateTime.now().hour, DateTime.now().minute));
+                    final picked = await showDatePicker(
+                      context: context,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                      initialDate: date,
+                    );
+                    if (picked != null) {
+                      setState(
+                        () => date = DateTime(
+                          picked.year,
+                          picked.month,
+                          picked.day,
+                          DateTime.now().hour,
+                          DateTime.now().minute,
+                        ),
+                      );
+                    }
                   },
                 ),
                 const Divider(height: 1),
                 Padding(
                   padding: const EdgeInsets.all(12),
-                  child: TextField(controller: note, minLines: 1, maxLines: 3, decoration: const InputDecoration(prefixIcon: Icon(Icons.notes_rounded), hintText: 'Nota opzionale')),
+                  child: TextField(
+                    controller: note,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.notes_rounded),
+                      hintText: 'Nota opzionale',
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 22),
           const SectionTitle('Tag'),
           Row(
             children: [
-              Expanded(child: TextField(controller: tag, onSubmitted: (_) => _addTag(), decoration: const InputDecoration(hintText: 'Es. Netflix, Vinted, Aperitivo'))),
+              Expanded(
+                child: TextField(
+                  controller: tag,
+                  onSubmitted: (_) => _addTag(),
+                  decoration: const InputDecoration(
+                    hintText: 'Es. Netflix, Vinted, Aperitivo',
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
-              IconButton.filledTonal(onPressed: _addTag, icon: const Icon(Icons.add_rounded)),
+              IconButton.filledTonal(
+                onPressed: _addTag,
+                icon: const Icon(Icons.add_rounded),
+              ),
             ],
           ),
           if (tags.isNotEmpty) ...[
             const SizedBox(height: 10),
-            Wrap(spacing: 8, runSpacing: 8, children: tags.map((value) => InputChip(label: Text(value), onDeleted: () => setState(() => tags.remove(value)))).toList()),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: tags
+                  .map(
+                    (value) => InputChip(
+                      label: Text(value),
+                      onDeleted: () => setState(() => tags.remove(value)),
+                    ),
+                  )
+                  .toList(),
+            ),
           ],
-          const SizedBox(height: 20),
-          const SectionTitle('Ricevuta / foto'),
+          const SizedBox(height: 22),
+          const SectionTitle('Ricevuta'),
           if (receipt == null)
             Row(
               children: [
-                Expanded(child: OutlinedButton.icon(onPressed: () => _pickReceipt(ImageSource.camera), icon: const Icon(Icons.photo_camera_rounded), label: const Text('Scatta'))),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickReceipt(ImageSource.camera),
+                    icon: const Icon(Icons.photo_camera_outlined),
+                    label: const Text('Scatta'),
+                  ),
+                ),
                 const SizedBox(width: 10),
-                Expanded(child: OutlinedButton.icon(onPressed: () => _pickReceipt(ImageSource.gallery), icon: const Icon(Icons.photo_library_rounded), label: const Text('Galleria'))),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => _pickReceipt(ImageSource.gallery),
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: const Text('Galleria'),
+                  ),
+                ),
               ],
             )
           else
             Stack(
               children: [
-                ClipRRect(borderRadius: BorderRadius.circular(20), child: Image.file(File(receipt!.path), height: 170, width: double.infinity, fit: BoxFit.cover)),
-                Positioned(top: 8, right: 8, child: IconButton.filled(onPressed: () => setState(() => receipt = null), icon: const Icon(Icons.close_rounded))),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.file(
+                    File(receipt!.path),
+                    height: 170,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: IconButton.filled(
+                    onPressed: () => setState(() => receipt = null),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ),
               ],
             ),
         ],
@@ -264,10 +507,17 @@ class _QuickAddPageState extends State<QuickAddPage> {
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: FilledButton.icon(
-          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56), backgroundColor: type == TransactionType.expense ? const Color(0xFFFFB72B) : AppTheme.seed, foregroundColor: Colors.black),
-          onPressed: saving ? null : _save,
-          icon: saving ? const SizedBox.square(dimension: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check_rounded),
-          label: Text(saving ? 'Salvataggio…' : 'Salva movimento', style: const TextStyle(fontWeight: FontWeight.w900)),
+          onPressed: saving || !canSave ? null : _save,
+          icon: saving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.check_rounded),
+          label: Text(
+            saving ? 'Salvataggio…' : 'Salva movimento',
+            style: const TextStyle(fontWeight: FontWeight.w900),
+          ),
         ),
       ),
     );
@@ -281,6 +531,50 @@ class _QuickAddPageState extends State<QuickAddPage> {
       tag.clear();
     });
   }
+}
+
+class _SetupNotice extends StatelessWidget {
+  const _SetupNotice({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.label,
+    this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String? label;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppTheme.border),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: AppTheme.muted),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+            if (label != null && onTap != null)
+              TextButton(onPressed: onTap, child: Text(label!)),
+          ],
+        ),
+      );
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

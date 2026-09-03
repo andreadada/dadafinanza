@@ -17,7 +17,7 @@ class AppState extends ChangeNotifier {
   List<Category> categories = [];
   List<FinanceTransaction> transactions = [];
   List<RecurringPayment> recurring = [];
-  double monthlyBudget = 600;
+  double monthlyBudget = 0;
   bool hideBalance = false;
   bool loading = true;
 
@@ -37,9 +37,8 @@ class AppState extends ChangeNotifier {
       .where((a) => a.includeInTotal)
       .fold(0, (sum, item) => sum + item.balance);
 
-  List<Category> categoriesFor(TransactionType type) => categories
-      .where((c) => c.type == type)
-      .toList(growable: false);
+  List<Category> categoriesFor(TransactionType type) =>
+      categories.where((c) => c.type == type).toList(growable: false);
 
   Account? accountById(int? id) {
     if (id == null) return null;

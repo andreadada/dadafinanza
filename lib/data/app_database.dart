@@ -2,7 +2,6 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
-import 'seed_data.dart';
 
 class AppDatabase {
   Database? _db;
@@ -13,8 +12,9 @@ class AppDatabase {
     final root = await getDatabasesPath();
     _db = await openDatabase(
       join(root, 'dadafinanza.db'),
-      version: 1,
+      version: 2,
       onCreate: _create,
+      onUpgrade: _upgrade,
     );
   }
 
@@ -72,25 +72,38 @@ class AppDatabase {
       )
     ''');
 
-    await db.transaction((txn) async {
-      for (final account in seedAccounts) {
-        await txn.insert('accounts', account);
-      }
-      for (final category in seedCategories) {
-        await txn.insert('categories', category);
-      }
-      await txn.insert('settings', {'key': 'monthly_budget', 'value': '600'});
-      await txn.insert('settings', {'key': 'hide_balance', 'value': '0'});
-    });
+    await db.insert('settings', {'key': 'monthly_budget', 'value': '0'});
+    await db.insert('settings', {'key': 'hide_balance', 'value': '0'});
   }
 
-  Future<List<Account>> accounts() async => (await db.query('accounts', orderBy: 'id'))
-      .map(Account.fromMap)
-      .toList();
+  Future<void> _upgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.transaction((txn) async {
+        await txn.delete('recurring');
+        await txn.delete('transactions');
+        await txn.delete('categories');
+        await txn.delete('accounts');
+        await txn.insert(
+          'settings',
+          {'key': 'monthly_budget', 'value': '0'},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+        await txn.insert(
+          'settings',
+          {'key': 'hide_balance', 'value': '0'},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      });
+    }
+  }
+
+  Future<List<Account>> accounts() async =>
+      (await db.query('accounts', orderBy: 'id')).map(Account.fromMap).toList();
 
   Future<List<Category>> categories() async => (await db.query(
         'categories',
-        orderBy: 'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name',
+        orderBy:
+            'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name',
       ))
           .map(Category.fromMap)
           .toList();
@@ -242,12 +255,14 @@ class AppDatabase {
   }
 
   Future<double> getMonthlyBudget() async {
-    final rows = await db.query('settings', where: 'key = ?', whereArgs: ['monthly_budget']);
-    return double.tryParse(rows.firstOrNull?['value'] as String? ?? '') ?? 600;
+    final rows =
+        await db.query('settings', where: 'key = ?', whereArgs: ['monthly_budget']);
+    return double.tryParse(rows.firstOrNull?['value'] as String? ?? '') ?? 0;
   }
 
   Future<bool> getHideBalance() async {
-    final rows = await db.query('settings', where: 'key = ?', whereArgs: ['hide_balance']);
+    final rows =
+        await db.query('settings', where: 'key = ?', whereArgs: ['hide_balance']);
     return (rows.firstOrNull?['value'] as String? ?? '0') == '1';
   }
 
