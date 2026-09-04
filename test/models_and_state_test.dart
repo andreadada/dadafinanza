@@ -192,6 +192,87 @@ void main() {
     expect(state.analyticTransactions().length, 1);
   });
 
+  test('weekly budget follows configured first day of week', () {
+    final state = AppState(AppDatabase())..weekStart = DateTime.monday;
+    final budget = Budget(
+      id: 1,
+      name: 'Week',
+      limit: 100,
+      period: BudgetPeriod.weekly,
+      startDate: DateTime(2026, 1, 1),
+      enabled: true,
+    );
+
+    final (from, to) = state.budgetRange(budget, now: now);
+    expect(from, DateTime(2026, 8, 31));
+    expect(to, DateTime(2026, 9, 7));
+  });
+
+  test('monthly budget follows financial month start day', () {
+    final state = AppState(AppDatabase())..financialMonthStart = 15;
+    final budget = Budget(
+      id: 2,
+      name: 'Month',
+      limit: 500,
+      period: BudgetPeriod.monthly,
+      startDate: DateTime(2026, 1, 1),
+      enabled: true,
+    );
+
+    final (from, to) = state.budgetRange(budget, now: now);
+    expect(from, DateTime(2026, 8, 15));
+    expect(to, DateTime(2026, 9, 15));
+  });
+
+  test('custom budget includes the selected end date', () {
+    final state = AppState(AppDatabase());
+    final budget = Budget(
+      id: 3,
+      name: 'Trip',
+      limit: 300,
+      period: BudgetPeriod.custom,
+      startDate: DateTime(2026, 9, 2),
+      endDate: DateTime(2026, 9, 4),
+      enabled: true,
+    );
+
+    final (from, to) = state.budgetRange(budget, now: now);
+    expect(from, DateTime(2026, 9, 2));
+    expect(to, DateTime(2026, 9, 5));
+  });
+
+  test('custom category budget counts split values only once', () {
+    final state = AppState(AppDatabase());
+    state.accounts = [account(id: 1, name: 'Main', balance: 1000)];
+    state.categories = [category(1, 'Food'), category(2, 'Home')];
+    state.transactions = [
+      transaction(
+        id: 50,
+        type: TransactionType.expense,
+        amount: 82,
+        accountId: 1,
+        categoryId: 1,
+      ),
+    ];
+    state.splits = const [
+      TransactionSplit(id: 3, transactionId: 50, amount: 54, categoryId: 1),
+      TransactionSplit(id: 4, transactionId: 50, amount: 28, categoryId: 2),
+    ];
+    final foodBudget = Budget(
+      id: 4,
+      name: 'Food custom',
+      limit: 100,
+      period: BudgetPeriod.custom,
+      startDate: DateTime(2026, 9, 1),
+      endDate: DateTime(2026, 9, 30),
+      enabled: true,
+      categoryId: 1,
+    );
+
+    expect(state.budgetSpent(foodBudget, now: now), 54);
+    expect(state.budgetProgressFor(foodBudget, now: now), closeTo(.54, .0001));
+  });
+
   test('all dashboard widget types have a non-empty label', () {
     expect(DashboardWidgetType.values.length, 22);
     for (final type in DashboardWidgetType.values) {
