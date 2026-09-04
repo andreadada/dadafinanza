@@ -25,17 +25,21 @@ Future<void> main() async {
 class DadaFinanzaApp extends StatefulWidget {
   const DadaFinanzaApp({required this.state, super.key});
   final AppState state;
+
   @override
   State<DadaFinanzaApp> createState() => _DadaFinanzaAppState();
 }
 
 class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   StreamSubscription<Uri?>? _widgetSubscription;
+  bool? _lastWidgetPrivacy;
 
   @override
   void initState() {
     super.initState();
     _widgetSubscription = HomeWidget.widgetClicked.listen(_handleWidgetUri);
+    widget.state.addListener(_syncWidgetPrivacy);
+    _syncWidgetPrivacy();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) async => _handleWidgetUri(
         await HomeWidget.initiallyLaunchedFromHomeWidget(),
@@ -57,8 +61,30 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     );
   }
 
+  void _syncWidgetPrivacy() {
+    final hidden = widget.state.hideBalance;
+    if (_lastWidgetPrivacy == hidden) return;
+    _lastWidgetPrivacy = hidden;
+    unawaited(_writeWidgetPrivacy(hidden));
+  }
+
+  Future<void> _writeWidgetPrivacy(bool hidden) async {
+    await HomeWidget.saveWidgetData<bool>('hide_balance', hidden);
+    await Future.wait([
+      HomeWidget.updateWidget(
+        androidName: 'DadaFinanceWidgetProvider',
+        qualifiedAndroidName: 'com.dadafinanza.app.DadaFinanceWidgetProvider',
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaBalanceWidgetProvider',
+        qualifiedAndroidName: 'com.dadafinanza.app.DadaBalanceWidgetProvider',
+      ),
+    ]);
+  }
+
   @override
   void dispose() {
+    widget.state.removeListener(_syncWidgetPrivacy);
     _widgetSubscription?.cancel();
     super.dispose();
   }
