@@ -4,9 +4,10 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/models.dart';
+import '../models/smart_models.dart';
 
 class AppDatabase {
-  static const databaseVersion = 3;
+  static const databaseVersion = 4;
   static const _unassignedName = '__UNASSIGNED__';
 
   Database? _db;
@@ -147,18 +148,25 @@ class AppDatabase {
       amount REAL NOT NULL
     )''');
     await db.execute('CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    await _createSmartTables(db);
 
-    await db.insert('settings', {'key': 'monthly_budget', 'value': '0'});
-    await db.insert('settings', {'key': 'hide_balance', 'value': '0'});
-    await db.insert('settings', {'key': 'theme_mode', 'value': 'system'});
-    await db.insert('settings', {'key': 'currency', 'value': 'EUR'});
-    await db.insert('settings', {'key': 'show_cents', 'value': '1'});
-    await db.insert('settings', {'key': 'allow_unassigned', 'value': '1'});
-    await db.insert('settings', {'key': 'show_transfers_analytics', 'value': '0'});
-    await db.insert('settings', {'key': 'confirm_delete', 'value': '1'});
-    await db.insert('settings', {'key': 'haptics', 'value': '1'});
-    await db.insert('settings', {'key': 'week_start', 'value': '1'});
-    await db.insert('settings', {'key': 'financial_month_start', 'value': '1'});
+    final defaults = <String, String>{
+      'monthly_budget': '0',
+      'hide_balance': '0',
+      'theme_mode': 'system',
+      'currency': 'EUR',
+      'show_cents': '1',
+      'allow_unassigned': '1',
+      'show_transfers_analytics': '0',
+      'confirm_delete': '1',
+      'haptics': '1',
+      'week_start': '1',
+      'financial_month_start': '1',
+    };
+    for (final entry in defaults.entries) {
+      await db.insert('settings', {'key': entry.key, 'value': entry.value});
+    }
+    await _seedSmartSettings(db);
 
     await db.insert('accounts', {
       'name': _unassignedName,
@@ -267,7 +275,85 @@ class AppDatabase {
         });
       }
       await _seedDashboard(db);
-      await _createIndexes(db);
+    }
+    if (oldVersion < 4) {
+      await _createSmartTables(db);
+      await _seedSmartSettings(db);
+    }
+    await _createIndexes(db);
+  }
+
+  Future<void> _createSmartTables(Database db) async {
+    await db.execute('''CREATE TABLE IF NOT EXISTS learned_patterns(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      signature TEXT NOT NULL UNIQUE,
+      normalized_text TEXT NOT NULL,
+      type TEXT NOT NULL,
+      category_id INTEGER,
+      account_id INTEGER,
+      to_account_id INTEGER,
+      tags TEXT,
+      sample_count INTEGER NOT NULL DEFAULT 0,
+      accepted_count INTEGER NOT NULL DEFAULT 0,
+      rejected_count INTEGER NOT NULL DEFAULT 0,
+      amount_median REAL NOT NULL DEFAULT 0,
+      amount_min REAL NOT NULL DEFAULT 0,
+      amount_max REAL NOT NULL DEFAULT 0,
+      weekday_mask INTEGER NOT NULL DEFAULT 0,
+      hour_bucket INTEGER NOT NULL DEFAULT -1,
+      first_seen INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS pattern_feedback(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      pattern_id INTEGER,
+      kind TEXT NOT NULL,
+      query_text TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(pattern_id) REFERENCES learned_patterns(id) ON DELETE SET NULL
+    )''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS suggestion_suppressions(
+      normalized_text TEXT PRIMARY KEY,
+      created_at INTEGER NOT NULL
+    )''');
+    await db.execute('''CREATE TABLE IF NOT EXISTS detected_recurring_patterns(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      signature TEXT NOT NULL UNIQUE,
+      normalized_text TEXT NOT NULL,
+      type TEXT NOT NULL,
+      category_id INTEGER,
+      account_id INTEGER,
+      frequency TEXT NOT NULL,
+      amount_median REAL NOT NULL,
+      confidence REAL NOT NULL,
+      sample_count INTEGER NOT NULL,
+      last_seen INTEGER NOT NULL,
+      next_expected INTEGER NOT NULL,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )''');
+  }
+
+  Future<void> _seedSmartSettings(Database db) async {
+    const defaults = <String, String>{
+      'smart_suggestions_enabled': '1',
+      'smart_use_description': '1',
+      'smart_use_amount': '1',
+      'smart_use_time': '1',
+      'smart_detect_recurring': '1',
+      'smart_goal_suggestions': '1',
+      'smart_sensitivity': 'balanced',
+    };
+    for (final entry in defaults.entries) {
+      await db.insert(
+        'settings',
+        {'key': entry.key, 'value': entry.value},
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
     }
   }
 
@@ -285,6 +371,10 @@ class AppDatabase {
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_splits_transaction ON transaction_splits(transaction_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_patterns_text_type ON learned_patterns(normalized_text, type)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_patterns_last_seen ON learned_patterns(last_seen)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_feedback_pattern ON pattern_feedback(pattern_id)');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_detected_next ON detected_recurring_patterns(next_expected)');
   }
 
   Future<void> _seedDashboard(Database db) async {
@@ -333,6 +423,9 @@ class AppDatabase {
       });
     }
     await _seedDashboard(db);
+    await _createSmartTables(db);
+    await _seedSmartSettings(db);
+    await _createIndexes(db);
   }
 
   Future<List<Account>> accounts() async => (await db.query('accounts', orderBy: 'is_system, is_archived, id')).map(Account.fromMap).toList();
@@ -344,6 +437,9 @@ class AppDatabase {
   Future<List<Goal>> goals() async => (await db.query('goals', orderBy: 'completed, archived, id DESC')).map(Goal.fromMap).toList();
   Future<List<DashboardWidgetConfig>> dashboardWidgets() async => (await db.query('dashboard_widgets', orderBy: 'order_index')).map(DashboardWidgetConfig.fromMap).toList();
   Future<List<AutomationRule>> rules() async => (await db.query('automation_rules', orderBy: 'id DESC')).map(AutomationRule.fromMap).toList();
+  Future<List<LearnedPattern>> learnedPatterns() async => (await db.query('learned_patterns', orderBy: 'last_seen DESC, sample_count DESC')).map(LearnedPattern.fromMap).toList();
+  Future<List<DetectedRecurringPattern>> detectedRecurringPatterns() async => (await db.query('detected_recurring_patterns', orderBy: 'confidence DESC, next_expected ASC')).map(DetectedRecurringPattern.fromMap).toList();
+  Future<Set<String>> suppressedSuggestionTexts() async => (await db.query('suggestion_suppressions', columns: ['normalized_text'])).map((row) => row['normalized_text'] as String).toSet();
 
   Future<int> unassignedAccountId() async {
     final rows = await db.query('accounts', columns: ['id'], where: 'name = ? AND is_system = 1', whereArgs: [_unassignedName], limit: 1);
@@ -623,6 +719,137 @@ class AppDatabase {
       });
   Future<void> deleteRule(int id) => db.delete('automation_rules', where: 'id = ?', whereArgs: [id]);
 
+  Future<void> replaceLearnedPatterns(List<LearnedPattern> patterns) async {
+    await db.transaction((txn) async {
+      final signatures = patterns.map((item) => item.signature).toSet();
+      final existingRows = await txn.query('learned_patterns');
+      final existing = <String, Map<String, Object?>>{
+        for (final row in existingRows) row['signature'] as String: row,
+      };
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final pattern in patterns) {
+        final old = existing[pattern.signature];
+        final values = <String, Object?>{
+          'signature': pattern.signature,
+          'normalized_text': pattern.normalizedText,
+          'type': pattern.type.name,
+          'category_id': pattern.categoryId,
+          'account_id': pattern.accountId,
+          'to_account_id': pattern.toAccountId,
+          'tags': pattern.tags.join('|'),
+          'sample_count': pattern.sampleCount,
+          'accepted_count': old?['accepted_count'] ?? pattern.acceptedCount,
+          'rejected_count': old?['rejected_count'] ?? pattern.rejectedCount,
+          'amount_median': pattern.amountMedian,
+          'amount_min': pattern.amountMin,
+          'amount_max': pattern.amountMax,
+          'weekday_mask': pattern.weekdayMask,
+          'hour_bucket': pattern.hourBucket,
+          'first_seen': pattern.firstSeen.millisecondsSinceEpoch,
+          'last_seen': pattern.lastSeen.millisecondsSinceEpoch,
+          'enabled': old?['enabled'] ?? (pattern.enabled ? 1 : 0),
+          'updated_at': now,
+        };
+        if (old == null) {
+          values['created_at'] = now;
+          await txn.insert('learned_patterns', values);
+        } else {
+          await txn.update('learned_patterns', values, where: 'signature = ?', whereArgs: [pattern.signature]);
+        }
+      }
+      for (final row in existingRows) {
+        final signature = row['signature'] as String;
+        if (!signatures.contains(signature)) {
+          await txn.delete('learned_patterns', where: 'signature = ?', whereArgs: [signature]);
+        }
+      }
+    });
+  }
+
+  Future<void> replaceDetectedRecurringPatterns(List<DetectedRecurringPattern> patterns) async {
+    await db.transaction((txn) async {
+      final oldRows = await txn.query('detected_recurring_patterns');
+      final old = <String, Map<String, Object?>>{
+        for (final row in oldRows) row['signature'] as String: row,
+      };
+      final signatures = patterns.map((item) => item.signature).toSet();
+      final now = DateTime.now().millisecondsSinceEpoch;
+      for (final pattern in patterns) {
+        final previous = old[pattern.signature];
+        final values = <String, Object?>{
+          'signature': pattern.signature,
+          'normalized_text': pattern.normalizedText,
+          'type': pattern.type.name,
+          'category_id': pattern.categoryId,
+          'account_id': pattern.accountId,
+          'frequency': pattern.frequency,
+          'amount_median': pattern.amountMedian,
+          'confidence': pattern.confidence,
+          'sample_count': pattern.sampleCount,
+          'last_seen': pattern.lastSeen.millisecondsSinceEpoch,
+          'next_expected': pattern.nextExpected.millisecondsSinceEpoch,
+          'enabled': previous?['enabled'] ?? (pattern.enabled ? 1 : 0),
+          'updated_at': now,
+        };
+        if (previous == null) {
+          values['created_at'] = now;
+          await txn.insert('detected_recurring_patterns', values);
+        } else {
+          await txn.update('detected_recurring_patterns', values, where: 'signature = ?', whereArgs: [pattern.signature]);
+        }
+      }
+      for (final row in oldRows) {
+        final signature = row['signature'] as String;
+        if (!signatures.contains(signature)) {
+          await txn.delete('detected_recurring_patterns', where: 'signature = ?', whereArgs: [signature]);
+        }
+      }
+    });
+  }
+
+  Future<void> recordPatternFeedback(int? patternId, String kind, String queryText) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    await db.transaction((txn) async {
+      await txn.insert('pattern_feedback', {
+        'pattern_id': patternId,
+        'kind': kind,
+        'query_text': queryText,
+        'created_at': now,
+      });
+      if (patternId != null) {
+        if (kind == 'accepted') {
+          await txn.rawUpdate('UPDATE learned_patterns SET accepted_count = accepted_count + 1, updated_at = ? WHERE id = ?', [now, patternId]);
+        } else if (kind == 'rejected' || kind == 'modified') {
+          await txn.rawUpdate('UPDATE learned_patterns SET rejected_count = rejected_count + 1, updated_at = ? WHERE id = ?', [now, patternId]);
+        }
+      }
+    });
+  }
+
+  Future<void> suppressSuggestion(String normalizedText) => db.insert(
+        'suggestion_suppressions',
+        {'normalized_text': normalizedText, 'created_at': DateTime.now().millisecondsSinceEpoch},
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+
+  Future<void> setPatternEnabled(int id, bool enabled) => db.update(
+        'learned_patterns',
+        {'enabled': enabled ? 1 : 0, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+  Future<void> deletePattern(int id) => db.delete('learned_patterns', where: 'id = ?', whereArgs: [id]);
+
+  Future<void> clearLearning() async {
+    await db.transaction((txn) async {
+      await txn.delete('pattern_feedback');
+      await txn.delete('suggestion_suppressions');
+      await txn.delete('detected_recurring_patterns');
+      await txn.delete('learned_patterns');
+    });
+  }
+
   Future<String?> getSetting(String key) async {
     final rows = await db.query('settings', columns: ['value'], where: 'key = ?', whereArgs: [key], limit: 1);
     return rows.isEmpty ? null : rows.first['value'] as String;
@@ -638,6 +865,10 @@ class AppDatabase {
 
   Future<void> clearAllUserData() async {
     await db.transaction((txn) async {
+      await txn.delete('pattern_feedback');
+      await txn.delete('suggestion_suppressions');
+      await txn.delete('detected_recurring_patterns');
+      await txn.delete('learned_patterns');
       await txn.delete('transaction_splits');
       await txn.delete('transactions');
       await txn.delete('recurring');
