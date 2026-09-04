@@ -117,7 +117,11 @@ void main() {
     await pumpQuickAdd(tester, suggestionState(samples: 5));
     await tester.enterText(descriptionField(), 'LIDL');
     await tester.pump(const Duration(milliseconds: 350));
-    await tester.tap(find.text('Completa'));
+
+    final fab = tester.widget<FloatingActionButton>(
+      find.byType(FloatingActionButton),
+    );
+    fab.onPressed!();
     await tester.pumpAndSettle();
 
     expect(find.text('Ti suggerisco'), findsOneWidget);
