@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../models/smart_models.dart';
+import '../services/smart_finance_engine.dart';
+import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_screens.dart';
 import 'android_widgets_screen.dart';
@@ -35,14 +38,13 @@ class _PolishedRootScreenState extends State<PolishedRootScreen> {
     ];
     return Scaffold(
       body: SafeArea(child: IndexedStack(index: index, children: pages)),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: FloatingActionButton(
         tooltip: 'Nuovo movimento',
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (_) => const QuickAddPage()),
         ),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Movimento'),
+        child: const Icon(Icons.add_rounded),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       bottomNavigationBar: NavigationBar(
@@ -83,6 +85,22 @@ class PolishedHomeScreen extends StatelessWidget {
         MaterialPageRoute(builder: (_) => QuickAddPage(initialTypeName: type)),
       );
 
+  bool _isExplicitRecurring(
+    AppState state,
+    DetectedRecurringPattern detected,
+  ) =>
+      state.recurring.any(
+        (item) =>
+            item.enabled &&
+            SmartFinanceEngine.textSimilarity(
+                  SmartFinanceEngine.normalizeText(
+                    item.note?.isNotEmpty == true ? item.note : item.name,
+                  ),
+                  detected.normalizedText,
+                ) >=
+                .8,
+      );
+
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
@@ -93,6 +111,13 @@ class PolishedHomeScreen extends StatelessWidget {
     final upcoming = state.recurring.where((item) => item.enabled).toList()
       ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
     final budget = state.budgets.where((item) => item.enabled).firstOrNull;
+    final detected = state.detectedRecurringPatterns
+        .where((item) => item.enabled && !_isExplicitRecurring(state, item))
+        .firstOrNull;
+    final activeGoal = state.goals
+        .where((item) => !item.archived && !item.completed)
+        .firstOrNull;
+    final goalPlan = activeGoal == null ? null : state.goalPlan(activeGoal);
 
     return CustomScrollView(
       slivers: [
@@ -151,7 +176,7 @@ class PolishedHomeScreen extends StatelessWidget {
                   onAccount: () => showAccountEditor(context),
                   onMovement: () => _quick(context, 'expense'),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 32),
               ],
               Text(
                 'PATRIMONIO',
@@ -167,7 +192,7 @@ class PolishedHomeScreen extends StatelessWidget {
                     : moneyFor(state, state.totalBalance),
                 style: Theme.of(context).textTheme.displaySmall,
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 20),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -201,36 +226,37 @@ class PolishedHomeScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
-                    child: _QuickButton(
+                    child: FinanceQuickAction(
                       icon: Icons.arrow_upward_rounded,
                       label: 'Spesa',
+                      color: context.financeColors.negative,
                       onTap: () => _quick(context, 'expense'),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Expanded(
-                    child: _QuickButton(
+                    child: FinanceQuickAction(
                       icon: Icons.arrow_downward_rounded,
                       label: 'Entrata',
+                      color: context.financeColors.positive,
                       onTap: () => _quick(context, 'income'),
                     ),
                   ),
-                  const SizedBox(width: 8),
                   Expanded(
-                    child: _QuickButton(
+                    child: FinanceQuickAction(
                       icon: Icons.swap_horiz_rounded,
                       label: 'Trasferisci',
+                      color: Theme.of(context).colorScheme.onSurface,
                       onTap: () => _quick(context, 'transfer'),
                     ),
                   ),
                 ],
               ),
               if (state.unassignedCount > 0) ...[
-                const SizedBox(height: 22),
+                const SizedBox(height: 24),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(
@@ -254,6 +280,43 @@ class PolishedHomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              ],
+              if (state.smartSuggestionsEnabled &&
+                  (detected != null ||
+                      (state.smartGoalSuggestions &&
+                          goalPlan != null &&
+                          goalPlan.status !=
+                              GoalPlanStatus.insufficientData))) ...[
+                const SizedBox(height: 32),
+                const SectionTitle('Per te'),
+                if (detected != null)
+                  _InsightRow(
+                    icon: Icons.repeat_rounded,
+                    title: '${detected.normalizedText} sembra ricorrente',
+                    subtitle:
+                        '${detected.frequency} · ${moneyFor(state, detected.amountMedian)} · ${(detected.confidence * 100).round()}% confidenza',
+                    actionLabel: 'Configura',
+                    onTap: () => showRecurringEditor(
+                      context,
+                      detected: detected,
+                    ),
+                  ),
+                if (state.smartGoalSuggestions &&
+                    activeGoal != null &&
+                    goalPlan != null &&
+                    goalPlan.status != GoalPlanStatus.insufficientData)
+                  _InsightRow(
+                    icon: Icons.flag_outlined,
+                    title: activeGoal.name,
+                    subtitle: goalPlan.realisticWeekly <= 0
+                        ? 'Il cash-flow attuale non lascia ancora un margine stabile.'
+                        : '${moneyFor(state, goalPlan.realisticWeekly)}/settimana è il ritmo sostenibile stimato.',
+                    actionLabel: 'Dettagli',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const GoalsScreen()),
+                    ),
+                  ),
               ],
               const SizedBox(height: 32),
               SectionTitle(
@@ -281,26 +344,21 @@ class PolishedHomeScreen extends StatelessWidget {
               else
                 ...accounts.map((account) => _AccountRow(account: account)),
               if (budget != null) ...[
-                const SizedBox(height: 30),
+                const SizedBox(height: 32),
                 _BudgetSummary(budget: budget),
               ],
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
               const SectionTitle('Ultimi movimenti'),
               if (recent.isEmpty)
-                EmptyState(
+                const EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'Inizia dal primo movimento',
                   subtitle:
-                      'Registra una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
-                  action: FilledButton.icon(
-                    onPressed: () => _quick(context, 'expense'),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Registra movimento'),
-                  ),
+                      'Usa il pulsante + per registrare una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
                 )
               else
                 ...recent.map((item) => TransactionListTile(item: item)),
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
               SectionTitle(
                 'Prossime scadenze',
                 trailing: TextButton(
@@ -317,12 +375,9 @@ class PolishedHomeScreen extends StatelessWidget {
                   title: 'Nessuna scadenza prevista',
                   subtitle:
                       'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
-                  action: OutlinedButton.icon(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RecurringScreen()),
-                    ),
-                    icon: const Icon(Icons.repeat_rounded),
+                  action: TextButton.icon(
+                    onPressed: () => showRecurringEditor(context),
+                    icon: const Icon(Icons.add_rounded),
                     label: const Text('Aggiungi ricorrenza'),
                   ),
                 )
@@ -378,7 +433,7 @@ class _Metric extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 3),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
@@ -394,29 +449,30 @@ class _Metric extends StatelessWidget {
       );
 }
 
-class _QuickButton extends StatelessWidget {
-  const _QuickButton({
+class _InsightRow extends StatelessWidget {
+  const _InsightRow({
     required this.icon,
-    required this.label,
+    required this.title,
+    required this.subtitle,
+    required this.actionLabel,
     required this.onTap,
   });
+
   final IconData icon;
-  final String label;
+  final String title;
+  final String subtitle;
+  final String actionLabel;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: label,
-        child: FilledButton.tonalIcon(
-          onPressed: onTap,
-          icon: Icon(icon, size: 18),
-          label: Text(label),
-          style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-          ),
-        ),
+  Widget build(BuildContext context) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        minVerticalPadding: 10,
+        leading: Icon(icon),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        subtitle: Text(subtitle),
+        trailing: TextButton(onPressed: onTap, child: Text(actionLabel)),
+        onTap: onTap,
       );
 }
 
@@ -433,21 +489,21 @@ class _SetupBlock extends StatelessWidget {
             'Configura DadaFinanza',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           const Text(
             'Parti dal primo conto oppure registra subito un movimento e assegnalo in seguito.',
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            spacing: 12,
+            runSpacing: 12,
             children: [
               FilledButton.icon(
                 onPressed: onAccount,
                 icon: const Icon(Icons.add_rounded),
                 label: const Text('Crea primo conto'),
               ),
-              OutlinedButton.icon(
+              TextButton.icon(
                 onPressed: onMovement,
                 icon: const Icon(Icons.receipt_long_outlined),
                 label: const Text('Registra movimento'),
@@ -467,7 +523,7 @@ class _AccountRow extends StatelessWidget {
     final state = AppScope.of(context);
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      minVerticalPadding: 11,
+      minVerticalPadding: 12,
       leading: CircleAvatar(
         backgroundColor: Color(account.colorValue).withValues(alpha: .12),
         child: Icon(
@@ -563,6 +619,7 @@ class PolishedPlanningScreen extends StatelessWidget {
     final goals = state.goals
         .where((item) => !item.archived && !item.completed)
         .toList();
+    final forecast = state.forecastForDays(30);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Pianifica')),
@@ -570,10 +627,16 @@ class PolishedPlanningScreen extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
           Text(
-            'Tre cose da controllare: quanto puoi spendere, cosa sta per arrivare e per cosa stai risparmiando.',
-            style: Theme.of(context).textTheme.bodyMedium,
+            state.hideBalance
+                ? 'Saldo stimato tra 30 giorni: ••••'
+                : 'Saldo stimato tra 30 giorni: ${moneyFor(state, forecast.endingBalance)}',
+            style: Theme.of(context).textTheme.titleMedium,
           ),
-          const SizedBox(height: 26),
+          Text(
+            '${forecast.historyWeeks} settimane di storico utile · previsioni locali',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 28),
           _PlanEntry(
             icon: Icons.pie_chart_outline_rounded,
             title: 'Budget del periodo',
@@ -594,7 +657,7 @@ class PolishedPlanningScreen extends StatelessWidget {
                 ? 'Nessuna'
                 : DateFormat('d MMM', 'it_IT').format(recurring.first.nextDate),
             detail: recurring.isEmpty
-                ? 'Aggiungi bollette, abbonamenti o stipendio.'
+                ? '${state.detectedRecurringPatterns.length} pattern ricorrenti rilevati.'
                 : '${recurring.first.name} · ${moneyFor(state, recurring.first.amount)}',
             onTap: () => Navigator.push(
               context,
@@ -614,14 +677,14 @@ class PolishedPlanningScreen extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const GoalsScreen()),
             ),
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
           const SectionTitle('Viste'),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.calendar_month_outlined),
-            title: const Text('Calendario finanziario'),
+            title: const Text('Previsioni e calendario'),
             subtitle: const Text(
-              'Entrate e uscite previste in ordine temporale.',
+              '7, 30 e 90 giorni · confermato, previsto e stimato.',
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
@@ -635,7 +698,7 @@ class PolishedPlanningScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.tune_rounded),
             title: const Text('Pianificazione avanzata'),
-            subtitle: const Text('Tutte le viste e opzioni avanzate.'),
+            subtitle: const Text('Budget, ricorrenti e goal in un’unica vista.'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
               context,
@@ -713,9 +776,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       case _Period.month:
         final day = state.financialMonthStart.clamp(1, 28);
         var start = DateTime(now.year, now.month, day);
-        if (now.isBefore(start)) {
-          start = DateTime(now.year, now.month - 1, day);
-        }
+        if (now.isBefore(start)) start = DateTime(now.year, now.month - 1, day);
         return (start, DateTime(start.year, start.month + 1, day));
       case _Period.year:
         return (DateTime(now.year), DateTime(now.year + 1));
@@ -743,9 +804,9 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     for (final transaction in state
         .analyticTransactions(from: from, to: to)
         .where((item) => item.type == TransactionType.expense)) {
-      final splits = state.splitsFor(transaction.id);
-      if (splits.isNotEmpty) {
-        for (final split in splits) {
+      final itemSplits = state.splitsFor(transaction.id);
+      if (itemSplits.isNotEmpty) {
+        for (final split in itemSplits) {
           final category = state.categoryById(split.categoryId);
           if (category != null) {
             totals[category] = (totals[category] ?? 0) + split.amount;
@@ -769,10 +830,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       firstDate: DateTime(2000),
       lastDate: now.add(const Duration(days: 3650)),
       initialDateRange: custom ??
-          DateTimeRange(
-            start: DateTime(now.year, now.month),
-            end: now,
-          ),
+          DateTimeRange(start: DateTime(now.year, now.month), end: now),
     );
     if (result != null && mounted) {
       setState(() {
@@ -790,8 +848,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     final previousFrom = from.subtract(duration);
     final income = state.periodTotal(TransactionType.income, from, to);
     final expense = state.periodTotal(TransactionType.expense, from, to);
-    final previous =
-        state.periodTotal(TransactionType.expense, previousFrom, from);
+    final previous = state.periodTotal(TransactionType.expense, previousFrom, from);
     final delta = previous == 0 ? null : (expense - previous) / previous * 100;
     final categories = _categories(state, from, to).entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -822,7 +879,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
               },
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           Text(
             '${DateFormat('d MMM', 'it_IT').format(from)} – ${DateFormat('d MMM', 'it_IT').format(to.subtract(const Duration(days: 1)))}',
             style: Theme.of(context).textTheme.bodySmall,
@@ -837,7 +894,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
                   color: context.financeColors.positive,
                 ),
               ),
-              const SizedBox(width: 18),
+              const SizedBox(width: 20),
               Expanded(
                 child: _Metric(
                   label: 'Spese',
@@ -848,7 +905,7 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          _Insight(
+          _AnalyticsInsight(
             icon: delta == null
                 ? Icons.horizontal_rule_rounded
                 : delta <= 0
@@ -863,13 +920,13 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
                     ? context.financeColors.positive
                     : context.financeColors.negative,
           ),
-          const SizedBox(height: 10),
-          _Insight(
+          const SizedBox(height: 12),
+          _AnalyticsInsight(
             icon: Icons.calculate_outlined,
             text:
                 '$count movimenti · media ${moneyFor(state, expense / math.max(1, duration.inDays))} di spese al giorno.',
           ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 32),
           const SectionTitle('Dove stai spendendo'),
           if (categories.isEmpty)
             const EmptyState(
@@ -932,8 +989,8 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
   }
 }
 
-class _Insight extends StatelessWidget {
-  const _Insight({required this.icon, required this.text, this.color});
+class _AnalyticsInsight extends StatelessWidget {
+  const _AnalyticsInsight({required this.icon, required this.text, this.color});
   final IconData icon;
   final String text;
   final Color? color;
@@ -943,7 +1000,7 @@ class _Insight extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 19, color: color),
-          const SizedBox(width: 9),
+          const SizedBox(width: 8),
           Expanded(child: Text(text)),
         ],
       );
@@ -980,7 +1037,7 @@ class _CategoryPeriodScreen extends StatelessWidget {
           Text(
             '${items.length} ${items.length == 1 ? 'movimento' : 'movimenti'} nel periodo',
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           if (items.isEmpty)
             const EmptyState(
               icon: Icons.receipt_long_outlined,
