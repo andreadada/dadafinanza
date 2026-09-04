@@ -7,8 +7,8 @@ import 'package:home_widget/home_widget.dart';
 import 'app_state.dart';
 import 'data/app_database.dart';
 import 'models/models.dart';
+import 'screens/polished_shell.dart';
 import 'screens/quick_add_page.dart';
-import 'screens/root_screen.dart';
 import 'theme/app_theme.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -87,7 +87,7 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            home: const RootScreen(),
+            home: const PolishedRootScreen(),
           ),
         ),
       );
