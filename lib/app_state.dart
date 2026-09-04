@@ -4,10 +4,13 @@ import 'package:flutter/foundation.dart' hide Category;
 
 import 'data/app_database.dart';
 import 'models/models.dart';
+import 'models/smart_models.dart';
+import 'services/smart_finance_engine.dart';
 import 'services/widget_service.dart';
 
 class AppState extends ChangeNotifier {
-  AppState(this.database, {WidgetService? widgetService}) : widgetService = widgetService ?? WidgetService();
+  AppState(this.database, {WidgetService? widgetService})
+      : widgetService = widgetService ?? WidgetService();
 
   final AppDatabase database;
   final WidgetService widgetService;
@@ -21,6 +24,9 @@ class AppState extends ChangeNotifier {
   List<Goal> goals = [];
   List<DashboardWidgetConfig> dashboardWidgets = [];
   List<AutomationRule> rules = [];
+  List<LearnedPattern> learnedPatterns = [];
+  List<DetectedRecurringPattern> detectedRecurringPatterns = [];
+  Set<String> suppressedSuggestionTexts = {};
   List<Map<String, Object?>> netWorthSnapshots = [];
 
   bool loading = true;
@@ -35,9 +41,20 @@ class AppState extends ChangeNotifier {
   int weekStart = 1;
   int financialMonthStart = 1;
 
+  bool smartSuggestionsEnabled = true;
+  bool smartUseDescription = true;
+  bool smartUseAmount = true;
+  bool smartUseTime = true;
+  bool smartDetectRecurring = true;
+  bool smartGoalSuggestions = true;
+  SmartSensitivity smartSensitivity = SmartSensitivity.balanced;
+
   Future<void> load() async {
     await _reloadAll();
     await _processDueRecurring();
+    if (smartSuggestionsEnabled) {
+      await _rebuildLearning(notify: false);
+    }
     loading = false;
     notifyListeners();
     await database.snapshotNetWorth(totalBalance);
@@ -55,18 +72,11 @@ class AppState extends ChangeNotifier {
     goals = await database.goals();
     dashboardWidgets = await database.dashboardWidgets();
     rules = await database.rules();
+    learnedPatterns = await database.learnedPatterns();
+    detectedRecurringPatterns = await database.detectedRecurringPatterns();
+    suppressedSuggestionTexts = await database.suppressedSuggestionTexts();
     netWorthSnapshots = await database.netWorthSnapshots();
-    hideBalance = (await database.getSetting('hide_balance') ?? '0') == '1';
-    allowUnassigned = (await database.getSetting('allow_unassigned') ?? '1') == '1';
-    showTransfersInAnalytics = (await database.getSetting('show_transfers_analytics') ?? '0') == '1';
-    confirmDelete = (await database.getSetting('confirm_delete') ?? '1') == '1';
-    showCents = (await database.getSetting('show_cents') ?? '1') == '1';
-    haptics = (await database.getSetting('haptics') ?? '1') == '1';
-    currency = await database.getSetting('currency') ?? 'EUR';
-    weekStart = int.tryParse(await database.getSetting('week_start') ?? '1') ?? 1;
-    financialMonthStart = int.tryParse(await database.getSetting('financial_month_start') ?? '1') ?? 1;
-    final theme = await database.getSetting('theme_mode') ?? 'system';
-    themePreference = AppThemePreference.values.firstWhere((e) => e.name == theme, orElse: () => AppThemePreference.system);
+    await _loadSettingsOnly();
   }
 
   Future<void> _processDueRecurring() async {
@@ -86,7 +96,7 @@ class AppState extends ChangeNotifier {
           accountId: item.accountId,
           categoryId: item.categoryId,
           date: next,
-          note: item.note,
+          note: item.note ?? item.name,
           recurringId: item.id,
         );
         next = _advanceRecurring(next, item.frequency);
@@ -94,20 +104,22 @@ class AppState extends ChangeNotifier {
         changed = true;
       }
       if (next != item.nextDate) {
-        await database.updateRecurring(RecurringPayment(
-          id: item.id,
-          name: item.name,
-          amount: item.amount,
-          type: item.type,
-          accountId: item.accountId,
-          frequency: item.frequency,
-          nextDate: next,
-          enabled: item.enabled,
-          autoCreate: item.autoCreate,
-          categoryId: item.categoryId,
-          note: item.note,
-          endDate: item.endDate,
-        ));
+        await database.updateRecurring(
+          RecurringPayment(
+            id: item.id,
+            name: item.name,
+            amount: item.amount,
+            type: item.type,
+            accountId: item.accountId,
+            frequency: item.frequency,
+            nextDate: next,
+            enabled: item.enabled,
+            autoCreate: item.autoCreate,
+            categoryId: item.categoryId,
+            note: item.note,
+            endDate: item.endDate,
+          ),
+        );
       }
     }
     if (changed) await _reloadAll();
@@ -115,27 +127,44 @@ class AppState extends ChangeNotifier {
 
   DateTime _advanceRecurring(DateTime date, String frequency) => switch (frequency) {
         'Settimanale' => date.add(const Duration(days: 7)),
+        'Quindicinale' => date.add(const Duration(days: 14)),
         'Trimestrale' => DateTime(date.year, date.month + 3, date.day, date.hour, date.minute),
         'Annuale' => DateTime(date.year + 1, date.month, date.day, date.hour, date.minute),
         _ => DateTime(date.year, date.month + 1, date.day, date.hour, date.minute),
       };
 
-  List<Account> get userAccounts => accounts.where((a) => !a.isSystem).toList(growable: false);
-  List<Account> get activeAccounts => accounts.where((a) => !a.isSystem && !a.isArchived).toList(growable: false);
-  List<Account> get archivedAccounts => accounts.where((a) => !a.isSystem && a.isArchived).toList(growable: false);
+  List<Account> get userAccounts =>
+      accounts.where((a) => !a.isSystem).toList(growable: false);
+  List<Account> get activeAccounts => accounts
+      .where((a) => !a.isSystem && !a.isArchived)
+      .toList(growable: false);
+  List<Account> get archivedAccounts => accounts
+      .where((a) => !a.isSystem && a.isArchived)
+      .toList(growable: false);
   Account? get unassignedAccount => accounts.where((a) => a.isSystem).firstOrNull;
-  int get unassignedCount => unassignedAccount == null ? 0 : transactions.where((t) => t.accountId == unassignedAccount!.id).length;
+  int get unassignedCount => unassignedAccount == null
+      ? 0
+      : transactions.where((t) => t.accountId == unassignedAccount!.id).length;
 
-  double get totalBalance => accounts.where((a) => !a.isSystem && !a.isArchived && a.includeInTotal).fold(0, (sum, item) => sum + item.balance);
-  double get allVisibleBalances => activeAccounts.fold(0, (sum, item) => sum + item.balance);
+  double get totalBalance => accounts
+      .where((a) => !a.isSystem && !a.isArchived && a.includeInTotal)
+      .fold(0, (sum, item) => sum + item.balance);
+  double get allVisibleBalances =>
+      activeAccounts.fold(0, (sum, item) => sum + item.balance);
 
-  Account? accountById(int? id) => id == null ? null : accounts.where((a) => a.id == id).firstOrNull;
-  Category? categoryById(int? id) => id == null ? null : categories.where((c) => c.id == id).firstOrNull;
-  FinanceTransaction? transactionById(int? id) => id == null ? null : transactions.where((t) => t.id == id).firstOrNull;
-  List<TransactionSplit> splitsFor(int transactionId) => splits.where((s) => s.transactionId == transactionId).toList();
-  List<Category> categoriesFor(TransactionType type) => categories.where((c) => c.type == type).toList(growable: false);
+  Account? accountById(int? id) =>
+      id == null ? null : accounts.where((a) => a.id == id).firstOrNull;
+  Category? categoryById(int? id) =>
+      id == null ? null : categories.where((c) => c.id == id).firstOrNull;
+  FinanceTransaction? transactionById(int? id) =>
+      id == null ? null : transactions.where((t) => t.id == id).firstOrNull;
+  List<TransactionSplit> splitsFor(int transactionId) =>
+      splits.where((s) => s.transactionId == transactionId).toList();
+  List<Category> categoriesFor(TransactionType type) =>
+      categories.where((c) => c.type == type).toList(growable: false);
 
-  Iterable<FinanceTransaction> analyticTransactions({DateTime? from, DateTime? to}) => transactions.where((t) {
+  Iterable<FinanceTransaction> analyticTransactions({DateTime? from, DateTime? to}) =>
+      transactions.where((t) {
         if (!t.includeInAnalytics) return false;
         final account = accountById(t.accountId);
         if (account != null && !account.isSystem && !account.includeInAnalytics) return false;
@@ -149,7 +178,8 @@ class AppState extends ChangeNotifier {
       .where((t) => t.refundOfTransactionId == transactionId && t.type == TransactionType.income)
       .fold(0, (sum, item) => sum + item.amount);
 
-  double effectiveExpense(FinanceTransaction t) => math.max(0, t.amount - refundsFor(t.id));
+  double effectiveExpense(FinanceTransaction t) =>
+      math.max(0, t.amount - refundsFor(t.id)).toDouble();
 
   double periodTotal(TransactionType type, DateTime from, DateTime to) {
     var total = 0.0;
@@ -174,7 +204,8 @@ class AppState extends ChangeNotifier {
     final to = DateTime(target.year, target.month + 1);
     return analyticTransactions(from: from, to: to)
         .where((t) => t.accountId == accountId && t.type == type)
-        .fold(0.0, (sum, t) => sum + (type == TransactionType.expense ? effectiveExpense(t) : t.amount));
+        .fold(0.0, (sum, t) =>
+            sum + (type == TransactionType.expense ? effectiveExpense(t) : t.amount));
   }
 
   double monthCategoryTotal(int categoryId, {DateTime? month}) {
@@ -182,10 +213,13 @@ class AppState extends ChangeNotifier {
     final from = DateTime(target.year, target.month);
     final to = DateTime(target.year, target.month + 1);
     var total = 0.0;
-    for (final t in analyticTransactions(from: from, to: to).where((t) => t.type == TransactionType.expense)) {
+    for (final t in analyticTransactions(from: from, to: to)
+        .where((t) => t.type == TransactionType.expense)) {
       final itemSplits = splitsFor(t.id);
       if (itemSplits.isNotEmpty) {
-        total += itemSplits.where((s) => s.categoryId == categoryId).fold(0.0, (sum, s) => sum + s.amount);
+        total += itemSplits
+            .where((s) => s.categoryId == categoryId)
+            .fold(0.0, (sum, s) => sum + s.amount);
       } else if (t.categoryId == categoryId) {
         total += effectiveExpense(t);
       }
@@ -210,40 +244,65 @@ class AppState extends ChangeNotifier {
     return values.toList()..sort();
   }
 
-  double get monthlyCashFlow => monthTotal(TransactionType.income) - monthTotal(TransactionType.expense);
+  double get monthlyCashFlow =>
+      monthTotal(TransactionType.income) - monthTotal(TransactionType.expense);
+
+  ForecastSummary forecastForDays(int days, {DateTime? now}) =>
+      SmartFinanceEngine.forecast(
+        days: days,
+        startingBalance: totalBalance,
+        transactions: analyticTransactions().toList(),
+        recurring: recurring,
+        detectedRecurring: detectedRecurringPatterns,
+        now: now,
+      );
+
   double get safeToSpend {
-    final now = DateTime.now();
-    final monthEnd = DateTime(now.year, now.month + 1);
-    final upcomingExpense = recurring.where((r) => r.enabled && r.type == TransactionType.expense && !r.nextDate.isBefore(now) && r.nextDate.isBefore(monthEnd)).fold(0.0, (sum, r) => sum + r.amount);
-    final goalReserve = goals.where((g) => !g.archived && !g.completed).fold(0.0, (sum, g) => sum + math.max(0, g.targetAmount - g.currentAmount));
-    return math.max(0, totalBalance - upcomingExpense - math.min(goalReserve, totalBalance * .25)).toDouble();
+    final forecast = forecastForDays(30);
+    final weeklyExpenses = SmartFinanceEngine.weeklyTotals(
+      analyticTransactions().toList(),
+      TransactionType.expense,
+    );
+    final medianWeek = SmartFinanceEngine.median(
+      weeklyExpenses.where((value) => value > 0),
+    );
+    final safetyBuffer = math.max(totalBalance * .12, medianWeek).toDouble();
+    return math.max(0, math.min(totalBalance, forecast.endingBalance - safetyBuffer)).toDouble();
   }
 
   double get endOfMonthForecast {
     final now = DateTime.now();
-    final monthEnd = DateTime(now.year, now.month + 1);
-    var result = totalBalance;
-    for (final r in recurring.where((r) => r.enabled && !r.nextDate.isBefore(now) && r.nextDate.isBefore(monthEnd))) {
-      result += r.type == TransactionType.income ? r.amount : r.type == TransactionType.expense ? -r.amount : 0;
-    }
-    return result;
+    final days = math.max(1, DateTime(now.year, now.month + 1).difference(now).inDays);
+    return forecastForDays(days).endingBalance;
   }
 
   double get todayExpense {
     final now = DateTime.now();
-    return periodTotal(TransactionType.expense, DateTime(now.year, now.month, now.day), DateTime(now.year, now.month, now.day + 1));
+    return periodTotal(
+      TransactionType.expense,
+      DateTime(now.year, now.month, now.day),
+      DateTime(now.year, now.month, now.day + 1),
+    );
   }
 
   double get weekExpense {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: now.weekday - 1));
-    return periodTotal(TransactionType.expense, start, start.add(const Duration(days: 7)));
+    final start = DateTime(now.year, now.month, now.day)
+        .subtract(Duration(days: now.weekday - 1));
+    return periodTotal(
+      TransactionType.expense,
+      start,
+      start.add(const Duration(days: 7)),
+    );
   }
 
   int get noSpendDaysThisMonth {
     final now = DateTime.now();
     final days = <int>{};
-    for (final t in analyticTransactions(from: DateTime(now.year, now.month), to: DateTime(now.year, now.month + 1)).where((t) => t.type == TransactionType.expense)) {
+    for (final t in analyticTransactions(
+      from: DateTime(now.year, now.month),
+      to: DateTime(now.year, now.month + 1),
+    ).where((t) => t.type == TransactionType.expense)) {
       days.add(t.date.day);
     }
     return math.max(0, now.day - days.length).toInt();
@@ -251,41 +310,102 @@ class AppState extends ChangeNotifier {
 
   double get dailyAverageExpense {
     final now = DateTime.now();
-    return now.day == 0 ? 0 : monthTotal(TransactionType.expense) / now.day;
+    return monthTotal(TransactionType.expense) / math.max(1, now.day);
   }
 
-  int transactionCountForAccount(int accountId) => transactions.where((t) => t.accountId == accountId || t.toAccountId == accountId).length;
-  int recurringCountForAccount(int accountId) => recurring.where((r) => r.accountId == accountId).length;
-  int transactionCountForCategory(int categoryId) => transactions.where((t) => t.categoryId == categoryId).length + splits.where((s) => s.categoryId == categoryId).length;
+  int transactionCountForAccount(int accountId) => transactions
+      .where((t) => t.accountId == accountId || t.toAccountId == accountId)
+      .length;
+  int recurringCountForAccount(int accountId) =>
+      recurring.where((r) => r.accountId == accountId).length;
+  int transactionCountForCategory(int categoryId) =>
+      transactions.where((t) => t.categoryId == categoryId).length +
+      splits.where((s) => s.categoryId == categoryId).length;
 
-  Future<void> addTransaction({required TransactionType type, required double amount, required int accountId, int? toAccountId, int? categoryId, required DateTime date, String? note, List<String> tags = const [], String? receiptPath, bool includeInAnalytics = true, int? refundOfTransactionId}) async {
-    await database.addTransaction(type: type, amount: amount, accountId: accountId, toAccountId: toAccountId, categoryId: categoryId, date: date, note: note, tags: tags, receiptPath: receiptPath, includeInAnalytics: includeInAnalytics, refundOfTransactionId: refundOfTransactionId);
+  Future<int> addTransaction({
+    required TransactionType type,
+    required double amount,
+    required int accountId,
+    int? toAccountId,
+    int? categoryId,
+    required DateTime date,
+    String? note,
+    List<String> tags = const [],
+    String? receiptPath,
+    bool includeInAnalytics = true,
+    int? refundOfTransactionId,
+  }) async {
+    final id = await database.addTransaction(
+      type: type,
+      amount: amount,
+      accountId: accountId,
+      toAccountId: toAccountId,
+      categoryId: categoryId,
+      date: date,
+      note: note,
+      tags: tags,
+      receiptPath: receiptPath,
+      includeInAnalytics: includeInAnalytics,
+      refundOfTransactionId: refundOfTransactionId,
+    );
     await refreshCore();
+    await _rebuildLearning();
+    return id;
   }
 
-  Future<void> updateTransaction(FinanceTransaction oldItem, FinanceTransaction newItem) async {
+  Future<void> updateTransaction(
+    FinanceTransaction oldItem,
+    FinanceTransaction newItem,
+  ) async {
     await database.updateTransaction(oldItem, newItem);
     await refreshCore();
+    await _rebuildLearning();
   }
 
   Future<void> duplicateTransaction(FinanceTransaction item) async {
     await database.duplicateTransaction(item);
     await refreshCore();
+    await _rebuildLearning();
   }
 
   Future<void> deleteTransaction(FinanceTransaction item) async {
     await database.deleteTransaction(item);
     await refreshCore();
+    await _rebuildLearning();
   }
 
-  Future<void> replaceSplits(int transactionId, List<TransactionSplit> items, double amount) async {
+  Future<void> replaceSplits(
+    int transactionId,
+    List<TransactionSplit> items,
+    double amount,
+  ) async {
     await database.replaceSplits(transactionId, items, amount);
     splits = await database.splits();
     notifyListeners();
   }
 
-  Future<Account> addAccount({required String name, double balance = 0, int colorValue = 0xFF8E8E93, String iconKey = 'wallet', AccountType type = AccountType.other, bool includeInTotal = true, bool includeInAnalytics = true, bool hideBalance = false, String? note}) async {
-    final id = await database.addAccount(name: name, balance: balance, colorValue: colorValue, iconKey: iconKey, type: type, includeInTotal: includeInTotal, includeInAnalytics: includeInAnalytics, hideBalance: hideBalance, note: note);
+  Future<Account> addAccount({
+    required String name,
+    double balance = 0,
+    int colorValue = 0xFF8E8E93,
+    String iconKey = 'wallet',
+    AccountType type = AccountType.other,
+    bool includeInTotal = true,
+    bool includeInAnalytics = true,
+    bool hideBalance = false,
+    String? note,
+  }) async {
+    final id = await database.addAccount(
+      name: name,
+      balance: balance,
+      colorValue: colorValue,
+      iconKey: iconKey,
+      type: type,
+      includeInTotal: includeInTotal,
+      includeInAnalytics: includeInAnalytics,
+      hideBalance: hideBalance,
+      note: note,
+    );
     accounts = await database.accounts();
     notifyListeners();
     await syncWidget();
@@ -303,10 +423,21 @@ class AppState extends ChangeNotifier {
   Future<void> deleteAccount(Account account) async {
     await database.deleteAccount(account.id);
     await refreshCore(includePlanning: true);
+    await _rebuildLearning();
   }
 
-  Future<Category> addCategory({required String name, required TransactionType type, required String iconKey, required int colorValue}) async {
-    final id = await database.addCategory(name: name, type: type, iconKey: iconKey, colorValue: colorValue);
+  Future<Category> addCategory({
+    required String name,
+    required TransactionType type,
+    required String iconKey,
+    required int colorValue,
+  }) async {
+    final id = await database.addCategory(
+      name: name,
+      type: type,
+      iconKey: iconKey,
+      colorValue: colorValue,
+    );
     categories = await database.categories();
     final created = categoryById(id)!;
     notifyListeners();
@@ -324,10 +455,33 @@ class AppState extends ChangeNotifier {
   Future<void> deleteCategory(Category category) async {
     await database.deleteCategory(category.id);
     await refreshCore(includePlanning: true);
+    await _rebuildLearning();
   }
 
-  Future<void> addRecurring({required String name, required double amount, required TransactionType type, required int accountId, int? categoryId, required String frequency, required DateTime nextDate, String? note, DateTime? endDate, bool autoCreate = false}) async {
-    await database.addRecurring(name: name, amount: amount, type: type, accountId: accountId, categoryId: categoryId, frequency: frequency, nextDate: nextDate, note: note, endDate: endDate, autoCreate: autoCreate);
+  Future<void> addRecurring({
+    required String name,
+    required double amount,
+    required TransactionType type,
+    required int accountId,
+    int? categoryId,
+    required String frequency,
+    required DateTime nextDate,
+    String? note,
+    DateTime? endDate,
+    bool autoCreate = false,
+  }) async {
+    await database.addRecurring(
+      name: name,
+      amount: amount,
+      type: type,
+      accountId: accountId,
+      categoryId: categoryId,
+      frequency: frequency,
+      nextDate: nextDate,
+      note: note,
+      endDate: endDate,
+      autoCreate: autoCreate,
+    );
     recurring = await database.recurring();
     notifyListeners();
   }
@@ -344,8 +498,22 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addBudget({required String name, int? categoryId, required double limit, BudgetPeriod period = BudgetPeriod.monthly, DateTime? startDate, DateTime? endDate}) async {
-    await database.addBudget(name: name, categoryId: categoryId, limit: limit, period: period, startDate: startDate ?? DateTime(DateTime.now().year, DateTime.now().month), endDate: endDate);
+  Future<void> addBudget({
+    required String name,
+    int? categoryId,
+    required double limit,
+    BudgetPeriod period = BudgetPeriod.monthly,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    await database.addBudget(
+      name: name,
+      categoryId: categoryId,
+      limit: limit,
+      period: period,
+      startDate: startDate ?? DateTime(DateTime.now().year, DateTime.now().month),
+      endDate: endDate,
+    );
     budgets = await database.budgets();
     notifyListeners();
   }
@@ -365,6 +533,9 @@ class AppState extends ChangeNotifier {
   (DateTime, DateTime) budgetRange(Budget budget, {DateTime? now}) {
     final target = now ?? DateTime.now();
     switch (budget.period) {
+      case BudgetPeriod.daily:
+        final start = DateTime(target.year, target.month, target.day);
+        return (start, start.add(const Duration(days: 1)));
       case BudgetPeriod.weekly:
         final day = DateTime(target.year, target.month, target.day);
         final offset = weekStart == DateTime.sunday
@@ -381,6 +552,9 @@ class AppState extends ChangeNotifier {
           currentStart,
           DateTime(currentStart.year, currentStart.month + 1, startDay),
         );
+      case BudgetPeriod.yearly:
+        final start = DateTime(target.year, 1, 1);
+        return (start, DateTime(target.year + 1, 1, 1));
       case BudgetPeriod.custom:
         final start = budget.startDate;
         final end = budget.endDate == null
@@ -416,8 +590,22 @@ class AppState extends ChangeNotifier {
   double budgetProgressFor(Budget budget, {DateTime? now}) =>
       budget.limit <= 0 ? 0 : budgetSpent(budget, now: now) / budget.limit;
 
-  Future<void> addGoal({required String name, required double targetAmount, String iconKey = 'savings', int colorValue = 0xFF8E8E93, DateTime? targetDate, int? linkedAccountId}) async {
-    await database.addGoal(name: name, iconKey: iconKey, colorValue: colorValue, targetAmount: targetAmount, targetDate: targetDate, linkedAccountId: linkedAccountId);
+  Future<void> addGoal({
+    required String name,
+    required double targetAmount,
+    String iconKey = 'savings',
+    int colorValue = 0xFF8E8E93,
+    DateTime? targetDate,
+    int? linkedAccountId,
+  }) async {
+    await database.addGoal(
+      name: name,
+      iconKey: iconKey,
+      colorValue: colorValue,
+      targetAmount: targetAmount,
+      targetDate: targetDate,
+      linkedAccountId: linkedAccountId,
+    );
     goals = await database.goals();
     notifyListeners();
   }
@@ -435,8 +623,45 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> contributeGoal(Goal item, double delta) async {
-    final current = math.max(0, math.min(item.targetAmount, item.currentAmount + delta)).toDouble();
-    await updateGoal(Goal(id: item.id, name: item.name, iconKey: item.iconKey, colorValue: item.colorValue, targetAmount: item.targetAmount, currentAmount: current, targetDate: item.targetDate, linkedAccountId: item.linkedAccountId, archived: item.archived, completed: current >= item.targetAmount));
+    final current = math
+        .max(0, math.min(item.targetAmount, item.currentAmount + delta))
+        .toDouble();
+    await updateGoal(
+      Goal(
+        id: item.id,
+        name: item.name,
+        iconKey: item.iconKey,
+        colorValue: item.colorValue,
+        targetAmount: item.targetAmount,
+        currentAmount: current,
+        targetDate: item.targetDate,
+        linkedAccountId: item.linkedAccountId,
+        archived: item.archived,
+        completed: current >= item.targetAmount,
+      ),
+    );
+  }
+
+  GoalPlan goalPlan(Goal goal, {DateTime? now}) {
+    final activeGoals = goals.where((item) => !item.archived && !item.completed).length;
+    return SmartFinanceEngine.planGoal(
+      goal: goal,
+      currentAmount: goal.currentAmount,
+      totalBalance: totalBalance,
+      transactions: analyticTransactions().toList(),
+      recurring: recurring,
+      competingGoals: activeGoals,
+      now: now,
+    );
+  }
+
+  Account? suggestedGoalTransferSource(Goal goal) {
+    if (goal.linkedAccountId == null) return null;
+    final candidates = activeAccounts
+        .where((item) => !item.isLocked && item.id != goal.linkedAccountId)
+        .toList()
+      ..sort((a, b) => b.balance.compareTo(a.balance));
+    return candidates.firstOrNull;
   }
 
   Future<void> saveDashboard(List<DashboardWidgetConfig> items) async {
@@ -463,7 +688,14 @@ class AppState extends ChangeNotifier {
     for (var i = 0; i < DashboardWidgetType.values.length; i++) {
       final type = DashboardWidgetType.values[i];
       final index = defaults.indexOf(type);
-      items.add(DashboardWidgetConfig(type: type, enabled: index >= 0, orderIndex: index >= 0 ? index : defaults.length + i, size: DashboardWidgetSize.medium));
+      items.add(
+        DashboardWidgetConfig(
+          type: type,
+          enabled: index >= 0,
+          orderIndex: index >= 0 ? index : defaults.length + i,
+          size: DashboardWidgetSize.medium,
+        ),
+      );
     }
     await saveDashboard(items);
   }
@@ -480,17 +712,140 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  SmartSuggestion? smartSuggestion({
+    required String? note,
+    required TransactionType type,
+    double? amount,
+    DateTime? date,
+  }) {
+    if (!smartSuggestionsEnabled) return null;
+    return SmartFinanceEngine.suggest(
+      note: note,
+      type: type,
+      amount: amount,
+      date: date ?? DateTime.now(),
+      patterns: learnedPatterns,
+      rules: rules,
+      suppressedTexts: suppressedSuggestionTexts,
+      sensitivity: smartSensitivity,
+      useDescription: smartUseDescription,
+      useAmount: smartUseAmount,
+      useTime: smartUseTime,
+    );
+  }
+
+  Future<void> acceptSuggestion(SmartSuggestion suggestion, String query) async {
+    await database.recordPatternFeedback(
+      suggestion.patternId,
+      'accepted',
+      SmartFinanceEngine.normalizeText(query),
+    );
+    learnedPatterns = await database.learnedPatterns();
+    notifyListeners();
+  }
+
+  Future<void> rejectSuggestion(
+    SmartSuggestion suggestion,
+    String query, {
+    bool modified = false,
+  }) async {
+    await database.recordPatternFeedback(
+      suggestion.patternId,
+      modified ? 'modified' : 'rejected',
+      SmartFinanceEngine.normalizeText(query),
+    );
+    learnedPatterns = await database.learnedPatterns();
+    notifyListeners();
+  }
+
+  Future<void> suppressSuggestion(SmartSuggestion suggestion, String query) async {
+    final normalized = SmartFinanceEngine.normalizeText(query);
+    if (normalized.isEmpty) return;
+    await database.recordPatternFeedback(
+      suggestion.patternId,
+      'rejected',
+      normalized,
+    );
+    await database.suppressSuggestion(normalized);
+    suppressedSuggestionTexts = await database.suppressedSuggestionTexts();
+    learnedPatterns = await database.learnedPatterns();
+    notifyListeners();
+  }
+
+  Future<void> setPatternEnabled(LearnedPattern pattern, bool enabled) async {
+    await database.setPatternEnabled(pattern.id, enabled);
+    learnedPatterns = await database.learnedPatterns();
+    notifyListeners();
+  }
+
+  Future<void> deleteLearnedPattern(LearnedPattern pattern) async {
+    await database.deletePattern(pattern.id);
+    learnedPatterns = await database.learnedPatterns();
+    notifyListeners();
+  }
+
+  Future<void> convertPatternToRule(LearnedPattern pattern) async {
+    final category = categoryById(pattern.categoryId);
+    await addRule(
+      AutomationRule(
+        id: 0,
+        name: 'Da apprendimento · ${pattern.normalizedText}',
+        enabled: true,
+        containsText: pattern.normalizedText,
+        type: pattern.type,
+        categoryId: pattern.type == TransactionType.transfer ? null : category?.id,
+        accountId: pattern.accountId,
+        addTag: pattern.tags.firstOrNull,
+      ),
+    );
+  }
+
+  Future<void> clearLearning() async {
+    await database.clearLearning();
+    learnedPatterns = [];
+    detectedRecurringPatterns = [];
+    suppressedSuggestionTexts = {};
+    notifyListeners();
+  }
+
+  Future<void> _rebuildLearning({bool notify = true}) async {
+    if (!smartSuggestionsEnabled) return;
+    final previous = <String, LearnedPattern>{
+      for (final pattern in await database.learnedPatterns())
+        pattern.signature: pattern,
+    };
+    final patterns = SmartFinanceEngine.buildPatterns(
+      transactions,
+      previous: previous,
+    );
+    await database.replaceLearnedPatterns(patterns);
+    learnedPatterns = await database.learnedPatterns();
+    if (smartDetectRecurring) {
+      final detected = SmartFinanceEngine.detectRecurring(transactions);
+      await database.replaceDetectedRecurringPatterns(detected);
+      detectedRecurringPatterns = await database.detectedRecurringPatterns();
+    }
+    suppressedSuggestionTexts = await database.suppressedSuggestionTexts();
+    if (notify) notifyListeners();
+  }
+
   Future<void> setSetting(String key, String value) async {
     await database.setSetting(key, value);
     await _loadSettingsOnly();
+    if (key.startsWith('smart_') && smartSuggestionsEnabled) {
+      await _rebuildLearning(notify: false);
+    }
     notifyListeners();
   }
 
   Future<void> _loadSettingsOnly() async {
     hideBalance = (await database.getSetting('hide_balance') ?? '0') == '1';
-    allowUnassigned = (await database.getSetting('allow_unassigned') ?? '1') == '1';
-    showTransfersInAnalytics = (await database.getSetting('show_transfers_analytics') ?? '0') == '1';
-    confirmDelete = (await database.getSetting('confirm_delete') ?? '1') == '1';
+    allowUnassigned =
+        (await database.getSetting('allow_unassigned') ?? '1') == '1';
+    showTransfersInAnalytics =
+        (await database.getSetting('show_transfers_analytics') ?? '0') == '1';
+    confirmDelete =
+        (await database.getSetting('confirm_delete') ?? '1') == '1';
     showCents = (await database.getSetting('show_cents') ?? '1') == '1';
     haptics = (await database.getSetting('haptics') ?? '1') == '1';
     currency = await database.getSetting('currency') ?? 'EUR';
@@ -498,11 +853,34 @@ class AppState extends ChangeNotifier {
     financialMonthStart =
         int.tryParse(await database.getSetting('financial_month_start') ?? '1') ?? 1;
     final theme = await database.getSetting('theme_mode') ?? 'system';
-    themePreference = AppThemePreference.values.firstWhere((e) => e.name == theme, orElse: () => AppThemePreference.system);
+    themePreference = AppThemePreference.values.firstWhere(
+      (e) => e.name == theme,
+      orElse: () => AppThemePreference.system,
+    );
+    smartSuggestionsEnabled =
+        (await database.getSetting('smart_suggestions_enabled') ?? '1') == '1';
+    smartUseDescription =
+        (await database.getSetting('smart_use_description') ?? '1') == '1';
+    smartUseAmount =
+        (await database.getSetting('smart_use_amount') ?? '1') == '1';
+    smartUseTime =
+        (await database.getSetting('smart_use_time') ?? '1') == '1';
+    smartDetectRecurring =
+        (await database.getSetting('smart_detect_recurring') ?? '1') == '1';
+    smartGoalSuggestions =
+        (await database.getSetting('smart_goal_suggestions') ?? '1') == '1';
+    final sensitivity =
+        await database.getSetting('smart_sensitivity') ?? 'balanced';
+    smartSensitivity = SmartSensitivity.values.firstWhere(
+      (item) => item.name == sensitivity,
+      orElse: () => SmartSensitivity.balanced,
+    );
   }
 
-  Future<void> setHideBalance(bool value) => setSetting('hide_balance', value ? '1' : '0');
-  Future<void> setThemePreference(AppThemePreference value) => setSetting('theme_mode', value.name);
+  Future<void> setHideBalance(bool value) =>
+      setSetting('hide_balance', value ? '1' : '0');
+  Future<void> setThemePreference(AppThemePreference value) =>
+      setSetting('theme_mode', value.name);
 
   Future<void> refreshCore({bool includePlanning = false}) async {
     accounts = await database.accounts();
@@ -520,10 +898,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<int> importCsv(String content) async {
-    final lines = content.split(RegExp(r'\r?\n')).where((line) => line.trim().isNotEmpty).toList();
+    final lines = content
+        .split(RegExp(r'\r?\n'))
+        .where((line) => line.trim().isNotEmpty)
+        .toList();
     if (lines.length <= 1) return 0;
     var imported = 0;
-    final fallback = unassignedAccount?.id ?? await database.unassignedAccountId();
+    final fallback =
+        unassignedAccount?.id ?? await database.unassignedAccountId();
     for (final line in lines.skip(1)) {
       final fields = _parseCsvLine(line);
       if (fields.length < 10) continue;
@@ -531,19 +913,29 @@ class AppState extends ChangeNotifier {
       final amount = double.tryParse(fields[2]);
       final originalAccountId = int.tryParse(fields[3]);
       final account = accountById(originalAccountId);
-      final accountId = account == null || account.isArchived || account.isLocked ? fallback : account.id;
+      final accountId = account == null || account.isArchived || account.isLocked
+          ? fallback
+          : account.id;
       final toIdRaw = int.tryParse(fields[4]);
       final toAccount = accountById(toIdRaw);
       final categoryRaw = int.tryParse(fields[5]);
       final date = DateTime.tryParse(fields[6]);
       if (amount == null || amount <= 0 || date == null) continue;
-      if (type == TransactionType.transfer && (toAccount == null || toAccount.isArchived || toAccount.isLocked || toAccount.id == accountId)) continue;
+      if (type == TransactionType.transfer &&
+          (toAccount == null ||
+              toAccount.isArchived ||
+              toAccount.isLocked ||
+              toAccount.id == accountId)) {
+        continue;
+      }
       await database.addTransaction(
         type: type,
         amount: amount,
         accountId: accountId,
         toAccountId: type == TransactionType.transfer ? toAccount!.id : null,
-        categoryId: type == TransactionType.transfer || categoryById(categoryRaw) == null ? null : categoryRaw,
+        categoryId: type == TransactionType.transfer || categoryById(categoryRaw) == null
+            ? null
+            : categoryRaw,
         date: date,
         note: fields[7].isEmpty ? null : fields[7],
         tags: fields[8].split('|').where((e) => e.isNotEmpty).toList(),
@@ -552,6 +944,7 @@ class AppState extends ChangeNotifier {
       imported++;
     }
     await refreshCore(includePlanning: true);
+    await _rebuildLearning();
     return imported;
   }
 
@@ -595,7 +988,10 @@ class AppState extends ChangeNotifier {
     await load();
   }
 
-  Future<void> syncWidget() => widgetService.sync(balance: totalBalance, expenseCategories: categoriesFor(TransactionType.expense));
+  Future<void> syncWidget() => widgetService.sync(
+        balance: totalBalance,
+        expenseCategories: categoriesFor(TransactionType.expense),
+      );
 }
 
 extension FirstOrNullX<T> on Iterable<T> {
