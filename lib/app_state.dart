@@ -350,18 +350,90 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> updateBudget(Budget item) async { await database.updateBudget(item); budgets = await database.budgets(); notifyListeners(); }
-  Future<void> deleteBudget(Budget item) async { await database.deleteBudget(item.id); budgets = await database.budgets(); notifyListeners(); }
+  Future<void> updateBudget(Budget item) async {
+    await database.updateBudget(item);
+    budgets = await database.budgets();
+    notifyListeners();
+  }
 
-  double budgetSpent(Budget budget) => budget.categoryId == null ? monthTotal(TransactionType.expense) : monthCategoryTotal(budget.categoryId!);
-  double budgetProgressFor(Budget budget) => budget.limit <= 0 ? 0 : budgetSpent(budget) / budget.limit;
+  Future<void> deleteBudget(Budget item) async {
+    await database.deleteBudget(item.id);
+    budgets = await database.budgets();
+    notifyListeners();
+  }
+
+  (DateTime, DateTime) budgetRange(Budget budget, {DateTime? now}) {
+    final target = now ?? DateTime.now();
+    switch (budget.period) {
+      case BudgetPeriod.weekly:
+        final day = DateTime(target.year, target.month, target.day);
+        final offset = weekStart == DateTime.sunday
+            ? target.weekday % 7
+            : target.weekday - DateTime.monday;
+        final start = day.subtract(Duration(days: offset));
+        return (start, start.add(const Duration(days: 7)));
+      case BudgetPeriod.monthly:
+        final startDay = financialMonthStart.clamp(1, 28).toInt();
+        final currentStart = target.day >= startDay
+            ? DateTime(target.year, target.month, startDay)
+            : DateTime(target.year, target.month - 1, startDay);
+        return (
+          currentStart,
+          DateTime(currentStart.year, currentStart.month + 1, startDay),
+        );
+      case BudgetPeriod.custom:
+        final start = budget.startDate;
+        final end = budget.endDate == null
+            ? DateTime(9999)
+            : DateTime(
+                budget.endDate!.year,
+                budget.endDate!.month,
+                budget.endDate!.day + 1,
+              );
+        return (start, end);
+    }
+  }
+
+  double budgetSpent(Budget budget, {DateTime? now}) {
+    final (from, to) = budgetRange(budget, now: now);
+    var total = 0.0;
+    for (final transaction in analyticTransactions(from: from, to: to)
+        .where((item) => item.type == TransactionType.expense)) {
+      final itemSplits = splitsFor(transaction.id);
+      if (budget.categoryId == null) {
+        total += effectiveExpense(transaction);
+      } else if (itemSplits.isNotEmpty) {
+        total += itemSplits
+            .where((split) => split.categoryId == budget.categoryId)
+            .fold(0.0, (sum, split) => sum + split.amount);
+      } else if (transaction.categoryId == budget.categoryId) {
+        total += effectiveExpense(transaction);
+      }
+    }
+    return total;
+  }
+
+  double budgetProgressFor(Budget budget, {DateTime? now}) =>
+      budget.limit <= 0 ? 0 : budgetSpent(budget, now: now) / budget.limit;
 
   Future<void> addGoal({required String name, required double targetAmount, String iconKey = 'savings', int colorValue = 0xFF8E8E93, DateTime? targetDate, int? linkedAccountId}) async {
     await database.addGoal(name: name, iconKey: iconKey, colorValue: colorValue, targetAmount: targetAmount, targetDate: targetDate, linkedAccountId: linkedAccountId);
-    goals = await database.goals(); notifyListeners();
+    goals = await database.goals();
+    notifyListeners();
   }
-  Future<void> updateGoal(Goal item) async { await database.updateGoal(item); goals = await database.goals(); notifyListeners(); }
-  Future<void> deleteGoal(Goal item) async { await database.deleteGoal(item.id); goals = await database.goals(); notifyListeners(); }
+
+  Future<void> updateGoal(Goal item) async {
+    await database.updateGoal(item);
+    goals = await database.goals();
+    notifyListeners();
+  }
+
+  Future<void> deleteGoal(Goal item) async {
+    await database.deleteGoal(item.id);
+    goals = await database.goals();
+    notifyListeners();
+  }
+
   Future<void> contributeGoal(Goal item, double delta) async {
     final current = math.max(0, math.min(item.targetAmount, item.currentAmount + delta)).toDouble();
     await updateGoal(Goal(id: item.id, name: item.name, iconKey: item.iconKey, colorValue: item.colorValue, targetAmount: item.targetAmount, currentAmount: current, targetDate: item.targetDate, linkedAccountId: item.linkedAccountId, archived: item.archived, completed: current >= item.targetAmount));
@@ -396,8 +468,17 @@ class AppState extends ChangeNotifier {
     await saveDashboard(items);
   }
 
-  Future<void> addRule(AutomationRule rule) async { await database.addRule(rule); rules = await database.rules(); notifyListeners(); }
-  Future<void> deleteRule(AutomationRule rule) async { await database.deleteRule(rule.id); rules = await database.rules(); notifyListeners(); }
+  Future<void> addRule(AutomationRule rule) async {
+    await database.addRule(rule);
+    rules = await database.rules();
+    notifyListeners();
+  }
+
+  Future<void> deleteRule(AutomationRule rule) async {
+    await database.deleteRule(rule.id);
+    rules = await database.rules();
+    notifyListeners();
+  }
 
   Future<void> setSetting(String key, String value) async {
     await database.setSetting(key, value);
@@ -413,6 +494,9 @@ class AppState extends ChangeNotifier {
     showCents = (await database.getSetting('show_cents') ?? '1') == '1';
     haptics = (await database.getSetting('haptics') ?? '1') == '1';
     currency = await database.getSetting('currency') ?? 'EUR';
+    weekStart = int.tryParse(await database.getSetting('week_start') ?? '1') ?? 1;
+    financialMonthStart =
+        int.tryParse(await database.getSetting('financial_month_start') ?? '1') ?? 1;
     final theme = await database.getSetting('theme_mode') ?? 'system';
     themePreference = AppThemePreference.values.firstWhere((e) => e.name == theme, orElse: () => AppThemePreference.system);
   }
@@ -504,7 +588,13 @@ class AppState extends ChangeNotifier {
 
   Future<String> exportCsv() => database.exportTransactionsCsv();
   Future<String> databaseFilePath() => database.databaseFilePath();
-  Future<void> restoreDatabaseFrom(String path) async { await database.restoreDatabaseFrom(path); loading = true; notifyListeners(); await load(); }
+  Future<void> restoreDatabaseFrom(String path) async {
+    await database.restoreDatabaseFrom(path);
+    loading = true;
+    notifyListeners();
+    await load();
+  }
+
   Future<void> syncWidget() => widgetService.sync(balance: totalBalance, expenseCategories: categoriesFor(TransactionType.expense));
 }
 
