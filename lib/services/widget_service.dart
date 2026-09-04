@@ -3,8 +3,12 @@ import 'package:home_widget/home_widget.dart';
 import '../models/models.dart';
 
 class WidgetService {
-  static const qualifiedProvider =
+  static const summaryProvider =
       'com.dadafinanza.app.DadaFinanceWidgetProvider';
+  static const balanceProvider =
+      'com.dadafinanza.app.DadaBalanceWidgetProvider';
+  static const quickProvider =
+      'com.dadafinanza.app.DadaQuickAddWidgetProvider';
 
   Future<void> sync({
     required double balance,
@@ -21,9 +25,20 @@ class WidgetService {
         i < quick.length ? quick[i] : 'Spesa',
       );
     }
-    await HomeWidget.updateWidget(
-      androidName: 'DadaFinanceWidgetProvider',
-      qualifiedAndroidName: qualifiedProvider,
-    );
+
+    await Future.wait([
+      HomeWidget.updateWidget(
+        androidName: 'DadaFinanceWidgetProvider',
+        qualifiedAndroidName: summaryProvider,
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaBalanceWidgetProvider',
+        qualifiedAndroidName: balanceProvider,
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaQuickAddWidgetProvider',
+        qualifiedAndroidName: quickProvider,
+      ),
+    ]);
   }
 }
