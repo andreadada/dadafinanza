@@ -22,7 +22,7 @@ class SmartFinanceEngine {
   static String normalizeText(String? input) {
     if (input == null || input.trim().isEmpty) return '';
     var text = input.toLowerCase().trim();
-    text = text.replaceAll(RegExp(r"[^a-zàèéìòù0-9]+", unicode: true), ' ');
+    text = text.replaceAll(RegExp(r'[^a-zàèéìòù0-9]+', unicode: true), ' ');
     text = text.replaceAll(RegExp(r'\b\d{3,}\b'), ' ');
     final values = text
         .split(RegExp(r'\s+'))
@@ -209,7 +209,8 @@ class SmartFinanceEngine {
         .toList();
     if (matching.isEmpty) return null;
 
-    final totalMatchingSamples = matching.fold<int>(0, (sum, item) => sum + item.sampleCount);
+    final totalMatchingSamples =
+        matching.fold<int>(0, (sum, item) => sum + item.sampleCount);
     LearnedPattern? best;
     var bestScore = 0.0;
     var secondScore = 0.0;
@@ -231,7 +232,8 @@ class SmartFinanceEngine {
       var weekdayScore = 0.0;
       var timeScore = 0.0;
       if (useTime) {
-        weekdayScore = (pattern.weekdayMask & (1 << (date.weekday - 1))) != 0 ? 1 : 0;
+        weekdayScore =
+            (pattern.weekdayMask & (1 << (date.weekday - 1))) != 0 ? 1 : 0;
         timeScore = pattern.hourBucket == hourBucket(date) ? 1 : 0;
       }
       final feedbackTotal = pattern.acceptedCount + pattern.rejectedCount;
@@ -266,7 +268,7 @@ class SmartFinanceEngine {
     final confidence = bestScore >= .9 && margin >= .15
         ? SuggestionConfidence.veryHigh
         : SuggestionConfidence.high;
-    final amountHint = useAmount && best!.sampleCount >= 4 &&
+    final amountHint = useAmount && best.sampleCount >= 4 &&
             (best.amountMax - best.amountMin) /
                     math.max(1, best.amountMedian) <=
                 .12
@@ -296,7 +298,8 @@ class SmartFinanceEngine {
       if (item.refundOfTransactionId != null) continue;
       final normalized = normalizeText(item.note);
       if (normalized.isEmpty) continue;
-      final key = '$normalized|${item.type.name}|${item.accountId}|${item.categoryId ?? 0}';
+      final key =
+          '$normalized|${item.type.name}|${item.accountId}|${item.categoryId ?? 0}';
       groups.putIfAbsent(key, () => []).add(item);
     }
     final output = <DetectedRecurringPattern>[];
@@ -305,11 +308,13 @@ class SmartFinanceEngine {
       if (items.length < 3) continue;
       final intervals = <double>[];
       for (var i = 1; i < items.length; i++) {
-        intervals.add(items[i].date.difference(items[i - 1].date).inHours / 24.0);
+        intervals.add(
+          items[i].date.difference(items[i - 1].date).inHours / 24.0,
+        );
       }
       final interval = median(intervals);
       String? frequency;
-      int nextDays = 0;
+      var nextDays = 0;
       if ((interval - 7).abs() <= 2) {
         frequency = 'Settimanale';
         nextDays = 7;
@@ -326,12 +331,16 @@ class SmartFinanceEngine {
       if (frequency == null) continue;
       final amountMedian = median(items.map((item) => item.amount));
       final amountSpread =
-          (items.map((item) => (item.amount - amountMedian).abs()).reduce(math.max)) /
-              math.max(1, amountMedian);
+          items
+              .map((item) => (item.amount - amountMedian).abs())
+              .reduce(math.max) /
+          math.max(1, amountMedian);
       final intervalSpread =
           intervals.map((value) => (value - interval).abs()).reduce(math.max) /
               math.max(1, interval);
-      final confidence = (1 - amountSpread * .45 - intervalSpread * .55 +
+      final confidence = (1 -
+              amountSpread * .45 -
+              intervalSpread * .55 +
               math.min(.12, (items.length - 3) * .03))
           .clamp(0.0, 1.0);
       if (confidence < .65) continue;
@@ -415,27 +424,38 @@ class SmartFinanceEngine {
         .toSet();
     var predictedIncome = 0.0;
     var predictedExpense = 0.0;
-    for (final item in detectedRecurring.where((item) => item.enabled && item.confidence >= .72)) {
-      if (explicitNames.any((name) => textSimilarity(name, item.normalizedText) >= .8)) continue;
+    for (final item in detectedRecurring
+        .where((item) => item.enabled && item.confidence >= .72)) {
+      if (explicitNames.any(
+        (name) => textSimilarity(name, item.normalizedText) >= .8,
+      )) {
+        continue;
+      }
       var date = item.nextExpected;
       var guard = 0;
       while (!date.isAfter(end) && guard < 32) {
         if (!date.isBefore(target)) {
-          if (item.type == TransactionType.income) predictedIncome += item.amountMedian;
-          if (item.type == TransactionType.expense) predictedExpense += item.amountMedian;
+          if (item.type == TransactionType.income) {
+            predictedIncome += item.amountMedian;
+          }
+          if (item.type == TransactionType.expense) {
+            predictedExpense += item.amountMedian;
+          }
         }
         date = _advance(date, item.frequency);
         guard++;
       }
     }
 
-    final expenseWeeks = weeklyTotals(transactions, TransactionType.expense, now: target);
+    final expenseWeeks =
+        weeklyTotals(transactions, TransactionType.expense, now: target);
     final nonZeroWeeks = expenseWeeks.where((value) => value > 0).toList();
     final historyWeeks = nonZeroWeeks.length;
     final weeklyMedianExpense = median(nonZeroWeeks);
     final recurringWeeklyEquivalent =
         (confirmedExpense + predictedExpense) / math.max(1, days) * 7;
-    final variableWeekly = math.max(0, weeklyMedianExpense - recurringWeeklyEquivalent);
+    final variableWeekly =
+        math.max(0, weeklyMedianExpense - recurringWeeklyEquivalent);
     final estimatedExpense = variableWeekly * (days / 7.0);
     final ending = startingBalance +
         confirmedIncome -
@@ -466,21 +486,29 @@ class SmartFinanceEngine {
     DateTime? now,
   }) {
     final target = now ?? DateTime.now();
-    final remaining = math.max(0, goal.targetAmount - currentAmount).toDouble();
-    final expenseWeeks = weeklyTotals(transactions, TransactionType.expense, now: target);
-    final incomeWeeks = weeklyTotals(transactions, TransactionType.income, now: target);
+    final remaining =
+        math.max(0, goal.targetAmount - currentAmount).toDouble();
+    final expenseWeeks =
+        weeklyTotals(transactions, TransactionType.expense, now: target);
+    final incomeWeeks =
+        weeklyTotals(transactions, TransactionType.income, now: target);
     final completedWeeks = <double>[];
-    for (var index = 0; index < math.min(expenseWeeks.length, incomeWeeks.length); index++) {
+    for (var index = 0;
+        index < math.min(expenseWeeks.length, incomeWeeks.length);
+        index++) {
       if (expenseWeeks[index] > 0 || incomeWeeks[index] > 0) {
         completedWeeks.add(incomeWeeks[index] - expenseWeeks[index]);
       }
     }
     final historyWeeks = completedWeeks.length;
-    final medianExpense = median(expenseWeeks.where((value) => value > 0));
+    final medianExpense =
+        median(expenseWeeks.where((value) => value > 0));
     final medianSurplus = median(completedWeeks);
-    final safetyBuffer = math.max(totalBalance * .15, medianExpense * 2).toDouble();
+    final safetyBuffer =
+        math.max(totalBalance * .15, medianExpense * 2).toDouble();
     final liquidReserve = math.max(0, totalBalance - safetyBuffer).toDouble();
-    final recurringNetWeekly = recurring.where((item) => item.enabled).fold<double>(0, (sum, item) {
+    final recurringNetWeekly =
+        recurring.where((item) => item.enabled).fold<double>(0, (sum, item) {
       final sign = item.type == TransactionType.income
           ? 1.0
           : item.type == TransactionType.expense
@@ -495,16 +523,30 @@ class SmartFinanceEngine {
       };
       return sum + item.amount * sign * factor;
     });
-    final stableWeeklyCapacity = math.max(0, medianSurplus * .55 + math.max(0, recurringNetWeekly) * .25);
+    final stableWeeklyCapacity = math.max(
+      0,
+      medianSurplus * .55 + math.max(0, recurringNetWeekly) * .25,
+    );
     final share = math.max(1, competingGoals);
     final realisticWeekly = historyWeeks < 3
         ? 0.0
-        : math.max(0, math.min(stableWeeklyCapacity / share, liquidReserve / math.max(8, share * 4))).toDouble();
+        : math
+            .max(
+              0,
+              math.min(
+                stableWeeklyCapacity / share,
+                liquidReserve / math.max(8, share * 4),
+              ),
+            )
+            .toDouble();
 
     var mathematicalWeekly = 0.0;
     var weeksLeft = 0.0;
     if (goal.targetDate != null && goal.targetDate!.isAfter(target)) {
-      weeksLeft = math.max(1, goal.targetDate!.difference(target).inDays / 7.0);
+      weeksLeft = math.max(
+        1,
+        goal.targetDate!.difference(target).inDays / 7.0,
+      );
       mathematicalWeekly = remaining / weeksLeft;
     }
 
@@ -541,7 +583,8 @@ class SmartFinanceEngine {
     );
   }
 
-  static DateTime _advance(DateTime date, String frequency) => switch (frequency) {
+  static DateTime _advance(DateTime date, String frequency) =>
+      switch (frequency) {
         'Settimanale' => date.add(const Duration(days: 7)),
         'Quindicinale' => date.add(const Duration(days: 14)),
         'Trimestrale' => DateTime(date.year, date.month + 3, date.day),
