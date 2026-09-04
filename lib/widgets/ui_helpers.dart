@@ -5,6 +5,8 @@ import '../app_state.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
 
+export '../theme/app_theme.dart';
+
 String moneyValue(double value, {String currency = 'EUR', bool showCents = true, bool signed = false}) {
   final formatter = NumberFormat.currency(locale: 'it_IT', name: currency, decimalDigits: showCents ? 2 : 0);
   final base = formatter.format(value.abs());
