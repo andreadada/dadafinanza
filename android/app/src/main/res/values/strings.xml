@@ -1,5 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">DadaFinanza</string>
-    <string name="widget_description">Saldo e inserimento rapido delle spese</string>
+    <string name="widget_summary_name">DadaFinanza · Riepilogo</string>
+    <string name="widget_balance_name">DadaFinanza · Saldo</string>
+    <string name="widget_quick_name">DadaFinanza · Quick Add</string>
+    <string name="widget_description">Saldo e categorie rapide per registrare una spesa</string>
+    <string name="widget_balance_description">Saldo totale compatto con accesso rapido a DadaFinanza</string>
+    <string name="widget_quick_description">Spesa, entrata e trasferimento direttamente dalla schermata Home</string>
 </resources>
