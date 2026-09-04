@@ -27,9 +27,9 @@ class _PolishedRootScreenState extends State<PolishedRootScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const pages = [
+    const pages = <Widget>[
       PolishedHomeScreen(),
-      TransactionsScreen(),
+      advanced.TransactionsScreen(),
       PolishedAnalyticsScreen(),
       PolishedPlanningScreen(),
     ];
@@ -86,8 +86,8 @@ class PolishedHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final expense = state.monthTotal(TransactionType.expense);
     final income = state.monthTotal(TransactionType.income);
+    final expense = state.monthTotal(TransactionType.expense);
     final accounts = state.activeAccounts.take(4).toList();
     final recent = state.transactions.take(5).toList();
     final upcoming = state.recurring.where((item) => item.enabled).toList()
@@ -121,16 +121,22 @@ class PolishedHomeScreen extends StatelessWidget {
             PopupMenuButton<String>(
               tooltip: 'Altre opzioni',
               onSelected: (value) {
-                final Widget page = switch (value) {
+                final page = switch (value) {
                   'widgets' => const AndroidWidgetsScreen(),
                   'dashboard' => const advanced.HomeScreen(),
                   _ => const SettingsScreen(),
                 };
-                Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => page),
+                );
               },
               itemBuilder: (_) => const [
                 PopupMenuItem(value: 'widgets', child: Text('Widget Android')),
-                PopupMenuItem(value: 'dashboard', child: Text('Dashboard avanzata')),
+                PopupMenuItem(
+                  value: 'dashboard',
+                  child: Text('Dashboard avanzata'),
+                ),
                 PopupMenuItem(value: 'settings', child: Text('Impostazioni')),
               ],
             ),
@@ -156,7 +162,9 @@ class PolishedHomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                state.hideBalance ? '••••••' : moneyFor(state, state.totalBalance),
+                state.hideBalance
+                    ? '••••••'
+                    : moneyFor(state, state.totalBalance),
                 style: Theme.of(context).textTheme.displaySmall,
               ),
               const SizedBox(height: 18),
@@ -165,25 +173,30 @@ class PolishedHomeScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _Metric(
-                      'Entrate',
-                      state.hideBalance ? '••••' : moneyFor(state, income),
-                      context.financeColors.positive,
+                      label: 'Entrate',
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, income),
+                      color: context.financeColors.positive,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _Metric(
-                      'Spese',
-                      state.hideBalance ? '••••' : moneyFor(state, expense),
-                      context.financeColors.negative,
+                      label: 'Spese',
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, expense),
+                      color: context.financeColors.negative,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _Metric(
-                      'Disponibile',
-                      state.hideBalance ? '••••' : moneyFor(state, state.safeToSpend),
-                      null,
+                      label: 'Disponibile',
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, state.safeToSpend),
                     ),
                   ),
                 ],
@@ -228,11 +241,17 @@ class PolishedHomeScreen extends StatelessWidget {
                     '${state.unassignedCount} movimenti da assegnare',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
-                  subtitle: const Text('Completa il conto per mantenere i saldi ordinati.'),
+                  subtitle: const Text(
+                    'Completa il conto per mantenere i saldi ordinati.',
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const TransactionsScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const advanced.TransactionsScreen(
+                        initialUnassignedOnly: true,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -251,7 +270,8 @@ class PolishedHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Nessun conto ancora',
-                  subtitle: 'Aggiungi il conto che usi davvero o continua con movimenti Non assegnati.',
+                  subtitle:
+                      'Aggiungi il conto che usi davvero o continua con movimenti Non assegnati.',
                   action: FilledButton.icon(
                     onPressed: () => showAccountEditor(context),
                     icon: const Icon(Icons.add_rounded),
@@ -270,7 +290,8 @@ class PolishedHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'Inizia dal primo movimento',
-                  subtitle: 'Registra una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
+                  subtitle:
+                      'Registra una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
                   action: FilledButton.icon(
                     onPressed: () => _quick(context, 'expense'),
                     icon: const Icon(Icons.add_rounded),
@@ -294,7 +315,8 @@ class PolishedHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.event_available_outlined,
                   title: 'Nessuna scadenza prevista',
-                  subtitle: 'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
+                  subtitle:
+                      'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
                   action: OutlinedButton.icon(
                     onPressed: () => Navigator.push(
                       context,
@@ -314,7 +336,8 @@ class PolishedHomeScreen extends StatelessWidget {
                         ),
                         title: Text(item.name),
                         subtitle: Text(
-                          DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
+                          DateFormat('EEE d MMM', 'it_IT')
+                              .format(item.nextDate),
                         ),
                         trailing: Text(
                           moneyFor(state, item.amount),
@@ -327,7 +350,9 @@ class PolishedHomeScreen extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.dashboard_customize_outlined),
                 title: const Text('Dashboard avanzata'),
-                subtitle: const Text('Tutti i widget, grafici e personalizzazioni.'),
+                subtitle: const Text(
+                  'Tutti i widget, grafici e personalizzazioni.',
+                ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.push(
                   context,
@@ -343,7 +368,7 @@ class PolishedHomeScreen extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric(this.label, this.value, this.color);
+  const _Metric({required this.label, required this.value, this.color});
   final String label;
   final String value;
   final Color? color;
@@ -370,7 +395,11 @@ class _Metric extends StatelessWidget {
 }
 
 class _QuickButton extends StatelessWidget {
-  const _QuickButton({required this.icon, required this.label, required this.onTap});
+  const _QuickButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -400,9 +429,14 @@ class _SetupBlock extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Configura DadaFinanza', style: Theme.of(context).textTheme.headlineSmall),
+          Text(
+            'Configura DadaFinanza',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 6),
-          const Text('Parti dal primo conto oppure registra subito un movimento e assegnalo in seguito.'),
+          const Text(
+            'Parti dal primo conto oppure registra subito un movimento e assegnalo in seguito.',
+          ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
@@ -436,12 +470,18 @@ class _AccountRow extends StatelessWidget {
       minVerticalPadding: 11,
       leading: CircleAvatar(
         backgroundColor: Color(account.colorValue).withValues(alpha: .12),
-        child: Icon(accountIcon(account.iconKey), color: Color(account.colorValue)),
+        child: Icon(
+          accountIcon(account.iconKey),
+          color: Color(account.colorValue),
+        ),
       ),
       title: Row(
         children: [
           Expanded(
-            child: Text(account.name, style: const TextStyle(fontWeight: FontWeight.w800)),
+            child: Text(
+              account.name,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           ),
           if (account.isLocked)
             const Tooltip(
@@ -461,7 +501,9 @@ class _AccountRow extends StatelessWidget {
       ),
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => AccountDetailPage(accountId: account.id)),
+        MaterialPageRoute(
+          builder: (_) => AccountDetailPage(accountId: account.id),
+        ),
       ),
     );
   }
@@ -485,7 +527,10 @@ class _BudgetSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle('Budget', trailing: Text('${(progress * 100).round()}%')),
+          SectionTitle(
+            'Budget',
+            trailing: Text('${(progress * 100).round()}%'),
+          ),
           Text(budget.name, style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 4),
           Text('${moneyFor(state, remaining)} ancora disponibili'),
@@ -515,7 +560,10 @@ class PolishedPlanningScreen extends StatelessWidget {
     final budgets = state.budgets.where((item) => item.enabled).toList();
     final recurring = state.recurring.where((item) => item.enabled).toList()
       ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
-    final goals = state.goals.where((item) => !item.archived && !item.completed).toList();
+    final goals = state.goals
+        .where((item) => !item.archived && !item.completed)
+        .toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Pianifica')),
       body: ListView(
@@ -572,11 +620,15 @@ class PolishedPlanningScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.calendar_month_outlined),
             title: const Text('Calendario finanziario'),
-            subtitle: const Text('Entrate e uscite previste in ordine temporale.'),
+            subtitle: const Text(
+              'Entrate e uscite previste in ordine temporale.',
+            ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const FinanceCalendarScreen()),
+              MaterialPageRoute(
+                builder: (_) => const FinanceCalendarScreen(),
+              ),
             ),
           ),
           ListTile(
@@ -615,7 +667,10 @@ class _PlanEntry extends StatelessWidget {
         contentPadding: EdgeInsets.zero,
         minVerticalPadding: 10,
         leading: Icon(icon, size: 28),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+        title: Text(
+          title,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 4),
           child: Text(detail),
@@ -638,7 +693,8 @@ class PolishedAnalyticsScreen extends StatefulWidget {
   const PolishedAnalyticsScreen({super.key});
 
   @override
-  State<PolishedAnalyticsScreen> createState() => _PolishedAnalyticsScreenState();
+  State<PolishedAnalyticsScreen> createState() =>
+      _PolishedAnalyticsScreenState();
 }
 
 class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
@@ -651,18 +707,26 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       case _Period.week:
         final startWeekday = state.weekStart.clamp(1, 7);
         final offset = (now.weekday - startWeekday) % 7;
-        final start = DateTime(now.year, now.month, now.day).subtract(Duration(days: offset));
+        final start = DateTime(now.year, now.month, now.day)
+            .subtract(Duration(days: offset));
         return (start, start.add(const Duration(days: 7)));
       case _Period.month:
         final day = state.financialMonthStart.clamp(1, 28);
         var start = DateTime(now.year, now.month, day);
-        if (now.isBefore(start)) start = DateTime(now.year, now.month - 1, day);
+        if (now.isBefore(start)) {
+          start = DateTime(now.year, now.month - 1, day);
+        }
         return (start, DateTime(start.year, start.month + 1, day));
       case _Period.year:
         return (DateTime(now.year), DateTime(now.year + 1));
       case _Period.custom:
         final range = custom;
-        if (range == null) return (DateTime(now.year, now.month), DateTime(now.year, now.month + 1));
+        if (range == null) {
+          return (
+            DateTime(now.year, now.month),
+            DateTime(now.year, now.month + 1),
+          );
+        }
         return (
           DateTime(range.start.year, range.start.month, range.start.day),
           DateTime(range.end.year, range.end.month, range.end.day + 1),
@@ -670,7 +734,11 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     }
   }
 
-  Map<Category, double> _categories(AppState state, DateTime from, DateTime to) {
+  Map<Category, double> _categories(
+    AppState state,
+    DateTime from,
+    DateTime to,
+  ) {
     final totals = <Category, double>{};
     for (final transaction in state
         .analyticTransactions(from: from, to: to)
@@ -701,7 +769,10 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       firstDate: DateTime(2000),
       lastDate: now.add(const Duration(days: 3650)),
       initialDateRange: custom ??
-          DateTimeRange(start: DateTime(now.year, now.month), end: now),
+          DateTimeRange(
+            start: DateTime(now.year, now.month),
+            end: now,
+          ),
     );
     if (result != null && mounted) {
       setState(() {
@@ -719,7 +790,8 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     final previousFrom = from.subtract(duration);
     final income = state.periodTotal(TransactionType.income, from, to);
     final expense = state.periodTotal(TransactionType.expense, from, to);
-    final previous = state.periodTotal(TransactionType.expense, previousFrom, from);
+    final previous =
+        state.periodTotal(TransactionType.expense, previousFrom, from);
     final delta = previous == 0 ? null : (expense - previous) / previous * 100;
     final categories = _categories(state, from, to).entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -760,17 +832,17 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
             children: [
               Expanded(
                 child: _Metric(
-                  'Entrate',
-                  moneyFor(state, income),
-                  context.financeColors.positive,
+                  label: 'Entrate',
+                  value: moneyFor(state, income),
+                  color: context.financeColors.positive,
                 ),
               ),
               const SizedBox(width: 18),
               Expanded(
                 child: _Metric(
-                  'Spese',
-                  moneyFor(state, expense),
-                  context.financeColors.negative,
+                  label: 'Spese',
+                  value: moneyFor(state, expense),
+                  color: context.financeColors.negative,
                 ),
               ),
             ],
@@ -803,7 +875,8 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
             const EmptyState(
               icon: Icons.donut_small_outlined,
               title: 'Nessun dato nel periodo',
-              subtitle: 'Le categorie compariranno qui quando registri movimenti.',
+              subtitle:
+                  'Le categorie compariranno qui quando registri movimenti.',
             )
           else
             ...categories.take(6).map(
@@ -848,7 +921,9 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const advanced.AnalyticsScreen()),
+              MaterialPageRoute(
+                builder: (_) => const advanced.AnalyticsScreen(),
+              ),
             ),
           ),
         ],
@@ -892,7 +967,9 @@ class _CategoryPeriodScreen extends StatelessWidget {
         .analyticTransactions(from: from, to: to)
         .where(
           (item) => item.categoryId == categoryId ||
-              state.splitsFor(item.id).any((split) => split.categoryId == categoryId),
+              state
+                  .splitsFor(item.id)
+                  .any((split) => split.categoryId == categoryId),
         )
         .toList();
     return Scaffold(
@@ -900,13 +977,16 @@ class _CategoryPeriodScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 60),
         children: [
-          Text('${items.length} ${items.length == 1 ? 'movimento' : 'movimenti'} nel periodo'),
+          Text(
+            '${items.length} ${items.length == 1 ? 'movimento' : 'movimenti'} nel periodo',
+          ),
           const SizedBox(height: 18),
           if (items.isEmpty)
             const EmptyState(
               icon: Icons.receipt_long_outlined,
               title: 'Nessun movimento',
-              subtitle: 'Non risultano movimenti per questa categoria nel periodo.',
+              subtitle:
+                  'Non risultano movimenti per questa categoria nel periodo.',
             )
           else
             ...items.map((item) => TransactionListTile(item: item)),
