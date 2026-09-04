@@ -9,6 +9,7 @@ import 'data/app_database.dart';
 import 'models/models.dart';
 import 'screens/polished_shell.dart';
 import 'screens/quick_add_page.dart';
+import 'services/goal_ledger_service.dart';
 import 'theme/app_theme.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
@@ -17,6 +18,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final database = AppDatabase();
   await database.init();
+  await GoalLedgerService(database).ensureSchema();
   final state = AppState(database);
   await state.load();
   runApp(DadaFinanzaApp(state: state));

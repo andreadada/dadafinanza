@@ -8,6 +8,7 @@ import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../models/smart_models.dart';
+import '../services/goal_ledger_service.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_screens.dart';
 
@@ -18,6 +19,7 @@ class QuickAddPage extends StatefulWidget {
     this.initialAccountId,
     this.initialToAccountId,
     this.initialAmount,
+    this.initialGoalId,
     this.editing,
     this.refundOfTransactionId,
     super.key,
@@ -28,6 +30,7 @@ class QuickAddPage extends StatefulWidget {
   final int? initialAccountId;
   final int? initialToAccountId;
   final double? initialAmount;
+  final int? initialGoalId;
   final FinanceTransaction? editing;
   final int? refundOfTransactionId;
 
@@ -249,8 +252,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final result = await showModalBottomSheet<String>(
       context: context,
       useSafeArea: true,
+      isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => Padding(
+      builder: (context) => SingleChildScrollView(
+        child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -323,6 +328,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
             ),
           ],
         ),
+        ),
       ),
     );
     if (!mounted || result == null) return;
@@ -389,11 +395,22 @@ class _QuickAddPageState extends State<QuickAddPage> {
     if (type != TransactionType.transfer && categoryId == null) {
       return _error('Scegli o crea una categoria.');
     }
+    if (widget.initialGoalId != null && type == TransactionType.transfer) {
+      final goal = state.goals
+          .where((item) => item.id == widget.initialGoalId)
+          .firstOrNull;
+      if (goal == null || goal.linkedAccountId == null) {
+        return _error('L’obiettivo collegato non è più disponibile.');
+      }
+      if (goal.linkedAccountId != toAccountId) {
+        return _error('Usa il conto collegato all’obiettivo come destinazione.');
+      }
+    }
     setState(() => saving = true);
     try {
       final editing = widget.editing;
       if (editing == null) {
-        await state.addTransaction(
+        final createdId = await state.addTransaction(
           type: type,
           amount: parsed,
           accountId: accountId!,
@@ -406,6 +423,13 @@ class _QuickAddPageState extends State<QuickAddPage> {
           includeInAnalytics: includeInAnalytics,
           refundOfTransactionId: widget.refundOfTransactionId,
         );
+        if (type == TransactionType.transfer && widget.initialGoalId != null) {
+          await GoalLedgerService(state.database).linkTransfer(
+            goalId: widget.initialGoalId!,
+            transactionId: createdId,
+          );
+          await state.refreshCore(includePlanning: true);
+        }
       } else {
         await state.updateTransaction(
           editing,
@@ -579,6 +603,11 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final category = state.categoryById(categoryId);
     final account = state.accountById(accountId);
     final destination = state.accountById(toAccountId);
+    final linkedGoal = widget.initialGoalId == null
+        ? null
+        : state.goals
+            .where((item) => item.id == widget.initialGoalId)
+            .firstOrNull;
     final recentCategories = _recentCategories(state);
     final visibleSuggestion = widget.editing == null && suggestion?.shouldSurface == true;
 
@@ -714,6 +743,17 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 value: destination?.name ?? 'Scegli destinazione',
                 onTap: () => _chooseAccount(destination: true),
               ),
+              if (linkedGoal != null) ...[
+                const Divider(height: 1),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(categoryIcon(linkedGoal.iconKey)),
+                  title: Text('Obiettivo: ${linkedGoal.name}'),
+                  subtitle: const Text(
+                    'Questo trasferimento aggiornerà automaticamente il progresso.',
+                  ),
+                ),
+              ],
             ],
             const Divider(height: 1),
             _PickerRow(

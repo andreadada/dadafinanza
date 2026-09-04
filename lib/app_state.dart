@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' hide Category;
 import 'data/app_database.dart';
 import 'models/models.dart';
 import 'models/smart_models.dart';
+import 'services/goal_ledger_service.dart';
 import 'services/smart_finance_engine.dart';
 import 'services/widget_service.dart';
 
@@ -358,7 +359,7 @@ class AppState extends ChangeNotifier {
     FinanceTransaction newItem,
   ) async {
     await database.updateTransaction(oldItem, newItem);
-    await refreshCore();
+    await refreshCore(includePlanning: true);
     await _rebuildLearning();
   }
 
@@ -370,7 +371,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteTransaction(FinanceTransaction item) async {
     await database.deleteTransaction(item);
-    await refreshCore();
+    await refreshCore(includePlanning: true);
     await _rebuildLearning();
   }
 
@@ -623,23 +624,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> contributeGoal(Goal item, double delta) async {
-    final current = math
-        .max(0, math.min(item.targetAmount, item.currentAmount + delta))
-        .toDouble();
-    await updateGoal(
-      Goal(
-        id: item.id,
-        name: item.name,
-        iconKey: item.iconKey,
-        colorValue: item.colorValue,
-        targetAmount: item.targetAmount,
-        currentAmount: current,
-        targetDate: item.targetDate,
-        linkedAccountId: item.linkedAccountId,
-        archived: item.archived,
-        completed: current >= item.targetAmount,
-      ),
-    );
+    await GoalLedgerService(database).recordManual(item.id, delta);
+    goals = await database.goals();
+    notifyListeners();
   }
 
   GoalPlan goalPlan(Goal goal, {DateTime? now}) {
@@ -983,6 +970,7 @@ class AppState extends ChangeNotifier {
   Future<String> databaseFilePath() => database.databaseFilePath();
   Future<void> restoreDatabaseFrom(String path) async {
     await database.restoreDatabaseFrom(path);
+    await GoalLedgerService(database).ensureSchema();
     loading = true;
     notifyListeners();
     await load();

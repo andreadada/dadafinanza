@@ -7,6 +7,7 @@ import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../models/smart_models.dart';
+import '../services/goal_planning_service.dart';
 import '../services/smart_finance_engine.dart';
 import '../widgets/ui_helpers.dart';
 import 'quick_add_page.dart';
@@ -609,7 +610,8 @@ class GoalsScreen extends StatelessWidget {
               final progress = goal.targetAmount <= 0
                   ? 0.0
                   : goal.currentAmount / goal.targetAmount;
-              final plan = state.goalPlan(goal);
+              final plan = GoalPlanningService.plan(state, goal);
+              final budgetReserve = GoalPlanningService.weeklyBudgetReserve(state);
               final source = state.suggestedGoalTransferSource(goal);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,7 +695,7 @@ class GoalsScreen extends StatelessWidget {
                     color: Color(goal.colorValue),
                   ),
                   const SizedBox(height: 10),
-                  _GoalPlanText(plan: plan),
+                  _GoalPlanText(plan: plan, budgetReserve: budgetReserve),
                   if (state.smartGoalSuggestions &&
                       goal.linkedAccountId != null &&
                       source != null &&
@@ -708,6 +710,7 @@ class GoalsScreen extends StatelessWidget {
                             initialAccountId: source.id,
                             initialToAccountId: goal.linkedAccountId,
                             initialAmount: plan.realisticWeekly,
+                            initialGoalId: goal.id,
                           ),
                         ),
                       ),
@@ -728,8 +731,9 @@ class GoalsScreen extends StatelessWidget {
 }
 
 class _GoalPlanText extends StatelessWidget {
-  const _GoalPlanText({required this.plan});
+  const _GoalPlanText({required this.plan, required this.budgetReserve});
   final GoalPlan plan;
+  final double budgetReserve;
 
   @override
   Widget build(BuildContext context) {
@@ -755,6 +759,11 @@ class _GoalPlanText extends StatelessWidget {
         Text(text, style: Theme.of(context).textTheme.bodySmall),
         if (estimated != null)
           Text(estimated, style: Theme.of(context).textTheme.bodySmall),
+        if (budgetReserve > .5)
+          Text(
+            'Margine prudenziale budget: ${moneyFor(state, budgetReserve)}/settimana.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
       ],
     );
   }
