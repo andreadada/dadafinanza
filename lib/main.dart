@@ -6,6 +6,7 @@ import 'package:home_widget/home_widget.dart';
 
 import 'app_state.dart';
 import 'data/app_database.dart';
+import 'models/models.dart';
 import 'screens/quick_add_page.dart';
 import 'screens/root_screen.dart';
 import 'theme/app_theme.dart';
@@ -23,9 +24,7 @@ Future<void> main() async {
 
 class DadaFinanzaApp extends StatefulWidget {
   const DadaFinanzaApp({required this.state, super.key});
-
   final AppState state;
-
   @override
   State<DadaFinanzaApp> createState() => _DadaFinanzaAppState();
 }
@@ -37,25 +36,25 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   void initState() {
     super.initState();
     _widgetSubscription = HomeWidget.widgetClicked.listen(_handleWidgetUri);
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _handleWidgetUri(await HomeWidget.initiallyLaunchedFromHomeWidget());
-    });
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) async => _handleWidgetUri(
+        await HomeWidget.initiallyLaunchedFromHomeWidget(),
+      ),
+    );
   }
 
   void _handleWidgetUri(Uri? uri) {
-    if (uri == null || uri.scheme != 'dadafinanza') return;
-    if (uri.host == 'quick-add') {
-      final category = uri.queryParameters['category'];
-      final typeName = uri.queryParameters['type'];
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
-          builder: (_) => QuickAddPage(
-            initialCategoryName: category,
-            initialTypeName: typeName,
-          ),
-        ),
-      );
+    if (uri == null || uri.scheme != 'dadafinanza' || uri.host != 'quick-add') {
+      return;
     }
+    navigatorKey.currentState?.push(
+      MaterialPageRoute(
+        builder: (_) => QuickAddPage(
+          initialCategoryName: uri.queryParameters['category'],
+          initialTypeName: uri.queryParameters['type'],
+        ),
+      ),
+    );
   }
 
   @override
@@ -64,22 +63,32 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     super.dispose();
   }
 
+  ThemeMode get _themeMode => switch (widget.state.themePreference) {
+        AppThemePreference.system => ThemeMode.system,
+        AppThemePreference.light => ThemeMode.light,
+        AppThemePreference.dark => ThemeMode.dark,
+      };
+
   @override
   Widget build(BuildContext context) => AppScope(
         notifier: widget.state,
-        child: MaterialApp(
-          title: 'DadaFinanza',
-          navigatorKey: navigatorKey,
-          debugShowCheckedModeBanner: false,
-          themeMode: ThemeMode.dark,
-          darkTheme: AppTheme.dark(),
-          supportedLocales: const [Locale('it', 'IT')],
-          localizationsDelegates: const [
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: const RootScreen(),
+        child: AnimatedBuilder(
+          animation: widget.state,
+          builder: (context, _) => MaterialApp(
+            title: 'DadaFinanza',
+            navigatorKey: navigatorKey,
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.light(),
+            darkTheme: AppTheme.dark(),
+            themeMode: _themeMode,
+            supportedLocales: const [Locale('it', 'IT')],
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: const RootScreen(),
+          ),
         ),
       );
 }
