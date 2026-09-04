@@ -33,6 +33,12 @@ private object DadaWidgetIntents {
             },
         ),
     )
+
+    fun balanceLabel(widgetData: SharedPreferences): String {
+        if (widgetData.getBoolean("hide_balance", false)) return "••••"
+        val balance = widgetData.getString("balance", "0.00") ?: "0.00"
+        return "$balance €"
+    }
 }
 
 class DadaFinanceWidgetProvider : HomeWidgetProvider() {
@@ -43,13 +49,11 @@ class DadaFinanceWidgetProvider : HomeWidgetProvider() {
         widgetData: SharedPreferences,
     ) {
         appWidgetIds.forEach { widgetId ->
-            val balance = widgetData.getString("balance", "0.00") ?: "0.00"
             val quick = List(4) { index ->
                 widgetData.getString("quick_category_$index", "Spesa") ?: "Spesa"
             }
-
             val views = RemoteViews(context.packageName, R.layout.dada_finance_widget).apply {
-                setTextViewText(R.id.widget_balance, "$balance €")
+                setTextViewText(R.id.widget_balance, DadaWidgetIntents.balanceLabel(widgetData))
                 setTextViewText(R.id.widget_quick_0, quick[0])
                 setTextViewText(R.id.widget_quick_1, quick[1])
                 setTextViewText(R.id.widget_quick_2, quick[2])
@@ -89,9 +93,11 @@ class DadaBalanceWidgetProvider : HomeWidgetProvider() {
         widgetData: SharedPreferences,
     ) {
         appWidgetIds.forEach { widgetId ->
-            val balance = widgetData.getString("balance", "0.00") ?: "0.00"
             val views = RemoteViews(context.packageName, R.layout.dada_balance_widget).apply {
-                setTextViewText(R.id.balance_widget_value, "$balance €")
+                setTextViewText(
+                    R.id.balance_widget_value,
+                    DadaWidgetIntents.balanceLabel(widgetData),
+                )
                 setOnClickPendingIntent(R.id.balance_widget_root, DadaWidgetIntents.openApp(context))
                 setOnClickPendingIntent(
                     R.id.balance_widget_add,
