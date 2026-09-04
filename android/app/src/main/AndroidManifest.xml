@@ -33,6 +33,7 @@
 
         <receiver
             android:name=".DadaFinanceWidgetProvider"
+            android:label="@string/widget_summary_name"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -40,6 +41,30 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/dada_finance_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".DadaBalanceWidgetProvider"
+            android:label="@string/widget_balance_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/dada_balance_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".DadaQuickAddWidgetProvider"
+            android:label="@string/widget_quick_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/dada_quick_add_widget_info" />
         </receiver>
 
         <meta-data
