@@ -30,7 +30,7 @@ extension AccountTypeX on AccountType {
       );
 }
 
-enum BudgetPeriod { weekly, monthly, custom }
+enum BudgetPeriod { daily, weekly, monthly, yearly, custom }
 
 enum AppThemePreference { system, light, dark }
 
