@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../models/models.dart';
 import 'ui_helpers.dart';
 
 /// Shared account context used by Home, Movimenti and Analisi.
