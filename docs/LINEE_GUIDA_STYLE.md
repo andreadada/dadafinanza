@@ -107,9 +107,13 @@ Mostrare prima i campi frequenti. Campi avanzati sotto progressive disclosure (`
 
 Usare `EmptyState`: icona, titolo, descrizione breve, CTA solo se non esiste già un'azione primaria evidente nella schermata. Evitare CTA gigantesche duplicate col FAB.
 
+Uno stato vuoto non deve mai riservare altezze artificiali o mostrare skeleton permanenti. In Home, `Conti` senza dati resta una riga/sezione compatta con testo `Nessun conto` o un `EmptyState` breve.
+
 ## 14. Navigazione
 
 Bottom navigation ufficiale: Home, Movimenti, Analisi, Pianifica. Il FAB centrale/prominente crea un movimento. Conti resta destinazione secondaria, non quinta tab.
+
+Esiste una sola shell canonica. Vecchie shell/dashboard possono restare temporaneamente nel sorgente soltanto se contengono componenti condivisi ancora in uso, ma non devono essere raggiungibili da route utente.
 
 ## 15. Accessibilità
 
@@ -124,7 +128,9 @@ Bottom navigation ufficiale: Home, Movimenti, Analisi, Pianifica. Il FAB central
 
 ## 16. Light e Dark mode
 
-Mai hardcodare bianco/nero per superfici di sistema. Derivare da Theme/ColorScheme. Verificare ogni nuovo componente in entrambe le modalità.
+Mai hardcodare bianco/nero per superfici Flutter di sistema. Derivare da Theme/ColorScheme. Verificare ogni nuovo componente in entrambe le modalità.
+
+I widget Android nativi possono usare una superficie propria coerente e ad alto contrasto, ma devono privilegiare leggibilità e privacy rispetto alla decorazione.
 
 ## 17. Responsive
 
@@ -144,19 +150,85 @@ Verificare almeno larghezze 320, 360, 390, 430dp e text scale elevato. Le quick 
 
 **DON'T**: form lunghi con tutti gli switch visibili subito.
 
+**DO**: una piccola icona microfono in AppBar con tooltip `Compila con la voce`.
+
+**DON'T**: un enorme pulsante vocale permanente dentro il form.
+
 ## 19. Inventario componenti condivisi
 
 - `SectionTitle` — `lib/widgets/ui_helpers.dart`: titoli sezione; non usare per titoli pagina.
 - `EmptyState` — `lib/widgets/ui_helpers.dart`: stati vuoti; non duplicare icona/titolo/CTA manualmente.
 - `FlatMetric` — `lib/widgets/ui_helpers.dart`: metriche piatte; non usare per card decorative.
 - `TransactionListTile` — `lib/screens/transaction_screens.dart`: riga movimento con navigazione al dettaglio.
-- `FinanceQuickAction` — `lib/widgets/finance_quick_action.dart`: azioni rapide senza superficie visiva, ad esempio Spesa/Entrata/Trasferisci.
+- `FinanceQuickAction` — `lib/widgets/finance_quick_action.dart`: azioni rapide senza superficie visiva, ad esempio Spesa/Entrata/Trasferisci/Voce.
 - `showIconPicker` — `lib/widgets/ui_helpers.dart`: selezione icone categorizzata.
 - `confirmDestructiveAction` — `lib/widgets/ui_helpers.dart`: conferme distruttive.
+- `TransactionDraft` — modello di acquisizione condiviso da Quick Add, voce, widget, preset e deep link; non è un secondo modello di transazione persistita.
 
 Ogni nuovo componente shared deve essere aggiunto qui.
 
-## 20. Checklist prima di fare merge
+## 20. Quick Capture pattern
+
+Quick Add è l'unica superficie di conferma del movimento. Widget, voce, preset, deep link e Smart Finance devono produrre/precompilare lo stesso `TransactionDraft` e convergere nella stessa pagina.
+
+Principio:
+
+`Capture → Draft → Quick Add → conferma utente → Save`.
+
+Mai creare una seconda UI di inserimento che possieda regole di validazione o salvataggio proprie.
+
+Quando Quick Add arriva da widget:
+
+- importo mancante → focus numerico immediato;
+- importo già presente → non aprire inutilmente la tastiera;
+- mostrare subito tipo, categoria, conto e data;
+- niente animazioni lente o schermate intermedie.
+
+## 21. Voice action e stato di ascolto
+
+L'azione vocale primaria è un'icona `mic` discreta nella AppBar di `Nuovo movimento` e può essere richiamata anche da long press del FAB e widget Android.
+
+Durante l'ascolto usare un bottom sheet piccolo e chiaro:
+
+- titolo `Ti ascolto`;
+- trascrizione parziale;
+- badge/testo `Sul dispositivo` quando effettivamente on-device;
+- azioni `Annulla` e `Termina`;
+- niente waveform decorative complesse;
+- stato annunciabile a TalkBack tramite live region/Semantics.
+
+Dopo il riconoscimento il form mostra un helper discreto: `Compilato dalla voce · controlla e salva`. Il salvataggio resta sempre una CTA separata e volontaria.
+
+Errori (`permesso negato`, `nessun audio`, `offline non disponibile`, ambiguità) vanno espressi con testo semplice e una via d'uscita manuale, mai con crash o auto-correzioni arbitrarie.
+
+## 22. Widget Android
+
+I widget sono estensioni di Quick Capture, non mini-app indipendenti.
+
+Famiglia canonica massima:
+
+1. **Saldo** — 2×1 circa;
+2. **Quick Capture** — 2×2 circa, Spesa/Entrata/Trasferisci/Voce;
+3. **Importi rapidi** — 4×2 circa, quattro importi configurabili + voce;
+4. **Riepilogo** — 4×2 circa.
+
+Per azioni arbitrarie un widget apre Quick Add. Non simulare un `TextField` dentro `RemoteViews`.
+
+Con poco spazio si eliminano dettagli secondari; non si comprimono testo e touch target fino a renderli illeggibili.
+
+## 23. Privacy widget
+
+La privacy widget è distinta dalla privacy in-app:
+
+- saldo visibile solo se configurato per l'istanza;
+- importi rapidi oscurabili;
+- `hideBalance` globale prevale sempre;
+- dati nascosti = `••••`/`••` e non solo colore attenuato;
+- aggiornamento settings, reboot o update non deve far ricomparire dati sensibili.
+
+Ogni istanza può avere conto/categoria/importi propri. La configurazione non deve mai bypassare la validazione Flutter prima di aprire Quick Add.
+
+## 24. Checklist prima di fare merge
 
 - sto riusando un componente esistente?
 - il nuovo elemento ha davvero bisogno di una superficie?
@@ -166,3 +238,6 @@ Ogni nuovo componente shared deve essere aggiunto qui.
 - font scaling non rompe il layout?
 - l'informazione resta chiara senza colore?
 - la schermata ha lo stesso ritmo delle altre sezioni DadaFinanza?
+- widget/voce/preset passano tutti da `TransactionDraft` e Quick Add?
+- nessun input esterno salva un movimento senza conferma?
+- privacy widget e voice fallback sono conservativi di default?
