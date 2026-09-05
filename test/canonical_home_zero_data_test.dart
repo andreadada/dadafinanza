@@ -3,6 +3,7 @@ import 'package:dadafinanza/data/app_database.dart';
 import 'package:dadafinanza/main.dart';
 import 'package:dadafinanza/screens/home_screen.dart';
 import 'package:dadafinanza/theme/app_theme.dart';
+import 'package:dadafinanza/widgets/ui_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -48,9 +49,13 @@ void main() {
         await tester.pump();
 
         expect(find.text('Nessun conto'), findsOneWidget);
-        final sectionTop = tester.getTopLeft(find.text('Conti')).dy;
-        final emptyTop = tester.getTopLeft(find.text('Nessun conto')).dy;
-        expect(emptyTop - sectionTop, lessThan(260));
+        expect(find.text('Crea conto'), findsOneWidget);
+        final accountEmptyState = find.ancestor(
+          of: find.text('Nessun conto'),
+          matching: find.byType(EmptyState),
+        );
+        expect(accountEmptyState, findsOneWidget);
+        expect(tester.getSize(accountEmptyState).height, lessThan(300));
         expect(tester.takeException(), isNull);
       },
     );
