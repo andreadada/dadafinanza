@@ -299,32 +299,64 @@ class VoiceTransactionParser {
     String Function(T item) label,
     int Function(T item) id,
   ) {
+    final entityInput = input
+        .replaceAll(RegExp(r'[,.]+'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+
+    final exact = <_ScoredEntity<T>>[];
+    for (final item in items) {
+      final name = _normalize(label(item));
+      if (name.isEmpty) continue;
+      final phrase = RegExp(r'(?:^| )' + RegExp.escape(name) + r'(?: |$)');
+      if (phrase.hasMatch(entityInput)) {
+        exact.add(_ScoredEntity(item, name, 1));
+      }
+    }
+
+    if (exact.isNotEmpty) {
+      exact.sort((a, b) => b.name.length.compareTo(a.name.length));
+      final longest = exact.first;
+      if (exact.length > 1) {
+        final nested = exact.every(
+          (candidate) =>
+              candidate.name == longest.name ||
+              longest.name.startsWith('${candidate.name} '),
+        );
+        if (nested) return _EntityMatch(id: id(longest.item));
+        return _EntityMatch(
+          ambiguous: true,
+          candidates: exact.map((item) => id(item.item)).toList(),
+        );
+      }
+
+      final prefixAlternatives = <int>[];
+      for (final item in items) {
+        if (identical(item, longest.item)) continue;
+        final name = _normalize(label(item));
+        if (name.startsWith('${longest.name} ')) {
+          prefixAlternatives.add(id(item));
+        }
+      }
+      if (prefixAlternatives.isNotEmpty) {
+        return _EntityMatch(
+          ambiguous: true,
+          candidates: [id(longest.item), ...prefixAlternatives],
+        );
+      }
+      return _EntityMatch(id: id(longest.item));
+    }
+
     final scored = <_ScoredEntity<T>>[];
     for (final item in items) {
       final name = _normalize(label(item));
       if (name.isEmpty) continue;
-      final score = _entityScore(input, name);
+      final score = _entityScore(entityInput, name);
       if (score >= .72) scored.add(_ScoredEntity(item, name, score));
     }
     if (scored.isEmpty) return const _EntityMatch();
     scored.sort((a, b) => b.score.compareTo(a.score));
     final top = scored.first;
-
-    final prefixAlternatives = scored.where((candidate) {
-      if (identical(candidate, top)) return false;
-      return candidate.name.startsWith('${top.name} ') ||
-          top.name.startsWith('${candidate.name} ');
-    }).toList();
-    if (prefixAlternatives.isNotEmpty && top.score >= .88) {
-      return _EntityMatch(
-        ambiguous: true,
-        candidates: [
-          id(top.item),
-          ...prefixAlternatives.map((item) => id(item.item)),
-        ],
-      );
-    }
-
     final close = scored.where((item) => top.score - item.score < .12).toList();
     if (close.length > 1) {
       return _EntityMatch(
@@ -458,10 +490,7 @@ class VoiceTransactionParser {
 
     if (original.contains(',')) {
       final tail = original.split(',').last.trim();
-      if (tail.length >= 2 &&
-          !_containsOnlyKnownEntity(tail, accounts, categories)) {
-        return tail;
-      }
+      if (tail.length >= 2) return tail;
     }
 
     final words = normalized.split(' ');
@@ -521,16 +550,6 @@ class VoiceTransactionParser {
     }).toList();
     if (remaining.isEmpty) return null;
     return remaining.join(' ');
-  }
-
-  bool _containsOnlyKnownEntity(
-    String text,
-    List<Account> accounts,
-    List<Category> categories,
-  ) {
-    final value = _normalize(text);
-    return accounts.any((item) => _normalize(item.name) == value) ||
-        categories.any((item) => _normalize(item.name) == value);
   }
 
   bool _containsAny(String input, List<String> values) => values.any((value) {

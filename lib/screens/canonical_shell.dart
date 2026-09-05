@@ -246,10 +246,6 @@ class CanonicalHomeScreen extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
           sliver: SliverList.list(
             children: [
-              if (state.userAccounts.isEmpty) ...[
-                _SetupBlock(state: state),
-                const SizedBox(height: 28),
-              ],
               Text(
                 'PATRIMONIO',
                 style: Theme.of(context).textTheme.labelMedium,
@@ -449,35 +445,6 @@ class CanonicalHomeScreen extends StatelessWidget {
     }
     return null;
   }
-}
-
-class _SetupBlock extends StatelessWidget {
-  const _SetupBlock({required this.state});
-  final AppState state;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        'Configura DadaFinanza',
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Crea il primo conto oppure registra un movimento e assegnalo più tardi.',
-      ),
-      const SizedBox(height: 12),
-      TextButton.icon(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AccountManagementScreen()),
-        ),
-        icon: const Icon(Icons.account_balance_wallet_outlined),
-        label: const Text('Gestisci conti'),
-      ),
-    ],
-  );
 }
 
 class _HomeInsight {
