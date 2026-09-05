@@ -1,6 +1,9 @@
 name: Build Release APK
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       ref:
@@ -10,7 +13,7 @@ on:
         type: string
 
 concurrency:
-  group: release-apk-${{ github.repository }}-${{ inputs.ref }}
+  group: release-apk-${{ github.repository }}-${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -23,11 +26,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - name: Show source
         run: |
-          echo "Requested ref: ${{ inputs.ref }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "Requested ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}"
           echo "Resolved commit: $(git rev-parse HEAD)"
           git log -1 --oneline
 
