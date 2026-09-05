@@ -24,6 +24,21 @@ text = text.replace(
     1,
 )
 text = text.replace('_InsightLine(insight: insight)', '_InsightRow(insight: insight)')
+
+# The original transaction detail patch was authored against an older list-tile
+# implementation. Keep the broader UI integration deterministic and apply the
+# transaction detail enrichment in a dedicated follow-up patch against the
+# current file instead of relying on stale anchors.
+start_marker = '# Transaction rows/details -------------------------------------------------------'
+end_marker = '# Settings ----------------------------------------------------------------------'
+start = text.find(start_marker)
+end = text.find(end_marker)
+if start != -1 and end != -1 and start < end:
+    text = (
+        text[:start]
+        + '# Transaction rows/details are finalized by tooling/finalize_anticipi.py\n\n\n'
+        + text[end:]
+    )
 path.write_text(text)
 
 # Remove a temporary local extension that clashes with the project's shared
