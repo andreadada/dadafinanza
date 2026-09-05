@@ -6,7 +6,7 @@ on:
       ref:
         description: "Branch, tag o commit da compilare"
         required: true
-        default: "build/initial-flutter-app"
+        default: "main"
         type: string
 
 concurrency:
@@ -24,6 +24,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
+
+      - name: Show source
+        run: |
+          echo "Requested ref: ${{ inputs.ref }}"
+          echo "Resolved commit: $(git rev-parse HEAD)"
+          git log -1 --oneline
 
       - name: Setup Java 17
         uses: actions/setup-java@v4
