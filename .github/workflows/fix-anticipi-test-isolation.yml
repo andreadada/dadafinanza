@@ -1,0 +1,49 @@
+name: Fix Anticipi test isolation
+
+on:
+  push:
+    branches:
+      - build/anticipi-ledger
+    paths:
+      - .github/workflows/fix-anticipi-test-isolation.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Isolate sqflite FFI database paths
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for filename, prefix in [
+              ('test/advance_service_test.dart', 'dadafinanza-advance-db-'),
+              ('test/backup_restore_anticipi_test.dart', 'dadafinanza-backup-db-'),
+          ]:
+              path = Path(filename)
+              text = path.read_text()
+              if "import 'dart:io';" not in text:
+                  text = "import 'dart:io';\n\n" + text
+              marker = "  setUpAll(() {\n    ffi.sqfliteFfiInit();\n    databaseFactory = ffi.databaseFactoryFfi;\n  });"
+              replacement = f"""  late Directory databaseRoot;\n\n  setUpAll(() async {{\n    ffi.sqfliteFfiInit();\n    databaseFactory = ffi.databaseFactoryFfi;\n    databaseRoot = await Directory.systemTemp.createTemp('{prefix}');\n    await databaseFactory.setDatabasesPath(databaseRoot.path);\n  }});\n\n  tearDownAll(() async {{\n    if (await databaseRoot.exists()) await databaseRoot.delete(recursive: true);\n  }});"""
+              if marker not in text:
+                  raise RuntimeError(f'setUpAll marker missing in {filename}')
+              text = text.replace(marker, replacement, 1)
+              path.write_text(text)
+          PY
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: dart format test/advance_service_test.dart test/backup_restore_anticipi_test.dart
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/advance_service_test.dart test/backup_restore_anticipi_test.dart
+          git commit -m "test: isolate Anticipi SQLite suites"
+          git push
