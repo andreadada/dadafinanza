@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../services/account_scope_service.dart';
+import '../widgets/account_scope_selector.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_management_screen.dart';
@@ -17,13 +19,17 @@ import 'quick_add_page.dart';
 import 'root_screen.dart' as advanced;
 import 'transaction_screens.dart';
 
-/// Canonical Home: the information density of the original DadaFinanza Home,
-/// rebuilt with the current flat design system and the newer dashboard data.
-///
-/// The advanced dashboard is a secondary customizable workspace, not a second
-/// application shell. It is intentionally reachable from the top app bar.
+/// Canonical Home: informative like the original DadaFinanza Home, but flat and
+/// consistent with the current design system. It can be scoped to one account.
 class DadaHomeScreen extends StatelessWidget {
-  const DadaHomeScreen({super.key});
+  const DadaHomeScreen({
+    required this.selectedAccountId,
+    required this.onAccountChanged,
+    super.key,
+  });
+
+  final int? selectedAccountId;
+  final ValueChanged<int?> onAccountChanged;
 
   static const _curatedTypes = {
     DashboardWidgetType.totalBalance,
@@ -41,19 +47,37 @@ class DadaHomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final income = state.monthTotal(TransactionType.income);
-    final expense = state.monthTotal(TransactionType.expense);
-    final accounts = state.activeAccounts.take(4).toList();
-    final recent = state.transactions.take(5).toList();
-    final upcoming = state.recurring.where((item) => item.enabled).toList()
-      ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
-    final budget = _priorityBudget(state);
-    final insight = _smartInsight(state);
+    final selectedAccount = state.accountById(selectedAccountId);
+    final income = AccountScopeService.monthTotal(
+      state,
+      selectedAccountId,
+      TransactionType.income,
+    );
+    final expense = AccountScopeService.monthTotal(
+      state,
+      selectedAccountId,
+      TransactionType.expense,
+    );
+    final balance = AccountScopeService.balance(state, selectedAccountId);
+    final available = AccountScopeService.available(state, selectedAccountId);
+    final accounts = selectedAccount == null
+        ? state.activeAccounts.take(4).toList()
+        : [selectedAccount];
+    final recent = AccountScopeService.transactions(state, selectedAccountId)
+        .take(5)
+        .toList();
+    final upcoming = AccountScopeService.recurring(state, selectedAccountId);
+    final budget = selectedAccountId == null ? _priorityBudget(state) : null;
+    final insight = selectedAccountId == null ? _smartInsight(state) : null;
     final enabledWidgets = [...state.dashboardWidgets]
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
-    final extraWidgets = enabledWidgets
-        .where((item) => item.enabled && !_curatedTypes.contains(item.type))
-        .toList();
+    final extraWidgets = selectedAccountId == null
+        ? enabledWidgets
+              .where(
+                (item) => item.enabled && !_curatedTypes.contains(item.type),
+              )
+              .toList()
+        : const <DashboardWidgetConfig>[];
 
     return CustomScrollView(
       slivers: [
@@ -62,7 +86,10 @@ class DadaHomeScreen extends StatelessWidget {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('DadaFinanza'),
+              AccountScopeSelector(
+                selectedAccountId: selectedAccountId,
+                onChanged: onAccountChanged,
+              ),
               Text(
                 DateFormat('MMMM yyyy', 'it_IT').format(DateTime.now()),
                 style: Theme.of(context).textTheme.bodySmall,
@@ -106,20 +133,23 @@ class DadaHomeScreen extends StatelessWidget {
               if (state.userAccounts.isEmpty) ...[
                 _SetupBlock(
                   onAccount: () => showAccountEditor(context),
-                  onMovement: () =>
-                      _openQuick(context, TransactionType.expense),
+                  onMovement: () => _openQuick(
+                    context,
+                    TransactionType.expense,
+                    selectedAccountId,
+                  ),
                 ),
                 const SizedBox(height: 32),
               ],
               Text(
-                'PATRIMONIO',
+                selectedAccount == null ? 'PATRIMONIO' : 'SALDO',
                 style: Theme.of(context).textTheme.labelMedium,
               ),
               const SizedBox(height: 6),
               Text(
-                state.hideBalance
+                state.hideBalance || selectedAccount?.hideBalance == true
                     ? '••••••'
-                    : moneyFor(state, state.totalBalance),
+                    : moneyFor(state, balance),
                 style: Theme.of(context).textTheme.displaySmall,
               ),
               const SizedBox(height: 20),
@@ -151,7 +181,7 @@ class DadaHomeScreen extends StatelessWidget {
                       label: 'Disponibile',
                       value: state.hideBalance
                           ? '••••'
-                          : moneyFor(state, state.safeToSpend),
+                          : moneyFor(state, available),
                     ),
                   ),
                 ],
@@ -164,7 +194,11 @@ class DadaHomeScreen extends StatelessWidget {
                       icon: Icons.arrow_upward_rounded,
                       label: 'Spesa',
                       color: context.financeColors.negative,
-                      onTap: () => _openQuick(context, TransactionType.expense),
+                      onTap: () => _openQuick(
+                        context,
+                        TransactionType.expense,
+                        selectedAccountId,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -172,20 +206,27 @@ class DadaHomeScreen extends StatelessWidget {
                       icon: Icons.arrow_downward_rounded,
                       label: 'Entrata',
                       color: context.financeColors.positive,
-                      onTap: () => _openQuick(context, TransactionType.income),
+                      onTap: () => _openQuick(
+                        context,
+                        TransactionType.income,
+                        selectedAccountId,
+                      ),
                     ),
                   ),
                   Expanded(
                     child: FinanceQuickAction(
                       icon: Icons.swap_horiz_rounded,
                       label: 'Trasferisci',
-                      onTap: () =>
-                          _openQuick(context, TransactionType.transfer),
+                      onTap: () => _openQuick(
+                        context,
+                        TransactionType.transfer,
+                        selectedAccountId,
+                      ),
                     ),
                   ),
                 ],
               ),
-              if (state.unassignedCount > 0) ...[
+              if (selectedAccountId == null && state.unassignedCount > 0) ...[
                 const SizedBox(height: 24),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -218,15 +259,19 @@ class DadaHomeScreen extends StatelessWidget {
               ],
               const SizedBox(height: 32),
               SectionTitle(
-                'Conti',
+                selectedAccount == null ? 'Conti' : 'Conto',
                 trailing: TextButton(
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => const AccountManagementScreen(),
+                      builder: (_) => selectedAccount == null
+                          ? const AccountManagementScreen()
+                          : SafeAccountDetailScreen(
+                              accountId: selectedAccount.id,
+                            ),
                     ),
                   ),
-                  child: const Text('Tutti'),
+                  child: Text(selectedAccount == null ? 'Tutti' : 'Dettagli'),
                 ),
               ),
               if (accounts.isEmpty)
@@ -243,6 +288,14 @@ class DadaHomeScreen extends StatelessWidget {
                 )
               else
                 ...accounts.map((account) => _AccountRow(account: account)),
+              if (selectedAccount != null) ...[
+                const SizedBox(height: 28),
+                FlatMetric(
+                  label: 'Cash flow del mese',
+                  value: moneyFor(state, income - expense, signed: true),
+                  icon: Icons.compare_arrows_rounded,
+                ),
+              ],
               if (budget != null) ...[
                 const SizedBox(height: 32),
                 _BudgetSummary(budget: budget),
@@ -273,8 +326,9 @@ class DadaHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.event_available_outlined,
                   title: 'Nessuna scadenza prevista',
-                  subtitle:
-                      'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
+                  subtitle: selectedAccount == null
+                      ? 'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.'
+                      : 'Nessuna ricorrenza collegata a questo conto.',
                   action: TextButton.icon(
                     onPressed: () => showRecurringEditor(context),
                     icon: const Icon(Icons.add_rounded),
@@ -282,37 +336,32 @@ class DadaHomeScreen extends StatelessWidget {
                   ),
                 )
               else
-                ...upcoming
-                    .take(3)
-                    .map(
-                      (item) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        minVerticalPadding: 10,
-                        leading: Icon(
-                          Icons.repeat_rounded,
-                          color: transactionColor(context, item.type),
-                        ),
-                        title: Text(item.name),
-                        subtitle: Text(
-                          DateFormat(
-                            'EEE d MMM',
-                            'it_IT',
-                          ).format(item.nextDate),
-                        ),
-                        trailing: Text(
-                          state.hideBalance
-                              ? '••••'
-                              : moneyFor(state, item.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const RecurringScreen(),
-                          ),
-                        ),
+                ...upcoming.take(3).map(
+                  (item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    minVerticalPadding: 10,
+                    leading: Icon(
+                      Icons.repeat_rounded,
+                      color: transactionColor(context, item.type),
+                    ),
+                    title: Text(item.name),
+                    subtitle: Text(
+                      DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
+                    ),
+                    trailing: Text(
+                      state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, item.amount),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecurringScreen(),
                       ),
                     ),
+                  ),
+                ),
               if (extraWidgets.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 const SectionTitle('Riepilogo'),
@@ -380,20 +429,26 @@ class DadaHomeScreen extends StatelessWidget {
     return null;
   }
 
-  Future<void> _openQuick(BuildContext context, TransactionType type) async {
+  Future<void> _openQuick(
+    BuildContext context,
+    TransactionType type,
+    int? scopedAccountId,
+  ) async {
     final state = AppScope.of(context);
     final key = switch (type) {
       TransactionType.expense => 'preferred_expense_account',
       TransactionType.income => 'preferred_income_account',
       TransactionType.transfer => 'preferred_transfer_source',
     };
-    final accountId = int.tryParse(await state.database.getSetting(key) ?? '');
-    final destination = type == TransactionType.transfer
+    final preferred = int.tryParse(await state.database.getSetting(key) ?? '');
+    final accountId = scopedAccountId ?? preferred;
+    var destination = type == TransactionType.transfer
         ? int.tryParse(
             await state.database.getSetting('preferred_transfer_destination') ??
                 '',
           )
         : null;
+    if (destination == accountId) destination = null;
     if (!context.mounted) return;
     await Navigator.push(
       context,
@@ -552,8 +607,8 @@ class _BudgetSummary extends StatelessWidget {
             color: progress >= 1
                 ? context.financeColors.negative
                 : progress >= .8
-                ? context.financeColors.warning
-                : null,
+                    ? context.financeColors.warning
+                    : null,
           ),
         ],
       ),
