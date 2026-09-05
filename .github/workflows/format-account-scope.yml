@@ -1,0 +1,38 @@
+name: Format account scope
+
+on:
+  push:
+    branches:
+      - build/account-scope-expert-transactions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-account-scope
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/account-scope-expert-transactions
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Format changed Dart sources
+        run: dart format lib test
+      - name: Commit formatting when needed
+        run: |
+          if git diff --quiet; then
+            echo "Already formatted"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "style: format account scope implementation"
+          git push origin HEAD:build/account-scope-expert-transactions
