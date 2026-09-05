@@ -53,11 +53,7 @@ void main() {
     test('null scope means Totale', () {
       expect(AccountScopeService.balance(state, null), 155);
       expect(
-        AccountScopeService.monthTotal(
-          state,
-          null,
-          TransactionType.expense,
-        ),
+        AccountScopeService.monthTotal(state, null, TransactionType.expense),
         65,
       );
     });
@@ -65,27 +61,15 @@ void main() {
     test('selected account limits income and expense totals', () {
       expect(AccountScopeService.balance(state, 1), 120);
       expect(
-        AccountScopeService.monthTotal(
-          state,
-          1,
-          TransactionType.income,
-        ),
+        AccountScopeService.monthTotal(state, 1, TransactionType.income),
         200,
       );
       expect(
-        AccountScopeService.monthTotal(
-          state,
-          1,
-          TransactionType.expense,
-        ),
+        AccountScopeService.monthTotal(state, 1, TransactionType.expense),
         50,
       );
       expect(
-        AccountScopeService.monthTotal(
-          state,
-          2,
-          TransactionType.expense,
-        ),
+        AccountScopeService.monthTotal(state, 2, TransactionType.expense),
         15,
       );
     });

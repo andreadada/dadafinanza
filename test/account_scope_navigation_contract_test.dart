@@ -19,14 +19,16 @@ void main() {
     final source = File('lib/screens/home_screen.dart').readAsStringSync();
 
     expect(source, contains('AccountScopeSelector('));
-    expect(source, contains("selectedAccount == null ? 'PATRIMONIO' : 'SALDO'"));
+    expect(
+      source,
+      contains("selectedAccount == null ? 'PATRIMONIO' : 'SALDO'"),
+    );
     expect(source, isNot(contains("const Text('DadaFinanza')")));
   });
 
   test('movements exposes list, accounts and categories modes', () {
-    final source = File(
-      'lib/screens/expert_transactions_screen.dart',
-    ).readAsStringSync();
+    final source = File('lib/screens/expert_transactions_screen.dart')
+        .readAsStringSync();
 
     expect(source, contains('TransactionsViewMode.list'));
     expect(source, contains('TransactionsViewMode.accounts'));
@@ -37,9 +39,8 @@ void main() {
   });
 
   test('safe account detail delegates editing to full icon-capable editor', () {
-    final source = File(
-      'lib/screens/account_management_screen.dart',
-    ).readAsStringSync();
+    final source = File('lib/screens/account_management_screen.dart')
+        .readAsStringSync();
 
     expect(source, contains('showAccountEditor(context, existing: account)'));
     expect(source, isNot(contains('Future<void> _editMetadata(')));

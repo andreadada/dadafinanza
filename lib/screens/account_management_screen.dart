@@ -469,8 +469,6 @@ class SafeAccountDetailScreen extends StatelessWidget {
       );
     }
   }
-
-
 }
 
 class _AccountTrend extends StatelessWidget {
