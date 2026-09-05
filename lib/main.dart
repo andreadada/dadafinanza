@@ -11,6 +11,7 @@ import 'screens/canonical_shell.dart';
 import 'screens/quick_add_page.dart';
 import 'services/finance_schema_service.dart';
 import 'services/notification_service.dart';
+import 'services/quick_capture_deep_link_service.dart';
 import 'services/recurring_execution_service.dart';
 import 'services/security_service.dart';
 import 'theme/app_theme.dart';
@@ -40,6 +41,7 @@ class DadaFinanzaApp extends StatefulWidget {
 class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   final security = SecurityService();
   final notificationService = NotificationService();
+  const deepLinks = QuickCaptureDeepLinkService();
   StreamSubscription<Uri?>? _widgetSubscription;
   Timer? _notificationDebounce;
   bool? _lastWidgetPrivacy;
@@ -47,7 +49,9 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   @override
   void initState() {
     super.initState();
-    _widgetSubscription = HomeWidget.widgetClicked.listen(_handleWidgetUri);
+    _widgetSubscription = HomeWidget.widgetClicked.listen(
+      (uri) => unawaited(_handleWidgetUri(uri)),
+    );
     widget.state.addListener(_handleStateChanged);
     _handleStateChanged();
     WidgetsBinding.instance.addPostFrameCallback(
@@ -66,18 +70,13 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     );
   }
 
-  void _handleWidgetUri(Uri? uri) {
-    if (uri == null || uri.scheme != 'dadafinanza' || uri.host != 'quick-add') {
-      return;
-    }
-    final accountId = int.tryParse(uri.queryParameters['account'] ?? '');
+  Future<void> _handleWidgetUri(Uri? uri) async {
+    if (uri == null) return;
+    final draft = await deepLinks.fromUri(widget.state, uri);
+    if (draft == null) return;
     navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (_) => QuickAddPage(
-          initialCategoryName: uri.queryParameters['category'],
-          initialTypeName: uri.queryParameters['type'],
-          initialAccountId: accountId,
-        ),
+        builder: (_) => QuickAddPage(initialDraft: draft),
       ),
     );
   }
@@ -99,6 +98,14 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
       HomeWidget.updateWidget(
         androidName: 'DadaBalanceWidgetProvider',
         qualifiedAndroidName: 'com.dadafinanza.app.DadaBalanceWidgetProvider',
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaQuickAddWidgetProvider',
+        qualifiedAndroidName: 'com.dadafinanza.app.DadaQuickAddWidgetProvider',
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaQuickAmountsWidgetProvider',
+        qualifiedAndroidName: 'com.dadafinanza.app.DadaQuickAmountsWidgetProvider',
       ),
     ]);
   }
