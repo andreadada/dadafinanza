@@ -2,29 +2,27 @@ package com.dadafinanza.app
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.text.InputType
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.Spinner
 import android.widget.TextView
+import androidx.core.view.setPadding
 
 class DadaWidgetConfigActivity : Activity() {
     private var appWidgetId = AppWidgetManager.INVALID_APPWIDGET_ID
-    private val prefs by lazy {
-        getSharedPreferences("dada_widget_config", MODE_PRIVATE)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setResult(RESULT_CANCELED)
+
         appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID,
@@ -33,158 +31,120 @@ class DadaWidgetConfigActivity : Activity() {
             finish()
             return
         }
-        setContentView(buildContent())
-    }
 
-    private fun buildContent(): ScrollView {
+        val prefs = getSharedPreferences("DadaWidgetConfig", MODE_PRIVATE)
         val density = resources.displayMetrics.density
-        fun dp(value: Int) = (value * density).toInt()
-
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(20), dp(20), dp(32))
+            setPadding((20 * density).toInt())
             setBackgroundColor(Color.rgb(9, 9, 11))
         }
+
         root.addView(TextView(this).apply {
             text = "Configura widget"
-            textSize = 26f
+            textSize = 24f
             setTextColor(Color.WHITE)
-            setPadding(0, 0, 0, dp(8))
-        })
-        root.addView(TextView(this).apply {
-            text = "Ogni widget mantiene impostazioni proprie. I nomi di conto e categoria vengono verificati dall’app quando apri Quick Add."
-            textSize = 14f
-            setTextColor(Color.LTGRAY)
-            setPadding(0, 0, 0, dp(24))
         })
 
-        val typeSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(
-                this@DadaWidgetConfigActivity,
-                android.R.layout.simple_spinner_dropdown_item,
-                listOf("Spesa", "Entrata", "Trasferimento"),
-            )
-            val saved = prefs.getString("widget_${appWidgetId}_type", "expense")
-            setSelection(
-                when (saved) {
-                    "income" -> 1
-                    "transfer" -> 2
-                    else -> 0
-                },
-            )
-        }
-        addLabel(root, "Tipo predefinito")
+        addLabel(root, "Tipo movimento")
+        val typeSpinner = Spinner(this)
+        val types = listOf("Spesa", "Entrata", "Trasferisci")
+        typeSpinner.adapter = ArrayAdapter(
+            this,
+            android.R.layout.simple_spinner_dropdown_item,
+            types,
+        )
+        val savedType = prefs.getString("type_$appWidgetId", "expense") ?: "expense"
+        typeSpinner.setSelection(
+            when (savedType) {
+                "income" -> 1
+                "transfer" -> 2
+                else -> 0
+            },
+        )
         root.addView(typeSpinner, matchWidth())
 
-        val account = edit(
-            "Conto (es. Revolut)",
-            prefs.getString("widget_${appWidgetId}_account", "") ?: "",
-        )
+        addLabel(root, "Conto predefinito (ID, opzionale)")
+        val account = edit("es. 1", prefs.getString("account_$appWidgetId", "") ?: "")
         root.addView(account, matchWidth())
+
+        addLabel(root, "Categoria predefinita (nome, opzionale)")
         val category = edit(
-            "Categoria (es. Bar)",
-            prefs.getString("widget_${appWidgetId}_category", "") ?: "",
+            "es. Alimentari",
+            prefs.getString("category_$appWidgetId", "") ?: "",
         )
         root.addView(category, matchWidth())
-        val destination = edit(
-            "Destinazione trasferimento (opzionale)",
-            prefs.getString("widget_${appWidgetId}_destination", "") ?: "",
+
+        addLabel(root, "Conto destinazione trasferimento (ID, opzionale)")
+        val toAccount = edit(
+            "es. 2",
+            prefs.getString("to_account_$appWidgetId", "") ?: "",
         )
-        root.addView(destination, matchWidth())
+        root.addView(toAccount, matchWidth())
 
         addLabel(root, "Importi rapidi")
-        val amountRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-        }
-        val defaults = listOf("1", "2", "5", "10")
-        val amountFields = List(4) { index ->
-            EditText(this).apply {
-                setText(
-                    prefs.getString(
-                        "widget_${appWidgetId}_amount_$index",
-                        defaults[index],
-                    ) ?: defaults[index],
-                )
-                inputType = InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_FLAG_DECIMAL
-                hint = defaults[index]
-                setTextColor(Color.WHITE)
-                setHintTextColor(Color.GRAY)
-                textSize = 16f
-                textAlignment = EditText.TEXT_ALIGNMENT_CENTER
-                amountRow.addView(
-                    this,
-                    LinearLayout.LayoutParams(0, dp(52), 1f).apply {
-                        marginStart = dp(3)
-                        marginEnd = dp(3)
-                    },
-                )
-            }
-        }
-        root.addView(amountRow, matchWidth())
+        val quick1 = edit("5", prefs.getString("amount_0_$appWidgetId", "5") ?: "5")
+        val quick2 = edit("10", prefs.getString("amount_1_$appWidgetId", "10") ?: "10")
+        val quick3 = edit("20", prefs.getString("amount_2_$appWidgetId", "20") ?: "20")
+        val quick4 = edit("50", prefs.getString("amount_3_$appWidgetId", "50") ?: "50")
+        root.addView(quick1, matchWidth())
+        root.addView(quick2, matchWidth())
+        root.addView(quick3, matchWidth())
+        root.addView(quick4, matchWidth())
 
-        val showBalance = CheckBox(this).apply {
-            text = "Mostra saldo nel widget"
+        val privateBalance = CheckBox(this).apply {
+            text = "Nascondi saldo in questo widget"
             setTextColor(Color.WHITE)
-            isChecked = prefs.getBoolean("widget_${appWidgetId}_show_balance", false)
+            isChecked = prefs.getBoolean("hide_balance_$appWidgetId", false)
         }
-        root.addView(showBalance, matchWidth())
-        val showAmounts = CheckBox(this).apply {
-            text = "Mostra importi rapidi"
-            setTextColor(Color.WHITE)
-            isChecked = prefs.getBoolean("widget_${appWidgetId}_show_amounts", true)
-        }
-        root.addView(showAmounts, matchWidth())
+        root.addView(privateBalance, matchWidth())
 
-        root.addView(Button(this).apply {
-            text = "Salva widget"
-            isAllCaps = false
+        val save = Button(this).apply {
+            text = "Salva"
             setOnClickListener {
                 val type = when (typeSpinner.selectedItemPosition) {
                     1 -> "income"
                     2 -> "transfer"
                     else -> "expense"
                 }
-                val editor = prefs.edit()
-                    .putString("widget_${appWidgetId}_type", type)
-                    .putString("widget_${appWidgetId}_account", account.text.toString().trim())
-                    .putString("widget_${appWidgetId}_category", category.text.toString().trim())
-                    .putString(
-                        "widget_${appWidgetId}_destination",
-                        destination.text.toString().trim(),
-                    )
-                    .putBoolean("widget_${appWidgetId}_show_balance", showBalance.isChecked)
-                    .putBoolean("widget_${appWidgetId}_show_amounts", showAmounts.isChecked)
-                amountFields.forEachIndexed { index, field ->
-                    val value = field.text.toString().trim().replace(',', '.')
-                    editor.putString(
-                        "widget_${appWidgetId}_amount_$index",
-                        value.toDoubleOrNull()?.takeIf { it > 0 }?.toString() ?: defaults[index],
-                    )
-                }
-                editor.apply()
-                requestWidgetUpdate()
+                prefs.edit()
+                    .putString("type_$appWidgetId", type)
+                    .putString("account_$appWidgetId", account.text.toString().trim())
+                    .putString("category_$appWidgetId", category.text.toString().trim())
+                    .putString("to_account_$appWidgetId", toAccount.text.toString().trim())
+                    .putString("amount_0_$appWidgetId", quick1.text.toString().trim())
+                    .putString("amount_1_$appWidgetId", quick2.text.toString().trim())
+                    .putString("amount_2_$appWidgetId", quick3.text.toString().trim())
+                    .putString("amount_3_$appWidgetId", quick4.text.toString().trim())
+                    .putBoolean("hide_balance_$appWidgetId", privateBalance.isChecked)
+                    .apply()
+                notifyWidgets()
                 setResult(
                     RESULT_OK,
                     Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId),
                 )
                 finish()
             }
-        }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(52)).apply {
-            topMargin = dp(24)
-        })
-
-        return ScrollView(this).apply { addView(root) }
+        }
+        root.addView(save, matchWidth())
+        setContentView(root)
     }
 
-    private fun requestWidgetUpdate() {
+    private fun notifyWidgets() {
         val manager = AppWidgetManager.getInstance(this)
-        val info = manager.getAppWidgetInfo(appWidgetId) ?: return
-        sendBroadcast(
-            Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
-                component = info.provider
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-            },
-        )
+        listOf(
+            DadaFinanceWidgetProvider::class.java,
+            DadaBalanceWidgetProvider::class.java,
+            DadaQuickAddWidgetProvider::class.java,
+            DadaQuickAmountsWidgetProvider::class.java,
+        ).forEach { provider ->
+            sendBroadcast(
+                Intent(this, provider).apply {
+                    action = AppWidgetManager.ACTION_APPWIDGET_UPDATE
+                    putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
+                },
+            )
+        }
     }
 
     private fun addLabel(root: LinearLayout, label: String) {
@@ -202,7 +162,7 @@ class DadaWidgetConfigActivity : Activity() {
         setText(value)
         setTextColor(Color.WHITE)
         setHintTextColor(Color.GRAY)
-        singleLine = true
+        setSingleLine(true)
         textSize = 16f
     }
 
