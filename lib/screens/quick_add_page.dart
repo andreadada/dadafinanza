@@ -523,6 +523,65 @@ class _QuickAddPageState extends State<QuickAddPage> {
     );
   }
 
+  Future<void> _chooseAdvanceToLink() async {
+    final state = AppScope.of(context);
+    final parsed = Money.parseExpression(amount.text);
+    if (parsed == null || parsed <= 0 || type == TransactionType.transfer)
+      return;
+    final cents = Money.toCents(parsed);
+    final expectedDirection = type == TransactionType.income
+        ? AdvanceDirection.receivable
+        : AdvanceDirection.payable;
+    final candidates = state.advances
+        .where(
+          (item) =>
+              item.direction == expectedDirection &&
+              item.closedKind == null &&
+              state.advanceRemainingCents(item.id) >= cents,
+        )
+        .toList();
+    if (candidates.isEmpty) {
+      _error('Nessun anticipo compatibile con questo movimento.');
+      return;
+    }
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        children: [
+          Text(
+            'Collega a un anticipo',
+            style: Theme.of(sheetContext).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          ...candidates.map((advance) {
+            final person = state.personById(advance.personId);
+            final remaining = state.advanceRemainingCents(advance.id);
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.handshake_outlined),
+              title: Text(person?.name ?? 'Persona'),
+              subtitle: Text(
+                '${moneyFor(state, Money.fromCents(remaining))} ${advance.direction.label.toLowerCase()}',
+              ),
+              onTap: () => Navigator.pop(sheetContext, advance.id),
+            );
+          }),
+        ],
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        linkedAdvanceId = picked;
+        advanceMatch = null;
+        advanceMatchDismissed = true;
+      });
+    }
+  }
+
   Future<void> _previewSuggestion() async {
     final current = suggestion;
     if (current == null) return;
@@ -1111,6 +1170,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
                           }),
                           child: const Text('Non è questo'),
                         ),
+                        TextButton(
+                          onPressed: _chooseAdvanceToLink,
+                          child: const Text('Altro'),
+                        ),
                         FilledButton.tonal(
                           onPressed: () => setState(() {
                             linkedAdvanceId = match.advanceId;
@@ -1310,10 +1373,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
                       final total = Money.parseExpression(amount.text) ?? 0;
                       final advanced =
                           Money.parseExpression(advanceShare.text) ?? 0;
-                      final personal = (total - advanced).clamp(
-                        0,
-                        double.infinity,
-                      );
+                      final personal = (total - advanced)
+                          .clamp(0, double.infinity)
+                          .toDouble();
                       return FlatMetric(
                         label: 'La mia parte',
                         value: moneyFor(state, personal),

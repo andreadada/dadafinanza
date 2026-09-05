@@ -1372,6 +1372,9 @@ class AppDatabase {
       await txn.delete('detected_recurring_patterns');
       await txn.delete('learned_patterns');
       await txn.delete('transaction_splits');
+      await txn.delete('advance_settlements');
+      await txn.delete('advances');
+      await txn.delete('finance_people');
       await txn.delete('transactions');
       await txn.delete('recurring');
       await txn.delete('budgets');

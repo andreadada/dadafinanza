@@ -59,7 +59,26 @@ class AdvanceService {
   }
 
   Future<void> archivePerson(int personId, bool archived) async {
-    await database.db.update(
+    if (archived) {
+      final open =
+          Sqflite.firstIntValue(
+            await database.db.rawQuery(
+              '''SELECT COUNT(*) FROM advances a
+                 WHERE a.person_id = ? AND a.closed_kind IS NULL
+                   AND a.original_amount_cents > COALESCE(
+                     (SELECT SUM(s.amount_cents) FROM advance_settlements s WHERE s.advance_id = a.id), 0
+                   )''',
+              [personId],
+            ),
+          ) ??
+          0;
+      if (open > 0) {
+        throw StateError(
+          'Questa persona ha anticipi ancora aperti. Chiudili prima di archiviarla.',
+        );
+      }
+    }
+    final changed = await database.db.update(
       'finance_people',
       {
         'archived': archived ? 1 : 0,
@@ -68,6 +87,132 @@ class AdvanceService {
       where: 'id = ?',
       whereArgs: [personId],
     );
+    if (changed == 0) throw StateError('Persona non trovata.');
+  }
+
+  Future<void> renamePerson(int personId, String name) async {
+    final normalized = name.trim();
+    if (normalized.isEmpty) {
+      throw StateError('Inserisci il nome della persona.');
+    }
+    final changed = await database.db.update(
+      'finance_people',
+      {'name': normalized, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id = ?',
+      whereArgs: [personId],
+    );
+    if (changed == 0) throw StateError('Persona non trovata.');
+  }
+
+  Future<void> updateAdvanceDetails({
+    required int advanceId,
+    required int personId,
+    DateTime? dueDate,
+    DateTime? reminderDate,
+    String? note,
+  }) async {
+    await database.db.transaction((txn) async {
+      final advance = await _advanceIn(txn, advanceId);
+      if (advance.closedKind != null) {
+        throw StateError(
+          'Lo storico di un anticipo chiuso non è modificabile.',
+        );
+      }
+      await _validatePerson(txn, personId);
+      await txn.update(
+        'advances',
+        {
+          'person_id': personId,
+          'due_date': dueDate?.millisecondsSinceEpoch,
+          'reminder_date': reminderDate?.millisecondsSinceEpoch,
+          'note': note?.trim().isEmpty == true ? null : note?.trim(),
+          'updated_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        where: 'id = ?',
+        whereArgs: [advanceId],
+      );
+    });
+  }
+
+  /// Cancels an advance without fabricating new income/expense.
+  ///
+  /// Pure advances reverse their original cash movement. Mixed expenses keep
+  /// the real purchase and simply stop allocating a share to the advance, so
+  /// the whole purchase becomes personal analytics again.
+  Future<void> cancelAdvance(int advanceId) async {
+    await database.db.transaction((txn) async {
+      final advance = await _advanceIn(txn, advanceId);
+      if (advance.closedKind != null) {
+        throw StateError('Questo anticipo è già chiuso.');
+      }
+      final settlementCount =
+          Sqflite.firstIntValue(
+            await txn.rawQuery(
+              'SELECT COUNT(*) FROM advance_settlements WHERE advance_id = ?',
+              [advanceId],
+            ),
+          ) ??
+          0;
+      if (settlementCount > 0) {
+        throw StateError(
+          'Elimina prima i rimborsi/restituzioni registrati per annullare l’anticipo.',
+        );
+      }
+
+      final sourceId = advance.sourceTransactionId;
+      if (sourceId != null) {
+        final rows = await txn.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: [sourceId],
+          limit: 1,
+        );
+        if (rows.isNotEmpty) {
+          final item = FinanceTransaction.fromMap(rows.first);
+          if (item.kind == 'advance_origin') {
+            final cents = Money.toCents(item.amount);
+            await _applyCashDelta(
+              txn,
+              item.accountId,
+              item.type == TransactionType.income ? -cents : cents,
+            );
+            await txn.update(
+              'advances',
+              {'source_transaction_id': null},
+              where: 'id = ?',
+              whereArgs: [advanceId],
+            );
+            await txn.delete(
+              'transactions',
+              where: 'id = ?',
+              whereArgs: [sourceId],
+            );
+          } else if (item.kind == 'mixed_advance') {
+            await txn.update(
+              'transactions',
+              {
+                'kind': 'normal',
+                'updated_at': DateTime.now().millisecondsSinceEpoch,
+              },
+              where: 'id = ?',
+              whereArgs: [sourceId],
+            );
+          }
+        }
+      }
+
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await txn.update(
+        'advances',
+        {
+          'closed_kind': AdvanceClosedKind.cancelled.dbValue,
+          'closed_at': now,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [advanceId],
+      );
+    });
   }
 
   Future<int> createPureAdvance({

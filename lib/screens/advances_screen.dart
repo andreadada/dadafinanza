@@ -229,6 +229,42 @@ class AdvanceDetailScreen extends StatelessWidget {
             onPressed: canSettle ? () => _editDates(context, advance) : null,
             icon: const Icon(Icons.notifications_none_rounded),
           ),
+          if (advance.closedKind == null)
+            PopupMenuButton<String>(
+              tooltip: 'Azioni anticipo',
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  await showAdvanceMetadataEditor(context, advance);
+                } else if (value == 'cancel') {
+                  final confirmed = await confirmDestructiveAction(
+                    context,
+                    title: 'Annullare questo anticipo?',
+                    message: advance.sourceTransactionId == null
+                        ? 'La posizione verrà chiusa come annullata.'
+                        : 'Se è un anticipo puro, il movimento di cassa originale verrà annullato. Le spese miste restano come acquisto personale.',
+                    confirmLabel: 'Annulla anticipo',
+                  );
+                  if (!confirmed) return;
+                  try {
+                    await state.cancelAdvance(advance.id);
+                  } catch (error) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            error.toString().replaceFirst('Bad state: ', ''),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                }
+              },
+              itemBuilder: (context) => const [
+                PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                PopupMenuItem(value: 'cancel', child: Text('Annulla anticipo')),
+              ],
+            ),
         ],
       ),
       body: ListView(
@@ -315,6 +351,34 @@ class AdvanceDetailScreen extends StatelessWidget {
                   if (settlement.note?.isNotEmpty == true) settlement.note!,
                 ].join(' · '),
               ),
+              trailing: advance.closedKind == null
+                  ? PopupMenuButton<String>(
+                      tooltip: 'Azioni rimborso',
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          await showSettlementEditor(
+                            context,
+                            advance,
+                            editing: settlement,
+                          );
+                        } else if (value == 'delete') {
+                          final confirmed = await confirmDestructiveAction(
+                            context,
+                            title: 'Eliminare questo rimborso?',
+                            message:
+                                'Il saldo del conto e il residuo dell’anticipo verranno ripristinati automaticamente.',
+                          );
+                          if (confirmed) {
+                            await state.deleteAdvanceSettlement(settlement.id);
+                          }
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                        PopupMenuItem(value: 'delete', child: Text('Elimina')),
+                      ],
+                    )
+                  : null,
             );
           }),
           if (advance.note?.isNotEmpty == true) ...[
@@ -742,18 +806,133 @@ Future<void> showAdvanceEditor(
   }
 }
 
-Future<void> showSettlementEditor(BuildContext context, Advance advance) async {
+Future<void> showAdvanceMetadataEditor(
+  BuildContext context,
+  Advance advance,
+) async {
+  final state = AppScope.of(context);
+  var personId = advance.personId;
+  var dueDate = advance.dueDate;
+  var reminderDate = advance.reminderDate;
+  final note = TextEditingController(text: advance.note ?? '');
+  final saved = await showModalBottomSheet<bool>(
+    context: context,
+    useSafeArea: true,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setSheetState) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          24 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Modifica anticipo',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.person_outline_rounded),
+                title: const Text('Persona'),
+                subtitle: Text(state.personById(personId)?.name ?? 'Scegli'),
+                onTap: () async {
+                  final picked = await showFinancePersonPicker(context);
+                  if (picked != null) setSheetState(() => personId = picked);
+                },
+              ),
+              TextField(
+                controller: note,
+                decoration: const InputDecoration(labelText: 'Nota opzionale'),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.event_outlined),
+                title: const Text('Scadenza'),
+                subtitle: Text(
+                  dueDate == null
+                      ? 'Nessuna'
+                      : DateFormat('d MMM yyyy', 'it_IT').format(dueDate!),
+                ),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    initialDate: dueDate ?? DateTime.now(),
+                  );
+                  if (picked != null) setSheetState(() => dueDate = picked);
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.notifications_none_rounded),
+                title: const Text('Promemoria'),
+                subtitle: Text(
+                  reminderDate == null
+                      ? 'Nessuno'
+                      : DateFormat('d MMM yyyy', 'it_IT').format(reminderDate!),
+                ),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: context,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                    initialDate: reminderDate ?? dueDate ?? DateTime.now(),
+                  );
+                  if (picked != null)
+                    setSheetState(() => reminderDate = picked);
+                },
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Salva modifiche'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  if (saved == true) {
+    await state.updateAdvanceDetails(
+      advanceId: advance.id,
+      personId: personId,
+      dueDate: dueDate,
+      reminderDate: reminderDate,
+      note: note.text,
+    );
+  }
+  note.dispose();
+}
+
+Future<void> showSettlementEditor(
+  BuildContext context,
+  Advance advance, {
+  AdvanceSettlement? editing,
+}) async {
   final state = AppScope.of(context);
   final remaining = state.advanceRemainingCents(advance.id);
+  final available = remaining + (editing?.amountCents ?? 0);
   final amount = TextEditingController(
-    text: Money.fromCents(remaining).toStringAsFixed(2),
+    text: Money.fromCents(editing?.amountCents ?? remaining).toStringAsFixed(2),
   );
-  final note = TextEditingController();
-  int? accountId = state.activeAccounts
-      .where((item) => !item.isLocked)
-      .firstOrNull
-      ?.id;
-  var date = DateTime.now();
+  final note = TextEditingController(text: editing?.note ?? '');
+  int? accountId =
+      editing?.accountId ??
+      state.activeAccounts.where((item) => !item.isLocked).firstOrNull?.id;
+  var date = editing?.date ?? DateTime.now();
   final saved = await showModalBottomSheet<bool>(
     context: context,
     useSafeArea: true,
@@ -779,7 +958,9 @@ Future<void> showSettlementEditor(BuildContext context, Advance advance) async {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 8),
-              Text('Residuo: ${moneyFor(state, Money.fromCents(remaining))}'),
+              Text(
+                'Disponibile: ${moneyFor(state, Money.fromCents(available))}',
+              ),
               const SizedBox(height: 16),
               TextField(
                 controller: amount,
@@ -838,7 +1019,7 @@ Future<void> showSettlementEditor(BuildContext context, Advance advance) async {
                     final parsed = Money.parseExpression(amount.text);
                     if (parsed == null ||
                         parsed <= 0 ||
-                        Money.toCents(parsed) > remaining ||
+                        Money.toCents(parsed) > available ||
                         accountId == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -850,13 +1031,23 @@ Future<void> showSettlementEditor(BuildContext context, Advance advance) async {
                       return;
                     }
                     try {
-                      await state.recordAdvanceSettlement(
-                        advanceId: advance.id,
-                        amount: parsed,
-                        accountId: accountId!,
-                        date: date,
-                        note: note.text,
-                      );
+                      if (editing == null) {
+                        await state.recordAdvanceSettlement(
+                          advanceId: advance.id,
+                          amount: parsed,
+                          accountId: accountId!,
+                          date: date,
+                          note: note.text,
+                        );
+                      } else {
+                        await state.updateAdvanceSettlement(
+                          settlement: editing,
+                          amount: parsed,
+                          accountId: accountId!,
+                          date: date,
+                          note: note.text,
+                        );
+                      }
                       if (context.mounted) Navigator.pop(context, true);
                     } catch (error) {
                       if (context.mounted) {
@@ -929,12 +1120,183 @@ class FinancePeopleScreen extends StatelessWidget {
                         ? 'Nessun anticipo aperto'
                         : '$open anticipi aperti',
                   ),
-                  trailing: person.archived ? const Text('Archiviata') : null,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          FinancePersonDetailScreen(personId: person.id),
+                    ),
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Azioni persona',
+                    onSelected: (value) async {
+                      if (value == 'rename') {
+                        await showFinancePersonRename(context, person);
+                      } else if (value == 'archive') {
+                        try {
+                          await state.archiveFinancePerson(
+                            person.id,
+                            !person.archived,
+                          );
+                        } catch (error) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  error.toString().replaceFirst(
+                                    'Bad state: ',
+                                    '',
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'rename',
+                        child: Text('Rinomina'),
+                      ),
+                      PopupMenuItem(
+                        value: 'archive',
+                        child: Text(
+                          person.archived ? 'Ripristina' : 'Archivia',
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }).toList(),
             ),
     );
   }
+}
+
+class FinancePersonDetailScreen extends StatelessWidget {
+  const FinancePersonDetailScreen({required this.personId, super.key});
+
+  final int personId;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final person = state.personById(personId);
+    if (person == null) {
+      return const Scaffold(body: Center(child: Text('Persona non trovata')));
+    }
+    final items = state.advances
+        .where((item) => item.personId == personId)
+        .toList();
+    var receivable = 0;
+    var payable = 0;
+    for (final item in items.where((item) => item.closedKind == null)) {
+      final remaining = state.advanceRemainingCents(item.id);
+      if (item.direction == AdvanceDirection.receivable) {
+        receivable += remaining;
+      } else {
+        payable += remaining;
+      }
+    }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(person.name),
+        actions: [
+          IconButton(
+            tooltip: 'Rinomina persona',
+            onPressed: () => showFinancePersonRename(context, person),
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: FlatMetric(
+                  label: 'Da ricevere',
+                  value: state.hideBalance
+                      ? '••••'
+                      : moneyFor(state, Money.fromCents(receivable)),
+                  icon: Icons.call_received_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FlatMetric(
+                  label: 'Da restituire',
+                  value: state.hideBalance
+                      ? '••••'
+                      : moneyFor(state, Money.fromCents(payable)),
+                  icon: Icons.call_made_rounded,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 28),
+          const SectionTitle('Storico'),
+          if (items.isEmpty)
+            const Text('Nessun anticipo con questa persona.')
+          else
+            ...items.map(
+              (item) => _AdvanceRow(
+                advance: item,
+                closed:
+                    item.closedKind != null ||
+                    state.advanceRemainingCents(item.id) == 0,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> showFinancePersonRename(
+  BuildContext context,
+  FinancePerson person,
+) async {
+  final state = AppScope.of(context);
+  final controller = TextEditingController(text: person.name);
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: const Text('Rinomina persona'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.words,
+        decoration: const InputDecoration(labelText: 'Nome'),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text('Annulla'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text('Salva'),
+        ),
+      ],
+    ),
+  );
+  if (saved == true) {
+    try {
+      await state.renameFinancePerson(person.id, controller.text);
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(error.toString().replaceFirst('Bad state: ', '')),
+          ),
+        );
+      }
+    }
+  }
+  controller.dispose();
 }
 
 Future<int?> showFinancePersonPicker(

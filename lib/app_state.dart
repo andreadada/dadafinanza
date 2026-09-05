@@ -680,6 +680,43 @@ class AppState extends ChangeNotifier {
     return id;
   }
 
+  Future<void> renameFinancePerson(int personId, String name) async {
+    await AdvanceService(database).renamePerson(personId, name);
+    await _reloadAdvances();
+    notifyListeners();
+  }
+
+  Future<void> archiveFinancePerson(int personId, bool archived) async {
+    await AdvanceService(database).archivePerson(personId, archived);
+    await _reloadAdvances();
+    notifyListeners();
+  }
+
+  Future<void> updateAdvanceDetails({
+    required int advanceId,
+    required int personId,
+    DateTime? dueDate,
+    DateTime? reminderDate,
+    String? note,
+  }) async {
+    await AdvanceService(database).updateAdvanceDetails(
+      advanceId: advanceId,
+      personId: personId,
+      dueDate: dueDate,
+      reminderDate: reminderDate,
+      note: note,
+    );
+    await _reloadAdvances();
+    notifyListeners();
+  }
+
+  Future<void> cancelAdvance(int advanceId) async {
+    await AdvanceService(database).cancelAdvance(advanceId);
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
   Future<int> createPureAdvance({
     required AdvanceDirection direction,
     required int personId,
@@ -752,6 +789,32 @@ class AppState extends ChangeNotifier {
       date: date,
       note: note,
     );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
+  Future<void> updateAdvanceSettlement({
+    required AdvanceSettlement settlement,
+    required double amount,
+    required int accountId,
+    required DateTime date,
+    String? note,
+  }) async {
+    await AdvanceService(database).updateSettlement(
+      settlementId: settlement.id,
+      amount: amount,
+      accountId: accountId,
+      date: date,
+      note: note,
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
+  Future<void> deleteAdvanceSettlement(int settlementId) async {
+    await AdvanceService(database).deleteSettlement(settlementId);
     await refreshCore(includePlanning: true);
     await _reloadAdvances();
     await _rebuildLearning();

@@ -50,7 +50,7 @@ class DadaHomeScreen extends StatelessWidget {
     final upcoming = state.recurring.where((item) => item.enabled).toList()
       ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
     final budget = _priorityBudget(state);
-    final insight = _smartInsight(state);
+    final smartInsight = _smartInsight(state);
     final enabledWidgets = [...state.dashboardWidgets]
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     final extraWidgets = enabledWidgets
@@ -215,7 +215,7 @@ class DadaHomeScreen extends StatelessWidget {
               ],
               if (state.advanceReceivableCents > 0 ||
                   state.advancePayableCents > 0 ||
-                  _smartInsight(state) != null) ...[
+                  smartInsight != null) ...[
                 const SizedBox(height: 28),
                 const SectionTitle('Per te'),
                 if (state.advanceReceivableCents > 0 ||
@@ -225,8 +225,10 @@ class DadaHomeScreen extends StatelessWidget {
                     leading: const Icon(Icons.handshake_outlined),
                     title: const Text('Anticipi'),
                     subtitle: Text(
-                      '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · '
-                      '${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
+                      state.hideBalance
+                          ? '•••• da ricevere · •••• da restituire'
+                          : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · '
+                                '${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -234,7 +236,7 @@ class DadaHomeScreen extends StatelessWidget {
                       MaterialPageRoute(builder: (_) => const AdvancesScreen()),
                     ),
                   ),
-                if (_smartInsight(state) case final insight?)
+                if (smartInsight case final insight?)
                   _InsightRow(insight: insight),
               ],
               const SizedBox(height: 32),
