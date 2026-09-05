@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../main.dart';
 import '../models/models.dart';
@@ -6,16 +7,17 @@ import '../models/quick_capture_models.dart';
 import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
-import 'canonical_shell.dart';
+import 'account_analytics_screen.dart';
+import 'expert_transactions_screen.dart';
 import 'home_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
-import 'root_screen.dart' show TransactionsScreen;
 
 /// The single navigation shell exposed by DadaFinanza.
 ///
-/// Legacy RootScreen/HomeScreen classes remain only as implementation debt for
-/// shared screens and are never used as an application entry point.
+/// Home, Movimenti and Analisi share one account scope. `null` means Totale.
+/// Pianifica intentionally remains global because budgets, goals and planning
+/// can span more than one account.
 class DadaAppShell extends StatefulWidget {
   const DadaAppShell({super.key});
 
@@ -25,55 +27,130 @@ class DadaAppShell extends StatefulWidget {
 
 class _DadaAppShellState extends State<DadaAppShell> {
   int index = 0;
+  int? selectedAccountId;
+  final List<int> _tabHistory = [0];
+  DateTime? _lastHomeBack;
 
   @override
   Widget build(BuildContext context) {
-    const pages = [
-      DadaHomeScreen(),
-      TransactionsScreen(),
-      CanonicalAnalyticsScreen(),
-      PlanningScreen(),
-    ];
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(index: index, children: pages),
+    final state = AppScope.of(context);
+    final scopedAccountId = selectedAccountId != null &&
+            state.activeAccounts.any((item) => item.id == selectedAccountId)
+        ? selectedAccountId
+        : null;
+    final pages = [
+      DadaHomeScreen(
+        selectedAccountId: scopedAccountId,
+        onAccountChanged: _setAccountScope,
       ),
-      floatingActionButton: GestureDetector(
-        onLongPress: _showQuickMenu,
-        child: FloatingActionButton(
-          tooltip: 'Nuovo movimento. Tieni premuto per voce e preset.',
-          onPressed: () => _open(TransactionType.expense),
-          child: const Icon(Icons.add_rounded),
+      ExpertTransactionsScreen(
+        selectedAccountId: scopedAccountId,
+        onAccountChanged: _setAccountScope,
+      ),
+      AccountAnalyticsScreen(
+        selectedAccountId: scopedAccountId,
+        onAccountChanged: _setAccountScope,
+      ),
+      const PlanningScreen(),
+    ];
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _handleBack,
+      child: Scaffold(
+        body: SafeArea(
+          child: IndexedStack(index: index, children: pages),
+        ),
+        floatingActionButton: GestureDetector(
+          onLongPress: _showQuickMenu,
+          child: FloatingActionButton(
+            tooltip: 'Nuovo movimento. Tieni premuto per voce e preset.',
+            onPressed: () => _open(TransactionType.expense),
+            child: const Icon(Icons.add_rounded),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: _selectTab,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: 'Movimenti',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              selectedIcon: Icon(Icons.insights_rounded),
+              label: 'Analisi',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.event_note_outlined),
+              selectedIcon: Icon(Icons.event_note_rounded),
+              label: 'Pianifica',
+            ),
+          ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Movimenti',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Analisi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note_rounded),
-            label: 'Pianifica',
-          ),
-        ],
-      ),
     );
+  }
+
+  void _setAccountScope(int? accountId) {
+    if (selectedAccountId == accountId) return;
+    setState(() => selectedAccountId = accountId);
+  }
+
+  void _selectTab(int value) {
+    if (value == index) return;
+    setState(() {
+      index = value;
+      _tabHistory.remove(value);
+      _tabHistory.add(value);
+    });
+  }
+
+  Future<void> _handleBack(bool didPop, Object? result) async {
+    if (didPop) return;
+
+    if (_tabHistory.length > 1) {
+      setState(() {
+        _tabHistory.removeLast();
+        index = _tabHistory.last;
+      });
+      return;
+    }
+
+    if (index != 0) {
+      setState(() {
+        index = 0;
+        _tabHistory
+          ..clear()
+          ..add(0);
+      });
+      return;
+    }
+
+    final now = DateTime.now();
+    if (_lastHomeBack != null &&
+        now.difference(_lastHomeBack!) < const Duration(seconds: 2)) {
+      await SystemNavigator.pop();
+      return;
+    }
+    _lastHomeBack = now;
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text('Premi di nuovo Indietro per uscire da DadaFinanza.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
   }
 
   Future<void> _open(
@@ -82,7 +159,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
     bool voice = false,
   }) async {
     final state = AppScope.of(context);
-    int? accountId = preset?.accountId;
+    int? accountId = preset?.accountId ?? selectedAccountId;
     int? destinationId = preset?.toAccountId;
     if (accountId == null) {
       final key = switch (type) {
@@ -96,6 +173,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
       destinationId = int.tryParse(
         await state.database.getSetting('preferred_transfer_destination') ?? '',
       );
+      if (destinationId == accountId) destinationId = null;
     }
     if (!mounted) return;
     final draft = TransactionDraft(
@@ -109,8 +187,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
       source: voice
           ? QuickCaptureSource.voice
           : preset == null
-          ? QuickCaptureSource.manual
-          : QuickCaptureSource.preset,
+              ? QuickCaptureSource.manual
+              : QuickCaptureSource.preset,
       startVoice: voice,
     );
     await Navigator.push(
@@ -178,23 +256,21 @@ class _DadaAppShellState extends State<DadaAppShell> {
               if (presets.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const SectionTitle('Preset'),
-                ...presets
-                    .take(6)
-                    .map(
-                      (preset) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: const Icon(Icons.bookmark_outline_rounded),
-                        title: Text(preset.name),
-                        subtitle: Text(
-                          [
-                            preset.type.label,
-                            if (preset.amount != null)
-                              moneyFor(state, preset.amount!),
-                          ].join(' · '),
-                        ),
-                        onTap: () => Navigator.pop(sheetContext, preset),
-                      ),
+                ...presets.take(6).map(
+                  (preset) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.bookmark_outline_rounded),
+                    title: Text(preset.name),
+                    subtitle: Text(
+                      [
+                        preset.type.label,
+                        if (preset.amount != null)
+                          moneyFor(state, preset.amount!),
+                      ].join(' · '),
                     ),
+                    onTap: () => Navigator.pop(sheetContext, preset),
+                  ),
+                ),
               ],
             ],
           ),
