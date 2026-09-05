@@ -6,9 +6,10 @@ DadaFinanza è un'app di finanza personale Android-first, local-first e private-
 
 - una sola navigazione canonica: **Home / Movimenti / Analisi / Pianifica**;
 - nessuna operazione finanziaria viene eseguita in background da un deep link o da un widget;
-- gli importi monetari vengono normalizzati in minor units quando entrano nei nuovi servizi critici;
-- Smart Finance è deterministico, spiegabile e locale;
+- gli importi monetari vengono normalizzati in minor units nei servizi critici;
+- Smart Finance e matching Anticipi sono deterministici, spiegabili e locali;
 - voce, widget e preset sono modalità di acquisizione, non ledger separati;
+- **liquidità e analytics personali sono concetti distinti**: un movimento può cambiare il saldo di un conto senza essere reddito/spesa;
 - ogni modifica UI segue `docs/LINEE_GUIDA_STYLE.md`.
 
 ## 2. Livelli principali
@@ -16,19 +17,24 @@ DadaFinanza è un'app di finanza personale Android-first, local-first e private-
 ### UI
 
 - `DadaAppShell`: unico root di navigazione esposto all'utente;
-- `CanonicalHomeScreen`: Home canonica;
+- `DadaHomeScreen`: Home canonica informativa e flat;
+- `CanonicalAnalyticsScreen`: analisi canonica;
+- `TransactionsScreen`: movimenti e filtri;
 - `QuickAddPage`: unica superficie di conferma e modifica del nuovo movimento;
-- schermate account, pianificazione, analytics e impostazioni.
+- `AdvancesScreen`: vista di crediti/debiti informali e relativo storico;
+- schermate account, pianificazione e impostazioni.
 
 Le vecchie classi di shell restano temporaneamente nel sorgente solo finché contengono componenti condivisi ancora riutilizzati, ma non costituiscono entry point raggiungibili dall'app.
 
 ### Stato e dominio
 
-`AppState` espone lo stato reattivo dell'app e coordina repository/servizi esistenti. Il refactor evita di aggiungere nuova logica di acquisizione direttamente nel widget Android o nel parser vocale.
+`AppState` espone lo stato reattivo dell'app e coordina database e servizi. La business logic con invarianti forti resta nei servizi dedicati (`AdvanceService`, `GoalLedgerService`, Smart Finance) invece che nei widget.
 
 ### Persistenza
 
-`AppDatabase` gestisce SQLite e le migrazioni. `FinanceSchemaService` mantiene compatibilità con installazioni precedenti durante il consolidamento dello schema. Allegati e backup hanno servizi dedicati.
+`AppDatabase` gestisce SQLite e le migrazioni. `FinanceSchemaService` consolida lo schema e mantiene compatibilità con installazioni precedenti. Allegati e backup hanno servizi dedicati.
+
+Gli importi nuovi persistenti che richiedono integrità contabile usano centesimi interi; le API UI legacy possono continuare a esporre `double`, normalizzato tramite `Money` al confine di persistenza.
 
 ### Smart Finance
 
@@ -48,19 +54,7 @@ Smart Finance ─┘             │
                     completa solo campi mancanti
 ```
 
-`TransactionDraft` può contenere:
-
-- tipo;
-- importo in centesimi;
-- conto origine;
-- conto destinazione;
-- categoria;
-- data;
-- nota;
-- tag;
-- sorgente del draft;
-- indicazione di avvio vocale;
-- origine dei singoli campi quando rilevante.
+`TransactionDraft` può contenere tipo, importo in centesimi, conti, categoria, data, nota, tag, sorgente e indicazione di avvio vocale.
 
 ### Precedenza dei dati
 
@@ -73,103 +67,87 @@ Per l'inserimento vocale:
 
 Un valore esplicito pronunciato dall'utente non viene sostituito da Smart Finance.
 
-## 4. Voice Capture
+## 4. Anticipi ledger
+
+Anticipi è un dominio separato che mantiene allineati cash movement e significato economico personale.
+
+```text
+Cash movement reale ──> saldo conto
+          │
+          ├─ normale ───────────────> analytics Entrate/Spese
+          │
+          └─ Anticipo/settlement ───> Advance ledger
+                                      (analytics escluse)
+```
+
+Una spesa mista usa un solo cash movement e una proiezione analitica della sola quota personale. Un rimborso/restituzione può avvenire su un conto diverso dall'origine. Il residuo è ricostruibile dall'importo originale meno i settlement.
+
+Componenti principali:
+
+- `FinancePerson`;
+- `Advance` (`receivable` / `payable`);
+- `AdvanceSettlement`;
+- `AdvanceService` per creazione, settlement, chiusura e matching;
+- `AppState` per proiezione analytics e stato reattivo.
+
+La specifica completa e le invarianti sono in `docs/ANTICIPI.md`.
+
+## 5. Voice Capture
 
 `VoiceInputService` gestisce esclusivamente il riconoscimento speech-to-text. `VoiceTransactionParser` interpreta poi la stringa localmente e in modo deterministico.
-
-### Privacy
 
 Default:
 
 - riconoscimento **on-device** quando Android lo rende disponibile;
 - fallback al recognizer di sistema disabilitato;
-- l'utente può abilitarlo esplicitamente nelle Impostazioni;
-- nessun audio o testo viene inviato a server DadaFinanza;
-- nessun OpenAI/Gemini/Whisper cloud viene usato.
+- l'utente può abilitarlo esplicitamente;
+- nessun audio o testo viene inviato a server DadaFinanza.
 
-Il recognizer di sistema, se abilitato, è un servizio del dispositivo: la sua privacy dipende dal provider configurato dall'utente.
+Il risultato vocale produce soltanto un `TransactionDraft`: non salva mai da solo.
 
-### Sicurezza
+## 6. Deep link
 
-Il risultato vocale produce soltanto un `TransactionDraft`. Anche una frase completamente riconosciuta apre/compila `QuickAddPage`: **non salva mai da sola**.
+Schema canonico: `dadafinanza://quick-add`.
 
-## 5. Deep link
+Parametri validati: `type`, `amount`, `category`, `account`, `toAccount`, `date`, `note`, `voice`, `presetId`.
 
-Schema canonico:
+Un deep link può solo precompilare un draft. Non può cancellare, modificare o salvare movimenti.
 
-`dadafinanza://quick-add`
+## 7. Widget Android
 
-Parametri supportati e validati:
+La famiglia widget resta basata su `HomeWidget` + `RemoteViews`:
 
-- `type`;
-- `amount`;
-- `category`;
-- `account`;
-- `toAccount`;
-- `date`;
-- `note`;
-- `voice`;
-- `presetId`.
+1. **Saldo**;
+2. **Quick Capture**;
+3. **Importi rapidi**;
+4. **Riepilogo**.
 
-I nomi di conti e categorie vengono risolti solo se esiste una corrispondenza locale valida. ID/nomi inesistenti non vengono rimpiazzati arbitrariamente.
+`DadaWidgetConfigActivity` salva preferenze keyed per `appWidgetId`. `hideBalance` globale prevale sui singoli widget.
 
-Un deep link può **solo precompilare** un draft. Non può cancellare, modificare o salvare movimenti.
+## 8. Allegati e backup
 
-## 6. Widget Android
+`AttachmentService` copia le ricevute in storage privato persistente. Il backup contiene database SQLite, allegati e manifest. Poiché Anticipi vive nello stesso database, persone, posizioni, settlement e riferimenti transazionali vengono ripristinati nello stesso snapshot.
 
-La famiglia widget resta basata su `HomeWidget` + `RemoteViews` perché copre i casi d'uso richiesti senza introdurre Glance come secondo framework UI nativo.
+## 9. Conferma come invariant
 
-Widget canonici:
-
-1. **Saldo** — compatto;
-2. **Quick Capture** — Spesa / Entrata / Trasferisci / Voce;
-3. **Importi rapidi** — quattro importi configurabili + tipo/conto/categoria + voce;
-4. **Riepilogo** — saldo e categorie rapide.
-
-### Configurazione per istanza
-
-`DadaWidgetConfigActivity` salva preferenze keyed per `appWidgetId`. In questo modo due widget possono usare conti, categorie e importi diversi.
-
-La configurazione nativa non accede direttamente al database Flutter: memorizza i nomi scelti e il resolver Flutter li valida quando il Quick Add viene aperto. Un valore non valido resta non assegnato invece di essere sostituito con un'entità casuale.
-
-### Privacy widget
-
-- la visualizzazione del saldo è opt-in per istanza;
-- gli importi rapidi possono essere oscurati;
-- `hideBalance` globale prevale e forza `••••` sui dati sensibili;
-- reboot/update non devono rendere visibili valori precedentemente nascosti.
-
-## 7. Allegati
-
-`AttachmentService` copia le ricevute in storage privato persistente. Quick Add consente fotocamera, galleria, sostituzione/rimozione e cleanup dei file non più referenziati.
-
-## 8. Conferma come invariant
-
-Sono sempre richiesti UI e conferma dell'utente per:
-
-- nuovo movimento da widget;
-- movimento generato da preset;
-- movimento compilato dalla voce;
-- deep link;
-- Smart Suggestion.
-
-La regola architetturale è:
+Sono sempre richiesti UI e conferma dell'utente per nuovo movimento da widget/preset/voce/deep link, Smart Suggestion e matching Anticipi.
 
 > **Capture suggests/prefills; Quick Add confirms; the ledger saves.**
 
-## 9. Testing
+## 10. Testing e CI
 
 I contratti critici devono essere coperti da:
 
-- parser vocale;
-- deep-link resolver;
+- parser vocale e deep-link resolver;
 - Home zero-data su più viewport;
 - widget/deep-link contract;
 - Smart Finance precedence;
+- Anticipi: saldo vs analytics, settlement parziali, mixed expense, matching e chiusure;
 - Quick Add UI/accessibilità;
-- CI con format, analyzer, test e APK debug.
+- backup/restore;
+- CI con format, analyzer, test e APK debug artifact.
 
-## 10. Fuori scope
+## 11. Fuori scope
 
 Non fanno parte di questa architettura:
 
@@ -177,4 +155,5 @@ Non fanno parte di questa architettura:
 - sincronizzazione cloud;
 - login/backend;
 - esecuzione di transazioni reali bancarie;
-- salvataggio automatico da voce/widget/deep link.
+- salvataggio automatico da voce/widget/deep link;
+- prestiti finanziari con interessi/piani di ammortamento: `Anticipi` rappresenta solo crediti/debiti informali.

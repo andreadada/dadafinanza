@@ -683,6 +683,19 @@ class AppDatabase {
         whereArgs: [id, id],
         orderBy: 'date DESC, id DESC',
       );
+      final hasAdvanceHistory = linkedRows.any((row) {
+        final kind = (row['kind'] as String?) ?? 'normal';
+        return kind == 'advance_origin' ||
+            kind == 'mixed_advance' ||
+            kind == 'advance_settlement' ||
+            kind == 'advance_writeoff' ||
+            kind == 'advance_forgiven_income';
+      });
+      if (hasAdvanceHistory) {
+        throw StateError(
+          'Questo conto contiene movimenti collegati ad Anticipi. Archivialo invece di eliminarlo per conservare lo storico.',
+        );
+      }
       for (final row in linkedRows) {
         await _applyBalance(
           txn,
@@ -907,6 +920,7 @@ class AppDatabase {
     'include_in_analytics': item.includeInAnalytics ? 1 : 0,
     'recurring_id': item.recurringId,
     'refund_of_transaction_id': item.refundOfTransactionId,
+    'kind': item.kind,
     'created_at': preserveCreatedAt
         ? item.createdAt.millisecondsSinceEpoch
         : now,
@@ -934,6 +948,10 @@ class AppDatabase {
     int direction, {
     bool validateAccounts = true,
   }) async {
+    if (item.kind == 'advance_writeoff' ||
+        item.kind == 'advance_forgiven_income') {
+      return;
+    }
     if (validateAccounts) await _validateAccount(txn, item.accountId);
     switch (item.type) {
       case TransactionType.expense:
@@ -1354,6 +1372,9 @@ class AppDatabase {
       await txn.delete('detected_recurring_patterns');
       await txn.delete('learned_patterns');
       await txn.delete('transaction_splits');
+      await txn.delete('advance_settlements');
+      await txn.delete('advances');
+      await txn.delete('finance_people');
       await txn.delete('transactions');
       await txn.delete('recurring');
       await txn.delete('budgets');

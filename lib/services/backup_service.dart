@@ -19,6 +19,9 @@ class BackupPreview {
     required this.categories,
     required this.attachments,
     required this.encrypted,
+    this.people = 0,
+    this.advances = 0,
+    this.advanceSettlements = 0,
   });
 
   final DateTime createdAt;
@@ -27,20 +30,28 @@ class BackupPreview {
   final int transactions;
   final int categories;
   final int attachments;
+  final int people;
+  final int advances;
+  final int advanceSettlements;
   final bool encrypted;
 }
 
 class BackupService {
-  BackupService(this.database, {AttachmentService? attachments})
-    : attachments = attachments ?? AttachmentService();
+  BackupService(
+    this.database, {
+    AttachmentService? attachments,
+    Future<Directory> Function()? temporaryDirectory,
+  }) : attachments = attachments ?? AttachmentService(),
+       _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory;
 
   static const formatVersion = 1;
   final AppDatabase database;
   final AttachmentService attachments;
+  final Future<Directory> Function() _temporaryDirectory;
 
   Future<File> create({String? password}) async {
     await database.db.rawQuery('PRAGMA wal_checkpoint(FULL)');
-    final temp = await getTemporaryDirectory();
+    final temp = await _temporaryDirectory();
     final work = Directory(
       p.join(temp.path, 'dada-backup-${DateTime.now().microsecondsSinceEpoch}'),
     );
@@ -57,6 +68,9 @@ class BackupService {
       'accounts': await _count(database.db, 'accounts', 'is_system = 0'),
       'transactions': await _count(database.db, 'transactions'),
       'categories': await _count(database.db, 'categories'),
+      'people': await _count(database.db, 'finance_people'),
+      'advances': await _count(database.db, 'advances'),
+      'advanceSettlements': await _count(database.db, 'advance_settlements'),
       'attachments': attachmentFiles.length,
       'encrypted': password?.isNotEmpty == true,
     };
@@ -86,37 +100,41 @@ class BackupService {
     return zip;
   }
 
-  Future<BackupPreview> inspect(String path, {String? password}) async {
-    final archive = await _decode(path, password: password);
-    final manifestEntry = archive.files
-        .where((entry) => entry.name == 'manifest.json' && entry.isFile)
-        .firstOrNull;
-    if (manifestEntry == null) {
-      throw const FormatException('Backup DadaFinanza non riconosciuto.');
-    }
-    final bytes = manifestEntry.readBytes();
-    if (bytes == null) {
-      throw const FormatException('Manifest backup non leggibile.');
-    }
-    final json = jsonDecode(utf8.decode(bytes));
-    if (json is! Map<String, dynamic> ||
-        json['format'] != 'DadaFinanzaBackup') {
-      throw const FormatException('Manifest backup non valido.');
-    }
-    return BackupPreview(
-      createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
-      schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 0,
-      accounts: (json['accounts'] as num?)?.toInt() ?? 0,
-      transactions: (json['transactions'] as num?)?.toInt() ?? 0,
-      categories: (json['categories'] as num?)?.toInt() ?? 0,
-      attachments: (json['attachments'] as num?)?.toInt() ?? 0,
-      encrypted: json['encrypted'] == true,
-    );
-  }
+  Future<BackupPreview> inspect(String path, {String? password}) =>
+      _withArchive(path, (archive) async {
+        final manifestEntry = archive.files
+            .where((entry) => entry.name == 'manifest.json' && entry.isFile)
+            .firstOrNull;
+        if (manifestEntry == null) {
+          throw const FormatException('Backup DadaFinanza non riconosciuto.');
+        }
+        final bytes = manifestEntry.readBytes();
+        if (bytes == null) {
+          throw const FormatException('Manifest backup non leggibile.');
+        }
+        final json = jsonDecode(utf8.decode(bytes));
+        if (json is! Map<String, dynamic> ||
+            json['format'] != 'DadaFinanzaBackup') {
+          throw const FormatException('Manifest backup non valido.');
+        }
+        return BackupPreview(
+          createdAt: DateTime.parse(json['createdAt'] as String).toLocal(),
+          schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 0,
+          accounts: (json['accounts'] as num?)?.toInt() ?? 0,
+          transactions: (json['transactions'] as num?)?.toInt() ?? 0,
+          categories: (json['categories'] as num?)?.toInt() ?? 0,
+          people: (json['people'] as num?)?.toInt() ?? 0,
+          advances: (json['advances'] as num?)?.toInt() ?? 0,
+          advanceSettlements:
+              (json['advanceSettlements'] as num?)?.toInt() ?? 0,
+          attachments: (json['attachments'] as num?)?.toInt() ?? 0,
+          encrypted: json['encrypted'] == true,
+        );
+      }, password: password);
 
   Future<void> restore(String path, {String? password}) async {
     await inspect(path, password: password);
-    final temp = await getTemporaryDirectory();
+    final temp = await _temporaryDirectory();
     final extract = Directory(
       p.join(
         temp.path,
@@ -124,8 +142,11 @@ class BackupService {
       ),
     );
     await extract.create(recursive: true);
-    final archive = await _decode(path, password: password);
-    await extractArchiveToDisk(archive, extract.path);
+    await _withArchive(
+      path,
+      (archive) => extractArchiveToDisk(archive, extract.path),
+      password: password,
+    );
 
     final restoredDb = File(p.join(extract.path, 'database', 'dadafinanza.db'));
     if (!await restoredDb.exists()) {
@@ -143,7 +164,6 @@ class BackupService {
       await attachments.replaceDirectory(restoredAttachments);
       await _integrityCheck(database.db);
     } catch (_) {
-      final safetyArchive = await _decode(safety.path);
       final safetyExtract = Directory(
         p.join(
           temp.path,
@@ -151,7 +171,10 @@ class BackupService {
         ),
       );
       await safetyExtract.create(recursive: true);
-      await extractArchiveToDisk(safetyArchive, safetyExtract.path);
+      await _withArchive(
+        safety.path,
+        (archive) => extractArchiveToDisk(archive, safetyExtract.path),
+      );
       final safetyDb = File(
         p.join(safetyExtract.path, 'database', 'dadafinanza.db'),
       );
@@ -172,14 +195,19 @@ class BackupService {
     }
   }
 
-  Future<Archive> _decode(String path, {String? password}) async {
+  Future<T> _withArchive<T>(
+    String path,
+    Future<T> Function(Archive) use, {
+    String? password,
+  }) async {
     final file = File(path);
     if (!await file.exists()) throw StateError('Backup non trovato.');
     final stream = InputFileStream(file.path);
     try {
-      return ZipDecoder().decodeStream(stream, password: password);
+      final archive = ZipDecoder().decodeStream(stream, password: password);
+      return await use(archive);
     } finally {
-      stream.close();
+      await stream.close();
     }
   }
 

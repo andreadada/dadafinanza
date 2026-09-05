@@ -5,6 +5,7 @@ import '../main.dart';
 import '../models/models.dart';
 import '../widgets/ui_helpers.dart';
 import 'android_widgets_screen.dart';
+import 'advances_screen.dart';
 import 'category_management_screen.dart';
 import 'data_management_screen.dart';
 import 'local_privacy_screen.dart';
@@ -58,7 +59,7 @@ class PersonalSettingsScreen extends StatelessWidget {
           _Link(
             icon: Icons.notifications_none_rounded,
             title: 'Notifiche locali',
-            subtitle: 'Scadenze, budget, obiettivi e cash-flow',
+            subtitle: 'Scadenze, anticipi, budget, obiettivi e cash-flow',
             onTap: () => _open(context, const NotificationSettingsScreen()),
           ),
           const SizedBox(height: 32),
@@ -85,6 +86,13 @@ class PersonalSettingsScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
           const SectionTitle('Organizzazione'),
+          _Link(
+            icon: Icons.handshake_outlined,
+            title: 'Anticipi',
+            subtitle:
+                '${state.advances.where((item) => item.closedKind == null && state.advanceRemainingCents(item.id) > 0).length} aperti · persone e storico',
+            onTap: () => _open(context, const AdvancesScreen()),
+          ),
           _Link(
             icon: Icons.category_outlined,
             title: 'Categorie',

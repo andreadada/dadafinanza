@@ -3,12 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../core/money.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_management_screen.dart';
+import 'advances_screen.dart';
 import 'category_management_screen.dart';
 import 'personal_settings_screen.dart';
 import 'planning_screens.dart';
@@ -822,6 +824,7 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
     final previousFrom = from.subtract(duration);
     final income = state.periodTotal(TransactionType.income, from, to);
     final expense = state.periodTotal(TransactionType.expense, from, to);
+    final advanceSettled = state.advanceSettledInPeriodCents(from, to);
     final previousExpense = state.periodTotal(
       TransactionType.expense,
       previousFrom,
@@ -841,7 +844,10 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
         if (splits.isNotEmpty) {
           total += splits
               .where((s) => s.categoryId == category.id)
-              .fold<double>(0, (sum, s) => sum + s.amount);
+              .fold<double>(
+                0,
+                (sum, s) => sum + state.analyticsAmountForSplit(item.id, s),
+              );
         } else if (item.categoryId == category.id) {
           total += state.effectiveExpense(item);
         }
@@ -969,6 +975,47 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
             icon: Icons.repeat_rounded,
             text:
                 'Ricorrenti di spesa ≈ ${moneyFor(state, recurringMonthly)}/mese.',
+          ),
+          const SizedBox(height: 32),
+          SectionTitle(
+            'Anticipi',
+            trailing: TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AdvancesScreen()),
+              ),
+              child: const Text('Apri'),
+            ),
+          ),
+          Row(
+            children: [
+              Expanded(
+                child: _Metric(
+                  label: 'Da ricevere',
+                  value: moneyFor(
+                    state,
+                    Money.fromCents(state.advanceReceivableCents),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: _Metric(
+                  label: 'Da restituire',
+                  value: moneyFor(
+                    state,
+                    Money.fromCents(state.advancePayableCents),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                child: _Metric(
+                  label: 'Regolati',
+                  value: moneyFor(state, Money.fromCents(advanceSettled)),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 32),
           const SectionTitle('Dove stai spendendo'),

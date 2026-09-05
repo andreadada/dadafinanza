@@ -75,6 +75,7 @@ class FinanceSchemaService {
 
       await _ensureGoalLedger(txn);
       await _ensurePresets(txn);
+      await _ensureAdvances(txn);
       await _ensureCompatibilityTriggers(txn);
       await _ensureIndexes(txn);
     });
@@ -155,6 +156,102 @@ class FinanceSchemaService {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     )''');
+  }
+
+  Future<void> _ensureAdvances(Transaction txn) async {
+    await txn.execute('''CREATE TABLE IF NOT EXISTS finance_people(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL COLLATE NOCASE,
+      color INTEGER NOT NULL DEFAULT 4287532691,
+      icon_key TEXT NOT NULL DEFAULT 'person',
+      archived INTEGER NOT NULL DEFAULT 0 CHECK(archived IN (0,1)),
+      note TEXT,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    )''');
+    await txn.execute('''CREATE TABLE IF NOT EXISTS advances(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      direction TEXT NOT NULL CHECK(direction IN ('receivable','payable')),
+      person_id INTEGER NOT NULL,
+      original_amount_cents INTEGER NOT NULL CHECK(original_amount_cents > 0),
+      source_account_id INTEGER,
+      source_transaction_id INTEGER,
+      due_date INTEGER,
+      reminder_date INTEGER,
+      note TEXT,
+      closed_kind TEXT CHECK(closed_kind IS NULL OR closed_kind IN ('cancelled','writtenOff','forgiven')),
+      closed_at INTEGER,
+      created_at INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL,
+      FOREIGN KEY(person_id) REFERENCES finance_people(id) ON DELETE RESTRICT,
+      FOREIGN KEY(source_account_id) REFERENCES accounts(id) ON DELETE SET NULL,
+      FOREIGN KEY(source_transaction_id) REFERENCES transactions(id) ON DELETE RESTRICT
+    )''');
+    await txn.execute('''CREATE TABLE IF NOT EXISTS advance_settlements(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      advance_id INTEGER NOT NULL,
+      amount_cents INTEGER NOT NULL CHECK(amount_cents > 0),
+      transaction_id INTEGER NOT NULL UNIQUE,
+      account_id INTEGER NOT NULL,
+      date INTEGER NOT NULL,
+      note TEXT,
+      created_at INTEGER NOT NULL,
+      FOREIGN KEY(advance_id) REFERENCES advances(id) ON DELETE CASCADE,
+      FOREIGN KEY(transaction_id) REFERENCES transactions(id) ON DELETE CASCADE,
+      FOREIGN KEY(account_id) REFERENCES accounts(id) ON DELETE RESTRICT
+    )''');
+
+    await txn.insert('settings', {
+      'key': 'notifications_advances',
+      'value': '1',
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+    await txn.insert('settings', {
+      'key': 'advances_default_reminder_days',
+      'value': '7',
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+
+    for (final name in const [
+      'advance_settlement_validate_insert',
+      'advance_settlement_validate_update',
+      'advance_settlement_sync_transaction',
+    ]) {
+      await txn.execute('DROP TRIGGER IF EXISTS $name');
+    }
+    await txn.execute('''CREATE TRIGGER advance_settlement_validate_insert
+      BEFORE INSERT ON advance_settlements
+      BEGIN
+        SELECT CASE
+          WHEN NEW.amount_cents <= 0 THEN RAISE(ABORT, 'advance settlement must be positive')
+          WHEN NOT EXISTS(SELECT 1 FROM advances WHERE id = NEW.advance_id AND closed_kind IS NULL)
+            THEN RAISE(ABORT, 'advance is closed or missing')
+          WHEN NEW.amount_cents + COALESCE((SELECT SUM(amount_cents) FROM advance_settlements WHERE advance_id = NEW.advance_id), 0)
+               > (SELECT original_amount_cents FROM advances WHERE id = NEW.advance_id)
+            THEN RAISE(ABORT, 'advance settlement exceeds remaining amount')
+        END;
+      END''');
+    await txn.execute('''CREATE TRIGGER advance_settlement_validate_update
+      BEFORE UPDATE OF amount_cents, advance_id ON advance_settlements
+      BEGIN
+        SELECT CASE
+          WHEN NEW.amount_cents <= 0 THEN RAISE(ABORT, 'advance settlement must be positive')
+          WHEN NOT EXISTS(SELECT 1 FROM advances WHERE id = NEW.advance_id AND closed_kind IS NULL)
+            THEN RAISE(ABORT, 'advance is closed or missing')
+          WHEN NEW.amount_cents + COALESCE((SELECT SUM(amount_cents) FROM advance_settlements WHERE advance_id = NEW.advance_id AND id <> OLD.id), 0)
+               > (SELECT original_amount_cents FROM advances WHERE id = NEW.advance_id)
+            THEN RAISE(ABORT, 'advance settlement exceeds remaining amount')
+        END;
+      END''');
+    await txn.execute('''CREATE TRIGGER advance_settlement_sync_transaction
+      AFTER UPDATE OF amount, account_id, date, note ON transactions
+      WHEN NEW.kind = 'advance_settlement' AND EXISTS(SELECT 1 FROM advance_settlements WHERE transaction_id = NEW.id)
+      BEGIN
+        UPDATE advance_settlements SET
+          amount_cents = CAST(ROUND(NEW.amount * 100) AS INTEGER),
+          account_id = NEW.account_id,
+          date = NEW.date,
+          note = NEW.note
+        WHERE transaction_id = NEW.id;
+      END''');
   }
 
   Future<void> _ensureCompatibilityTriggers(Transaction txn) async {
@@ -300,6 +397,18 @@ class FinanceSchemaService {
     );
     await txn.execute(
       'CREATE INDEX IF NOT EXISTS idx_presets_position ON quick_presets(enabled, position)',
+    );
+    await txn.execute(
+      'CREATE INDEX IF NOT EXISTS idx_advances_person ON advances(person_id, closed_at)',
+    );
+    await txn.execute(
+      'CREATE INDEX IF NOT EXISTS idx_advances_source_transaction ON advances(source_transaction_id)',
+    );
+    await txn.execute(
+      'CREATE INDEX IF NOT EXISTS idx_advances_due ON advances(due_date, reminder_date)',
+    );
+    await txn.execute(
+      'CREATE INDEX IF NOT EXISTS idx_advance_settlements_advance ON advance_settlements(advance_id, date)',
     );
   }
 

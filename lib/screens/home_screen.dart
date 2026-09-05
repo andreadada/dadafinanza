@@ -9,7 +9,9 @@ import '../models/models.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_management_screen.dart';
+import '../core/money.dart';
 import 'account_screens.dart' show showAccountEditor;
+import 'advances_screen.dart';
 import 'canonical_shell.dart' show CanonicalDashboardWidget;
 import 'personal_settings_screen.dart';
 import 'planning_screens.dart';
@@ -48,7 +50,7 @@ class DadaHomeScreen extends StatelessWidget {
     final upcoming = state.recurring.where((item) => item.enabled).toList()
       ..sort((a, b) => a.nextDate.compareTo(b.nextDate));
     final budget = _priorityBudget(state);
-    final insight = _smartInsight(state);
+    final smartInsight = _smartInsight(state);
     final enabledWidgets = [...state.dashboardWidgets]
       ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
     final extraWidgets = enabledWidgets
@@ -211,10 +213,31 @@ class DadaHomeScreen extends StatelessWidget {
                   ),
                 ),
               ],
-              if (insight != null) ...[
-                const SizedBox(height: 32),
+              if (state.advanceReceivableCents > 0 ||
+                  state.advancePayableCents > 0 ||
+                  smartInsight != null) ...[
+                const SizedBox(height: 28),
                 const SectionTitle('Per te'),
-                _InsightRow(insight: insight),
+                if (state.advanceReceivableCents > 0 ||
+                    state.advancePayableCents > 0)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.handshake_outlined),
+                    title: const Text('Anticipi'),
+                    subtitle: Text(
+                      state.hideBalance
+                          ? '•••• da ricevere · •••• da restituire'
+                          : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · '
+                                '${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdvancesScreen()),
+                    ),
+                  ),
+                if (smartInsight case final insight?)
+                  _InsightRow(insight: insight),
               ],
               const SizedBox(height: 32),
               SectionTitle(
