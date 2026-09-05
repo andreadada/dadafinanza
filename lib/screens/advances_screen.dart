@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../app_state.dart';
 import '../core/money.dart';
 import '../main.dart';
 import '../models/advance_models.dart';
@@ -596,7 +595,10 @@ Future<void> showAdvanceEditor(
                 ),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () async {
-                  final picked = await _pickPerson(context, allowCreate: true);
+                  final picked = await showFinancePersonPicker(
+                    context,
+                    allowCreate: true,
+                  );
                   if (picked != null) setSheetState(() => personId = picked);
                 },
               ),
@@ -896,7 +898,7 @@ class FinancePeopleScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Persone')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _createPersonDialog(context),
+        onPressed: () => showFinancePersonCreator(context),
         icon: const Icon(Icons.person_add_alt_1_rounded),
         label: const Text('Persona'),
       ),
@@ -935,7 +937,7 @@ class FinancePeopleScreen extends StatelessWidget {
   }
 }
 
-Future<int?> _pickPerson(
+Future<int?> showFinancePersonPicker(
   BuildContext context, {
   bool allowCreate = false,
 }) async {
@@ -968,7 +970,7 @@ Future<int?> _pickPerson(
               leading: const Icon(Icons.person_add_alt_1_rounded),
               title: const Text('Nuova persona'),
               onTap: () async {
-                final id = await _createPersonDialog(sheetContext);
+                final id = await showFinancePersonCreator(sheetContext);
                 if (id != null && sheetContext.mounted)
                   Navigator.pop(sheetContext, id);
               },
@@ -979,7 +981,7 @@ Future<int?> _pickPerson(
   );
 }
 
-Future<int?> _createPersonDialog(BuildContext context) async {
+Future<int?> showFinancePersonCreator(BuildContext context) async {
   final state = AppScope.of(context);
   final controller = TextEditingController();
   final id = await showDialog<int>(
@@ -1087,8 +1089,4 @@ Future<int?> _pickCategory(BuildContext context, TransactionType type) async {
       ),
     ),
   );
-}
-
-extension _FirstOrNull<T> on Iterable<T> {
-  T? get firstOrNull => isEmpty ? null : first;
 }

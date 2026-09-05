@@ -422,7 +422,7 @@ write(p, s)
 # App shell: expose pure Anticipo from the + quick menu --------------------------
 p = 'lib/screens/app_shell.dart'
 s = read(p)
-s = replace_once(s, "import 'account_screens.dart';", "import 'account_screens.dart';\nimport 'advances_screen.dart';", 'app shell import')
+s = replace_once(s, "import 'canonical_shell.dart';", "import 'advances_screen.dart';\nimport 'canonical_shell.dart';", 'app shell import')
 menu_marker = '''            if (presets.isNotEmpty) ...[
 '''
 advance_menu = '''            const SizedBox(height: 10),
@@ -438,17 +438,21 @@ s = replace_once(s, menu_marker, advance_menu + menu_marker, 'app shell advance 
 s = replace_once(
     s,
     '''    if (choice is QuickPreset) {
-      await _openQuick(choice.type, preset: choice);
+      await _open(choice.type, preset: choice);
     } else if (choice is TransactionType) {
-      await _openQuick(choice);
+      await _open(choice);
+    } else if (choice is _VoiceChoice) {
+      await _open(TransactionType.expense, voice: true);
     }
 ''',
     '''    if (choice == 'advance') {
       await showAdvanceEditor(context);
     } else if (choice is QuickPreset) {
-      await _openQuick(choice.type, preset: choice);
+      await _open(choice.type, preset: choice);
     } else if (choice is TransactionType) {
-      await _openQuick(choice);
+      await _open(choice);
+    } else if (choice is _VoiceChoice) {
+      await _open(TransactionType.expense, voice: true);
     }
 ''',
     'app shell choice',
@@ -459,7 +463,7 @@ write(p, s)
 # Home: compact Anticipi insight -------------------------------------------------
 p = 'lib/screens/home_screen.dart'
 s = read(p)
-s = replace_once(s, "import 'account_screens.dart';", "import 'account_screens.dart';\nimport 'advances_screen.dart';", 'home advances import')
+s = replace_once(s, "import 'account_screens.dart' show showAccountEditor;", "import '../core/money.dart';\nimport 'account_screens.dart' show showAccountEditor;\nimport 'advances_screen.dart';", 'home advances import')
 s = replace_once(
     s,
     '''    final state = AppScope.of(context);
@@ -469,11 +473,11 @@ s = replace_once(
     'home stable anchor',
 )
 # Find existing Per te section in dense home
-old_insight = '''          if (_smartInsight(state) case final insight?) ...[
-            const SizedBox(height: 28),
-            const SectionTitle('Per te'),
-            _InsightLine(insight: insight),
-          ],
+old_insight = '''              if (insight != null) ...[
+                const SizedBox(height: 32),
+                const SectionTitle('Per te'),
+                _InsightRow(insight: insight),
+              ],
 '''
 new_insight = '''          if (state.advanceReceivableCents > 0 ||
               state.advancePayableCents > 0 ||
@@ -496,7 +500,7 @@ new_insight = '''          if (state.advanceReceivableCents > 0 ||
                 ),
               ),
             if (_smartInsight(state) case final insight?)
-              _InsightLine(insight: insight),
+              _InsightRow(insight: insight),
           ],
 '''
 if old_insight in s:
@@ -704,127 +708,7 @@ s = s[:idx] + route_new + s[idx + len(route_old):]
 write(p, s)
 
 
-# Transaction rows/details -------------------------------------------------------
-p = 'lib/screens/transaction_screens.dart'
-s = read(p)
-s = replace_once(s, "import 'quick_add_page.dart';", "import 'advances_screen.dart';\nimport 'quick_add_page.dart';", 'transaction detail advance import')
-# TransactionListTile build enrichment
-anchor = '''    final category = state.categoryById(item.categoryId);
-    final source = state.accountById(item.accountId);
-    final destination = state.accountById(item.toAccountId);
-    return ListTile(
-'''
-enriched = '''    final category = state.categoryById(item.categoryId);
-    final source = state.accountById(item.accountId);
-    final destination = state.accountById(item.toAccountId);
-    final sourceAdvance = state.advanceForSourceTransaction(item.id);
-    final settlementAdvance = state.advanceForSettlementTransaction(item.id);
-    final linkedAdvance = sourceAdvance ?? settlementAdvance;
-    final person = state.personById(linkedAdvance?.personId);
-    final advanceTitle = switch (item.kind) {
-      'advance_origin' when linkedAdvance?.direction.name == 'receivable' =>
-        'Anticipo a ${person?.name ?? 'persona'}',
-      'advance_origin' => 'Anticipo da ${person?.name ?? 'persona'}',
-      'advance_settlement' when linkedAdvance?.direction.name == 'receivable' =>
-        'Rimborso da ${person?.name ?? 'persona'}',
-      'advance_settlement' => 'Restituzione a ${person?.name ?? 'persona'}',
-      'advance_writeoff' => 'Anticipo non recuperato',
-      'advance_forgiven_income' => 'Anticipo condonato',
-      _ => null,
-    };
-    return ListTile(
-'''
-s = replace_once(s, anchor, enriched, 'transaction list advance state')
-s = replace_once(
-    s,
-    '''      title: Text(
-        item.type == TransactionType.transfer
-            ? 'Trasferimento'
-            : category?.name ?? 'Senza categoria',''',
-    '''      title: Text(
-        advanceTitle ??
-            (item.type == TransactionType.transfer
-                ? 'Trasferimento'
-                : category?.name ?? 'Senza categoria'),''',
-    'transaction list advance title',
-)
-s = replace_once(
-    s,
-    '''      onTap: onTap ??
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => TransactionDetailPage(transactionId: item.id),
-            ),
-          ),''',
-    '''      onTap: onTap ??
-          () => Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => linkedAdvance != null && item.kind != 'mixed_advance'
-                  ? AdvanceDetailScreen(advanceId: linkedAdvance.id)
-                  : TransactionDetailPage(transactionId: item.id),
-            ),
-          ),''',
-    'transaction list advance route',
-)
-# Detail state after account/category declarations
-s = replace_once(
-    s,
-    '''    final category = state.categoryById(item.categoryId);
-    final account = state.accountById(item.accountId);
-    final destination = state.accountById(item.toAccountId);
-    final splits = state.splitsFor(item.id);''',
-    '''    final category = state.categoryById(item.categoryId);
-    final account = state.accountById(item.accountId);
-    final destination = state.accountById(item.toAccountId);
-    final splits = state.splitsFor(item.id);
-    final sourceAdvance = state.advanceForSourceTransaction(item.id);
-    final settlementAdvance = state.advanceForSettlementTransaction(item.id);
-    final linkedAdvance = sourceAdvance ?? settlementAdvance;
-    final protected = state.isAdvanceProtectedTransaction(item);''',
-    'transaction detail advance state',
-)
-s = replace_once(
-    s,
-    '''        actions: [
-          PopupMenuButton<String>(''',
-    '''        actions: [
-          if (linkedAdvance != null)
-            IconButton(
-              tooltip: 'Apri anticipo',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AdvanceDetailScreen(advanceId: linkedAdvance.id),
-                ),
-              ),
-              icon: const Icon(Icons.handshake_outlined),
-            ),
-          if (!protected)
-            PopupMenuButton<String>(''',
-    'transaction detail protect menu',
-)
-# Add linked advance metric before note section
-metric_marker = '''          if (item.note?.isNotEmpty == true) ...[
-'''
-metric = '''          if (linkedAdvance != null) ...[
-            const SizedBox(height: 16),
-            FlatMetric(
-              label: 'Anticipo',
-              value: state.personById(linkedAdvance.personId)?.name ?? 'Persona',
-              icon: Icons.handshake_outlined,
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AdvanceDetailScreen(advanceId: linkedAdvance.id),
-                ),
-              ),
-            ),
-          ],
-'''
-s = replace_once(s, metric_marker, metric + metric_marker, 'transaction detail advance metric')
-write(p, s)
+# Transaction rows/details are finalized by tooling/finalize_anticipi.py
 
 
 # Settings ----------------------------------------------------------------------
@@ -856,57 +740,6 @@ s = s.replace(
 write(p, s)
 
 
-# Backup manifest counts ---------------------------------------------------------
-p = 'lib/services/backup_service.dart'
-s = read(p)
-s = replace_once(
-    s,
-    '''    required this.categories,
-    required this.attachments,
-    required this.sizeBytes,''',
-    '''    required this.categories,
-    required this.attachments,
-    required this.sizeBytes,
-    this.people = 0,
-    this.advances = 0,''',
-    'backup preview ctor',
-)
-s = replace_once(
-    s,
-    '''  final int categories;
-  final int attachments;
-  final int sizeBytes;''',
-    '''  final int categories;
-  final int attachments;
-  final int sizeBytes;
-  final int people;
-  final int advances;''',
-    'backup preview fields',
-)
-s = replace_once(
-    s,
-    "    final categoryCount = await _count(database.db, 'categories');\n",
-    "    final categoryCount = await _count(database.db, 'categories');\n    final peopleCount = await _count(database.db, 'finance_people');\n    final advanceCount = await _count(database.db, 'advances');\n",
-    'backup counts query',
-)
-s = replace_once(
-    s,
-    "          'categories': categoryCount,\n          'attachments': files.length,",
-    "          'categories': categoryCount,\n          'attachments': files.length,\n          'people': peopleCount,\n          'advances': advanceCount,",
-    'backup manifest counts',
-)
-s = replace_once(
-    s,
-    '''      categories: _countFromManifest(json, 'categories'),
-      attachments: _countFromManifest(json, 'attachments'),
-      sizeBytes: file.lengthSync(),''',
-    '''      categories: _countFromManifest(json, 'categories'),
-      attachments: _countFromManifest(json, 'attachments'),
-      sizeBytes: file.lengthSync(),
-      people: _countFromManifest(json, 'people'),
-      advances: _countFromManifest(json, 'advances'),''',
-    'backup preview manifest read',
-)
-write(p, s)
+# Backup manifest counts are finalized by tooling/finalize_anticipi.py
 
 print('Anticipi UI patch applied.')

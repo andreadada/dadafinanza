@@ -717,6 +717,7 @@ class AppState extends ChangeNotifier {
     String? note,
     List<String> tags = const [],
     String? receiptPath,
+    bool includeInAnalytics = true,
   }) async {
     final id = await AdvanceService(database).createMixedExpense(
       personId: personId,
@@ -729,6 +730,7 @@ class AppState extends ChangeNotifier {
       note: note,
       tags: tags,
       receiptPath: receiptPath,
+      includeInAnalytics: includeInAnalytics,
     );
     await refreshCore(includePlanning: true);
     await _reloadAdvances();

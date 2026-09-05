@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../core/money.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_screens.dart';
+import 'advances_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
 import 'settings_screen.dart';
@@ -689,6 +691,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   double? minAmount;
   double? maxAmount;
   bool withReceiptOnly = false;
+  bool advancesOnly = false;
   late bool unassignedOnly;
   _TransactionSort sort = _TransactionSort.newest;
 
@@ -738,6 +741,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       if (minAmount != null && item.amount < minAmount!) return false;
       if (maxAmount != null && item.amount > maxAmount!) return false;
       if (withReceiptOnly && item.receiptPath?.isNotEmpty != true) return false;
+      if (advancesOnly && !state.isAdvanceProtectedTransaction(item))
+        return false;
       if (unassignedOnly && item.accountId != unassignedId) return false;
       return true;
     }).toList();
@@ -764,6 +769,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       minAmount != null ||
       maxAmount != null ||
       withReceiptOnly ||
+      advancesOnly ||
       unassignedOnly ||
       sort != _TransactionSort.newest;
 
@@ -777,6 +783,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
       minAmount = null;
       maxAmount = null;
       withReceiptOnly = false;
+      advancesOnly = false;
       unassignedOnly = false;
       sort = _TransactionSort.newest;
     });
@@ -1010,6 +1017,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
+                  if (advancesOnly)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: Chip(label: Text('Anticipi')),
+                    ),
                   if (unassignedOnly)
                     const Padding(
                       padding: EdgeInsets.only(right: 8),
@@ -1097,6 +1109,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     var draftMin = minAmount;
     var draftMax = maxAmount;
     var draftReceipt = withReceiptOnly;
+    var draftAdvances = advancesOnly;
     var draftUnassigned = unassignedOnly;
     var draftSort = sort;
     final minController = TextEditingController(
@@ -1266,6 +1279,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
+                    secondary: const Icon(Icons.handshake_outlined),
+                    title: const Text('Solo Anticipi'),
+                    subtitle: const Text(
+                      'Include anticipi, rimborsi e restituzioni.',
+                    ),
+                    value: draftAdvances,
+                    onChanged: (value) =>
+                        setSheetState(() => draftAdvances = value),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
                     title: const Text('Solo Non assegnati'),
                     value: draftUnassigned,
                     onChanged: (value) =>
@@ -1329,6 +1353,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                               minAmount = draftMin;
                               maxAmount = draftMax;
                               withReceiptOnly = draftReceipt;
+                              advancesOnly = draftAdvances;
                               unassignedOnly = draftUnassigned;
                               sort = draftSort;
                             });
@@ -1369,6 +1394,22 @@ class _SelectableTransactionTile extends StatelessWidget {
     final state = AppScope.of(context);
     final category = state.categoryById(item.categoryId);
     final account = state.accountById(item.accountId);
+    final sourceAdvance = state.advanceForSourceTransaction(item.id);
+    final settlementAdvance = state.advanceForSettlementTransaction(item.id);
+    final linkedAdvance = sourceAdvance ?? settlementAdvance;
+    final person = state.personById(linkedAdvance?.personId);
+    final protected = state.isAdvanceProtectedTransaction(item);
+    final advanceTitle = switch (item.kind) {
+      'advance_origin' when linkedAdvance?.direction.name == 'receivable' =>
+        'Anticipo a ${person?.name ?? 'persona'}',
+      'advance_origin' => 'Anticipo da ${person?.name ?? 'persona'}',
+      'advance_settlement' when linkedAdvance?.direction.name == 'receivable' =>
+        'Rimborso da ${person?.name ?? 'persona'}',
+      'advance_settlement' => 'Restituzione a ${person?.name ?? 'persona'}',
+      'advance_writeoff' => 'Anticipo non recuperato',
+      'advance_forgiven_income' => 'Anticipo condonato',
+      _ => null,
+    };
     return ListTile(
       selected: selected,
       contentPadding: EdgeInsets.zero,
@@ -1389,13 +1430,24 @@ class _SelectableTransactionTile extends StatelessWidget {
               ),
             ),
       title: Text(
-        item.type == TransactionType.transfer
-            ? 'Trasferimento'
-            : category?.name ?? 'Senza categoria',
+        advanceTitle ??
+            (item.type == TransactionType.transfer
+                ? 'Trasferimento'
+                : category?.name ?? 'Senza categoria'),
         style: const TextStyle(fontWeight: FontWeight.w700),
       ),
       subtitle: Text(
-        '${account?.isSystem == true ? 'Non assegnato' : account?.name ?? 'Conto'} · ${DateFormat('dd MMM, HH:mm', 'it_IT').format(item.date)}${item.note?.isNotEmpty == true ? ' · ${item.note}' : ''}',
+        [
+          account?.isSystem == true
+              ? 'Non assegnato'
+              : account?.name ?? 'Conto',
+          DateFormat('dd MMM, HH:mm', 'it_IT').format(item.date),
+          if (item.kind == 'mixed_advance' && sourceAdvance != null)
+            'Include ${moneyFor(state, Money.fromCents(sourceAdvance.originalAmountCents))} anticipati a ${person?.name ?? 'persona'}',
+          if (linkedAdvance != null && item.kind == 'advance_settlement')
+            '${moneyFor(state, Money.fromCents(state.advanceRemainingCents(linkedAdvance.id)))} residui',
+          if (item.note?.isNotEmpty == true) item.note!,
+        ].join(' · '),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
@@ -1410,13 +1462,16 @@ class _SelectableTransactionTile extends StatelessWidget {
           color: transactionColor(context, item.type),
         ),
       ),
-      onLongPress: onSelect,
+      onLongPress: protected ? null : onSelect,
       onTap: selectionMode
-          ? onSelect
+          ? (protected ? null : onSelect)
           : () => Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => TransactionDetailPage(transactionId: item.id),
+                builder: (_) =>
+                    linkedAdvance != null && item.kind != 'mixed_advance'
+                    ? AdvanceDetailScreen(advanceId: linkedAdvance.id)
+                    : TransactionDetailPage(transactionId: item.id),
               ),
             ),
     );

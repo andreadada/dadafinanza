@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../app_state.dart';
 import '../core/money.dart';
 import '../main.dart';
+import '../models/advance_models.dart';
 import '../models/models.dart';
 import '../models/quick_capture_models.dart';
 import '../models/smart_models.dart';
@@ -17,6 +18,7 @@ import '../services/voice_input_service.dart';
 import '../services/voice_transaction_parser.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_screens.dart';
+import 'advances_screen.dart';
 
 class QuickAddPage extends StatefulWidget {
   const QuickAddPage({
@@ -56,6 +58,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
   final amount = TextEditingController();
   final note = TextEditingController();
   final tag = TextEditingController();
+  final advanceShare = TextEditingController();
   final amountFocus = FocusNode();
   final picker = ImagePicker();
   final attachments = AttachmentService();
@@ -80,6 +83,11 @@ class _QuickAddPageState extends State<QuickAddPage> {
   String? lastVoiceTranscript;
   Timer? _suggestionDebounce;
   SmartSuggestion? suggestion;
+  bool advanceShareEnabled = false;
+  int? advancePersonId;
+  AdvanceMatchSuggestion? advanceMatch;
+  int? linkedAdvanceId;
+  bool advanceMatchDismissed = false;
 
   @override
   void initState() {
@@ -121,8 +129,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
       categoryId = draft?.categoryId;
       date = draft?.date ?? widget.initialDate ?? DateTime.now();
     }
-    amount.addListener(_scheduleSuggestion);
-    note.addListener(_scheduleSuggestion);
+    amount.addListener(_onDraftChanged);
+    note.addListener(_onDraftChanged);
+    advanceShare.addListener(_onDraftChanged);
   }
 
   @override
@@ -146,11 +155,13 @@ class _QuickAddPageState extends State<QuickAddPage> {
   @override
   void dispose() {
     _suggestionDebounce?.cancel();
-    amount.removeListener(_scheduleSuggestion);
-    note.removeListener(_scheduleSuggestion);
+    amount.removeListener(_onDraftChanged);
+    note.removeListener(_onDraftChanged);
+    advanceShare.removeListener(_onDraftChanged);
     amount.dispose();
     note.dispose();
     tag.dispose();
+    advanceShare.dispose();
     amountFocus.dispose();
     unawaited(voice.cancel());
     super.dispose();
@@ -245,6 +256,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
     setState(() {
       type = value;
       suggestion = null;
+      advanceMatch = null;
+      linkedAdvanceId = null;
+      advanceMatchDismissed = false;
+      if (value != TransactionType.expense) {
+        advanceShareEnabled = false;
+        advanceShare.clear();
+        advancePersonId = null;
+      }
       categoryId = value == TransactionType.transfer
           ? null
           : _recentCategories(state).firstOrNull?.id ??
@@ -261,10 +280,19 @@ class _QuickAddPageState extends State<QuickAddPage> {
     _scheduleSuggestion();
   }
 
+  void _onDraftChanged() {
+    if (!mounted) return;
+    setState(() {
+      advanceMatchDismissed = false;
+      if (linkedAdvanceId != null) linkedAdvanceId = null;
+    });
+    _scheduleSuggestion();
+  }
+
   void _scheduleSuggestion() {
     if (!mounted || widget.editing != null || !_defaultsSet) return;
     _suggestionDebounce?.cancel();
-    _suggestionDebounce = Timer(const Duration(milliseconds: 280), () {
+    _suggestionDebounce = Timer(const Duration(milliseconds: 280), () async {
       if (!mounted) return;
       final state = AppScope.of(context);
       final parsed = Money.parseExpression(amount.text);
@@ -274,7 +302,25 @@ class _QuickAddPageState extends State<QuickAddPage> {
         amount: parsed,
         date: date,
       );
-      if (mounted) setState(() => suggestion = next);
+      AdvanceMatchSuggestion? match;
+      if (parsed != null &&
+          parsed > 0 &&
+          type != TransactionType.transfer &&
+          !advanceShareEnabled &&
+          linkedAdvanceId == null &&
+          !advanceMatchDismissed) {
+        match = await state.advanceMatchSuggestion(
+          type: type,
+          amount: parsed,
+          note: note.text,
+        );
+      }
+      if (mounted) {
+        setState(() {
+          suggestion = next;
+          advanceMatch = match;
+        });
+      }
     });
   }
 
@@ -692,8 +738,28 @@ class _QuickAddPageState extends State<QuickAddPage> {
         (toAccountId == null || toAccountId == accountId)) {
       return _error('Scegli due conti diversi.');
     }
-    if (type != TransactionType.transfer && categoryId == null) {
+    if (linkedAdvanceId == null &&
+        type != TransactionType.transfer &&
+        categoryId == null) {
       return _error('Scegli o crea una categoria.');
+    }
+    double? mixedAdvanceAmount;
+    if (advanceShareEnabled && widget.editing == null) {
+      mixedAdvanceAmount = Money.parseExpression(advanceShare.text);
+      if (type != TransactionType.expense ||
+          mixedAdvanceAmount == null ||
+          mixedAdvanceAmount <= 0 ||
+          mixedAdvanceAmount >= parsed) {
+        return _error(
+          'La quota anticipata deve essere maggiore di 0 e minore del totale.',
+        );
+      }
+      if (advancePersonId == null) {
+        return _error('Scegli la persona a cui hai anticipato i soldi.');
+      }
+      if (state.accountById(accountId)?.isSystem == true) {
+        return _error('Una spesa condivisa richiede un conto reale.');
+      }
     }
     if (widget.initialGoalId != null && type == TransactionType.transfer) {
       final goal = state.goals
@@ -715,25 +781,50 @@ class _QuickAddPageState extends State<QuickAddPage> {
         managedReceipt = await attachments.persist(receipt!.path);
       final editing = widget.editing;
       if (editing == null) {
-        final createdId = await state.addTransaction(
-          type: type,
-          amount: parsed,
-          accountId: accountId!,
-          toAccountId: type == TransactionType.transfer ? toAccountId : null,
-          categoryId: type == TransactionType.transfer ? null : categoryId,
-          date: date,
-          note: note.text.trim().isEmpty ? null : note.text.trim(),
-          tags: tags,
-          receiptPath: managedReceipt,
-          includeInAnalytics: includeInAnalytics,
-          refundOfTransactionId: widget.refundOfTransactionId,
-        );
-        if (type == TransactionType.transfer && widget.initialGoalId != null) {
-          await GoalLedgerService(state.database).linkTransfer(
-            goalId: widget.initialGoalId!,
-            transactionId: createdId,
+        if (linkedAdvanceId != null) {
+          await state.recordAdvanceSettlement(
+            advanceId: linkedAdvanceId!,
+            amount: parsed,
+            accountId: accountId!,
+            date: date,
+            note: note.text.trim().isEmpty ? null : note.text.trim(),
           );
-          await state.refreshCore(includePlanning: true);
+        } else if (advanceShareEnabled && mixedAdvanceAmount != null) {
+          await state.createMixedAdvanceExpense(
+            personId: advancePersonId!,
+            totalAmount: parsed,
+            personalAmount: parsed - mixedAdvanceAmount,
+            advanceAmount: mixedAdvanceAmount,
+            accountId: accountId!,
+            categoryId: categoryId!,
+            date: date,
+            note: note.text.trim().isEmpty ? null : note.text.trim(),
+            tags: tags,
+            receiptPath: managedReceipt,
+            includeInAnalytics: includeInAnalytics,
+          );
+        } else {
+          final createdId = await state.addTransaction(
+            type: type,
+            amount: parsed,
+            accountId: accountId!,
+            toAccountId: type == TransactionType.transfer ? toAccountId : null,
+            categoryId: type == TransactionType.transfer ? null : categoryId,
+            date: date,
+            note: note.text.trim().isEmpty ? null : note.text.trim(),
+            tags: tags,
+            receiptPath: managedReceipt,
+            includeInAnalytics: includeInAnalytics,
+            refundOfTransactionId: widget.refundOfTransactionId,
+          );
+          if (type == TransactionType.transfer &&
+              widget.initialGoalId != null) {
+            await GoalLedgerService(state.database).linkTransfer(
+              goalId: widget.initialGoalId!,
+              transactionId: createdId,
+            );
+            await state.refreshCore(includePlanning: true);
+          }
         }
       } else {
         await state.updateTransaction(
@@ -985,6 +1076,56 @@ class _QuickAddPageState extends State<QuickAddPage> {
               ),
               const SizedBox(height: 8),
             ],
+            if (linkedAdvanceId != null) ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.handshake_outlined),
+                title: const Text('Collegato a un anticipo'),
+                subtitle: const Text(
+                  'Verrà registrato come rimborso/restituzione, non come entrata o spesa.',
+                ),
+                trailing: TextButton(
+                  onPressed: () => setState(() => linkedAdvanceId = null),
+                  child: const Text('Annulla'),
+                ),
+              ),
+              const SizedBox(height: 8),
+            ] else if (advanceMatch case final match?) ...[
+              Builder(
+                builder: (context) {
+                  final person = state.personById(match.personId);
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.link_rounded),
+                    title: Text(
+                      'Potrebbe essere il rimborso dell’anticipo di ${person?.name ?? 'questa persona'}',
+                    ),
+                    subtitle: Text(match.reason),
+                    trailing: Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton(
+                          onPressed: () => setState(() {
+                            advanceMatch = null;
+                            advanceMatchDismissed = true;
+                          }),
+                          child: const Text('Non è questo'),
+                        ),
+                        FilledButton.tonal(
+                          onPressed: () => setState(() {
+                            linkedAdvanceId = match.advanceId;
+                            advanceMatch = null;
+                            advanceMatchDismissed = true;
+                          }),
+                          child: const Text('Collega'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               'IMPORTO',
               style: Theme.of(
@@ -1109,6 +1250,79 @@ class _QuickAddPageState extends State<QuickAddPage> {
                     : account?.name ?? 'Scegli conto',
                 onTap: _chooseAccount,
               ),
+              if (type == TransactionType.expense &&
+                  widget.editing == null) ...[
+                const Divider(height: 1),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  secondary: const Icon(Icons.group_outlined),
+                  title: const Text(
+                    'Parte di questa spesa è per qualcun altro',
+                  ),
+                  subtitle: const Text(
+                    'Solo la tua quota verrà conteggiata in spese, categorie e budget.',
+                  ),
+                  value: advanceShareEnabled,
+                  onChanged: linkedAdvanceId != null
+                      ? null
+                      : (value) => setState(() {
+                          advanceShareEnabled = value;
+                          advanceMatch = null;
+                          if (!value) {
+                            advanceShare.clear();
+                            advancePersonId = null;
+                          }
+                        }),
+                ),
+                if (advanceShareEnabled) ...[
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.person_outline_rounded),
+                    title: const Text('Anticipato a'),
+                    subtitle: Text(
+                      state.personById(advancePersonId)?.name ??
+                          'Scegli o crea una persona',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () async {
+                      final picked = await showFinancePersonPicker(
+                        context,
+                        allowCreate: true,
+                      );
+                      if (picked != null && mounted) {
+                        setState(() => advancePersonId = picked);
+                      }
+                    },
+                  ),
+                  TextField(
+                    controller: advanceShare,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: const InputDecoration(
+                      labelText: 'Quota anticipata',
+                      suffixText: '€',
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Builder(
+                    builder: (context) {
+                      final total = Money.parseExpression(amount.text) ?? 0;
+                      final advanced =
+                          Money.parseExpression(advanceShare.text) ?? 0;
+                      final personal = (total - advanced).clamp(
+                        0,
+                        double.infinity,
+                      );
+                      return FlatMetric(
+                        label: 'La mia parte',
+                        value: moneyFor(state, personal),
+                        icon: Icons.person_rounded,
+                      );
+                    },
+                  ),
+                ],
+              ],
             ] else ...[
               _PickerRow(
                 icon: accountIcon(account?.iconKey ?? 'wallet'),

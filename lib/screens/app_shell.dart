@@ -6,6 +6,7 @@ import '../models/quick_capture_models.dart';
 import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
+import 'advances_screen.dart';
 import 'canonical_shell.dart';
 import 'home_screen.dart';
 import 'planning_screens.dart';
@@ -175,6 +176,14 @@ class _DadaAppShellState extends State<DadaAppShell> {
                 label: 'Voce',
                 onTap: () => Navigator.pop(sheetContext, const _VoiceChoice()),
               ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.handshake_outlined),
+                title: const Text('Anticipo'),
+                subtitle: const Text('Soldi da ricevere o da restituire'),
+                onTap: () => Navigator.pop(sheetContext, 'advance'),
+              ),
               if (presets.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const SectionTitle('Preset'),
@@ -202,7 +211,9 @@ class _DadaAppShellState extends State<DadaAppShell> {
       ),
     );
     if (!mounted || choice == null) return;
-    if (choice is QuickPreset) {
+    if (choice == 'advance') {
+      await showAdvanceEditor(context);
+    } else if (choice is QuickPreset) {
       await _open(choice.type, preset: choice);
     } else if (choice is TransactionType) {
       await _open(choice);
