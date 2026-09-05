@@ -15,15 +15,15 @@ class VoiceTransactionParser {
     final issues = <VoiceParseIssue>[];
     final sources = <String, VoiceFieldSource>{};
 
-    final amountResult = _parseAmount(normalized);
-    if (amountResult.ambiguous) {
+    final amount = _parseAmount(normalized);
+    if (amount.ambiguous) {
       issues.add(
         const VoiceParseIssue(
           type: VoiceIssueType.ambiguousAmount,
           message: 'Ho riconosciuto più importi. Scegli quello corretto.',
         ),
       );
-    } else if (amountResult.cents == null) {
+    } else if (amount.cents == null) {
       issues.add(
         const VoiceParseIssue(
           type: VoiceIssueType.missingAmount,
@@ -37,7 +37,12 @@ class VoiceTransactionParser {
     var type = _explicitType(normalized);
     if (type != null) sources['type'] = VoiceFieldSource.explicit;
 
-    final categoryMatch = _matchCategory(normalized, categories);
+    final categoryMatch = _matchEntity<Category>(
+      normalized,
+      categories,
+      (item) => item.name,
+      (item) => item.id,
+    );
     int? categoryId;
     if (categoryMatch.ambiguous) {
       issues.add(
@@ -55,12 +60,12 @@ class VoiceTransactionParser {
     }
 
     type ??= TransactionType.expense;
-
-    int? accountId;
-    int? toAccountId;
     final activeAccounts = accounts
         .where((item) => !item.isSystem && !item.isArchived && !item.isLocked)
         .toList();
+    int? accountId;
+    int? toAccountId;
+
     if (type == TransactionType.transfer) {
       final transfer = _matchTransferAccounts(normalized, activeAccounts);
       if (transfer.ambiguous) {
@@ -75,22 +80,25 @@ class VoiceTransactionParser {
         accountId = transfer.fromId;
         toAccountId = transfer.toId;
         if (accountId != null) sources['account'] = VoiceFieldSource.explicit;
-        if (toAccountId != null) {
-          sources['toAccount'] = VoiceFieldSource.explicit;
-        }
+        if (toAccountId != null) sources['toAccount'] = VoiceFieldSource.explicit;
       }
     } else {
-      final match = _matchEntity(normalized, activeAccounts, (item) => item.name);
-      if (match.ambiguous) {
+      final accountMatch = _matchEntity<Account>(
+        normalized,
+        activeAccounts,
+        (item) => item.name,
+        (item) => item.id,
+      );
+      if (accountMatch.ambiguous) {
         issues.add(
           VoiceParseIssue(
             type: VoiceIssueType.ambiguousAccount,
             message: 'Più conti corrispondono a ciò che hai detto.',
-            candidateIds: match.candidates,
+            candidateIds: accountMatch.candidates,
           ),
         );
-      } else if (match.id != null) {
-        accountId = match.id;
+      } else if (accountMatch.id != null) {
+        accountId = accountMatch.id;
         sources['account'] = VoiceFieldSource.explicit;
       }
     }
@@ -111,7 +119,7 @@ class VoiceTransactionParser {
       issues: issues,
       draft: TransactionDraft(
         type: type,
-        amountCents: amountResult.cents,
+        amountCents: amount.cents,
         accountId: accountId,
         toAccountId: toAccountId,
         categoryId: categoryId,
@@ -157,28 +165,72 @@ class VoiceTransactionParser {
   }
 
   _AmountParse _parseAmount(String input) {
-    final values = <int>{};
-    final numeric = RegExp(r'(?:€\s*)?(\d{1,9}(?:[\.,]\d{1,2})?)(?:\s*€|\s*euro|\s*eur)?');
-    for (final match in numeric.allMatches(input)) {
-      final raw = match.group(1)!;
-      final value = double.tryParse(raw.replaceAll(',', '.'));
-      if (value != null && value > 0) values.add((value * 100).round());
-    }
-
-    final euroWords = RegExp(
-      r'\b([a-zà-ù]+|\d+)\s+euro(?:\s+e\s+([a-zà-ù]+|\d+))?\b',
+    final monetary = <int>[];
+    final euroPattern = RegExp(
+      r'(?:€\s*)?([a-z]+|\d+(?:[\.,]\d{1,2})?)\s*(?:euro|eur|€)(?:\s+e\s+([a-z]+|\d{1,2}))?',
     );
-    for (final match in euroWords.allMatches(input)) {
-      final euros = _parseNumberToken(match.group(1));
-      final cents = _parseNumberToken(match.group(2));
-      if (euros != null && euros >= 0) {
-        values.add(euros * 100 + (cents ?? 0).clamp(0, 99));
-      }
+    for (final match in euroPattern.allMatches(input)) {
+      final euros = _parseEuroToken(match.group(1));
+      if (euros == null) continue;
+      final cents = _parseNumberToken(match.group(2)) ?? 0;
+      monetary.add(euros.$1 * 100 + (euros.$2 ?? cents).clamp(0, 99));
     }
 
-    if (values.isEmpty) return const _AmountParse();
-    if (values.length > 1) return const _AmountParse(ambiguous: true);
-    return _AmountParse(cents: values.single);
+    final prefixEuro = RegExp(r'€\s*(\d+(?:[\.,]\d{1,2})?)');
+    for (final match in prefixEuro.allMatches(input)) {
+      final value = _decimalToCents(match.group(1)!);
+      if (value != null) monetary.add(value);
+    }
+
+    final unique = monetary.where((value) => value > 0).toSet();
+    if (unique.length == 1) return _AmountParse(cents: unique.single);
+    if (unique.length > 1) return const _AmountParse(ambiguous: true);
+
+    final bare = RegExp(r'\b\d+(?:[\.,]\d{1,2})?\b')
+        .allMatches(input)
+        .map((match) => match.group(0)!)
+        .where((raw) => !_looksLikeDateNumber(input, raw))
+        .map(_decimalToCents)
+        .whereType<int>()
+        .where((value) => value > 0)
+        .toSet();
+    if (bare.length == 1) return _AmountParse(cents: bare.single);
+    if (bare.length > 1) return const _AmountParse(ambiguous: true);
+    return const _AmountParse();
+  }
+
+  (int, int?)? _parseEuroToken(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (raw.contains(',') || raw.contains('.')) {
+      final cents = _decimalToCents(raw);
+      if (cents == null) return null;
+      return (cents ~/ 100, cents % 100);
+    }
+    final value = _parseNumberToken(raw);
+    return value == null ? null : (value, null);
+  }
+
+  int? _decimalToCents(String raw) {
+    final value = double.tryParse(raw.replaceAll(',', '.'));
+    return value == null ? null : (value * 100).round();
+  }
+
+  bool _looksLikeDateNumber(String input, String raw) {
+    const months = [
+      'gennaio',
+      'febbraio',
+      'marzo',
+      'aprile',
+      'maggio',
+      'giugno',
+      'luglio',
+      'agosto',
+      'settembre',
+      'ottobre',
+      'novembre',
+      'dicembre',
+    ];
+    return months.any((month) => input.contains('$raw $month'));
   }
 
   int? _parseNumberToken(String? raw) {
@@ -186,7 +238,7 @@ class VoiceTransactionParser {
     final direct = int.tryParse(raw);
     if (direct != null) return direct;
     final word = _stripAccents(raw.toLowerCase());
-    const base = {
+    const values = {
       'zero': 0,
       'un': 1,
       'uno': 1,
@@ -219,9 +271,9 @@ class VoiceTransactionParser {
       'novanta': 90,
       'cento': 100,
     };
-    final exact = base[word];
+    final exact = values[word];
     if (exact != null) return exact;
-    for (final entry in const {
+    const tens = {
       'vent': 20,
       'trent': 30,
       'quarant': 40,
@@ -230,77 +282,92 @@ class VoiceTransactionParser {
       'settant': 70,
       'ottant': 80,
       'novant': 90,
-    }.entries) {
+    };
+    for (final entry in tens.entries) {
       if (!word.startsWith(entry.key)) continue;
       final suffix = word.substring(entry.key.length);
-      final unit = base[suffix] ??
-          base[suffix == 'uno' ? 'uno' : suffix == 'otto' ? 'otto' : suffix];
+      final unit = values[suffix];
       if (unit != null && unit < 10) return entry.value + unit;
     }
     return null;
-  }
-
-  _CategoryMatch _matchCategory(String input, List<Category> categories) {
-    final match = _matchEntity(input, categories, (item) => item.name);
-    return _CategoryMatch(
-      id: match.id,
-      ambiguous: match.ambiguous,
-      candidates: match.candidates,
-    );
   }
 
   _EntityMatch _matchEntity<T>(
     String input,
     List<T> items,
     String Function(T item) label,
+    int Function(T item) id,
   ) {
-    final scored = <(int, double)>[];
-    for (var index = 0; index < items.length; index++) {
-      final name = _normalize(label(items[index]));
+    final scored = <_ScoredEntity<T>>[];
+    for (final item in items) {
+      final name = _normalize(label(item));
       if (name.isEmpty) continue;
       final score = _entityScore(input, name);
-      if (score >= .78) scored.add((index, score));
+      if (score >= .72) scored.add(_ScoredEntity(item, name, score));
     }
     if (scored.isEmpty) return const _EntityMatch();
-    scored.sort((a, b) => b.$2.compareTo(a.$2));
+    scored.sort((a, b) => b.score.compareTo(a.score));
     final top = scored.first;
-    final tied = scored.where((item) => (top.$2 - item.$2).abs() < .08).toList();
-    int idOf(T item) => switch (item) {
-          Account account => account.id,
-          Category category => category.id,
-          _ => throw StateError('Unsupported voice entity'),
-        };
-    if (tied.length > 1) {
+
+    final prefixAlternatives = scored.where((candidate) {
+      if (identical(candidate, top)) return false;
+      return candidate.name.startsWith('${top.name} ') ||
+          top.name.startsWith('${candidate.name} ');
+    }).toList();
+    if (prefixAlternatives.isNotEmpty && top.score >= .88) {
       return _EntityMatch(
         ambiguous: true,
-        candidates: tied.map((item) => idOf(items[item.$1])).toList(),
+        candidates: [
+          id(top.item),
+          ...prefixAlternatives.map((item) => id(item.item)),
+        ],
       );
     }
-    return _EntityMatch(id: idOf(items[top.$1]));
+
+    final close = scored.where((item) => top.score - item.score < .12).toList();
+    if (close.length > 1) {
+      return _EntityMatch(
+        ambiguous: true,
+        candidates: close.map((item) => id(item.item)).toList(),
+      );
+    }
+    return _EntityMatch(id: id(top.item));
   }
 
   double _entityScore(String input, String name) {
-    if (RegExp('(?:^| )${RegExp.escape(name)}(?: |\\$)').hasMatch(input)) {
-      return 1;
-    }
+    final phrase = RegExp(r'(?:^| )' + RegExp.escape(name) + r'(?: |$)');
+    if (phrase.hasMatch(input)) return 1;
     final nameTokens = name.split(' ').where((item) => item.length > 1).toSet();
     if (nameTokens.isEmpty) return 0;
     final inputTokens = input.split(' ').toSet();
     final overlap = nameTokens.where(inputTokens.contains).length / nameTokens.length;
-    if (overlap == 1 && nameTokens.length > 1) return .92;
-    if (overlap == 1 && nameTokens.single.length >= 4) return .88;
-    return overlap * .7;
+    if (overlap == 1) return nameTokens.length > 1 ? .92 : .88;
+    return overlap * .78;
   }
 
   _TransferMatch _matchTransferAccounts(String input, List<Account> accounts) {
-    final fromPart = RegExp(r'\bda\s+(.+?)(?=\s+a\s+|\s+verso\s+|$)').firstMatch(input)?.group(1);
-    final toPart = RegExp(r'\b(?:a|verso)\s+(.+?)(?=\s+(?:oggi|ieri|domani)|$)').firstMatch(input)?.group(1);
+    final fromPart = RegExp(r'\bda\s+(.+?)(?=\s+a\s+|\s+verso\s+|$)')
+        .firstMatch(input)
+        ?.group(1);
+    final toPart = RegExp(
+      r'\b(?:a|verso)\s+(.+?)(?=\s+(?:oggi|ieri|domani|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)|$)',
+    ).firstMatch(input)?.group(1);
     final from = fromPart == null
         ? const _EntityMatch()
-        : _matchEntity(fromPart, accounts, (item) => item.name);
+        : _matchEntity<Account>(
+            fromPart,
+            accounts,
+            (item) => item.name,
+            (item) => item.id,
+          );
     final to = toPart == null
         ? const _EntityMatch()
-        : _matchEntity(toPart, accounts, (item) => item.name);
+        : _matchEntity<Account>(
+            toPart,
+            accounts,
+            (item) => item.name,
+            (item) => item.id,
+          );
     if (from.ambiguous || to.ambiguous) {
       return _TransferMatch(
         ambiguous: true,
@@ -311,14 +378,14 @@ class VoiceTransactionParser {
   }
 
   _DateParse _parseDate(String input, DateTime now) {
-    final today = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final current = DateTime(now.year, now.month, now.day, now.hour, now.minute);
     if (RegExp(r'\bieri\b').hasMatch(input)) {
-      return _DateParse(today.subtract(const Duration(days: 1)), true);
+      return _DateParse(current.subtract(const Duration(days: 1)), true);
     }
     if (RegExp(r'\bdomani\b').hasMatch(input)) {
-      return _DateParse(today.add(const Duration(days: 1)), true);
+      return _DateParse(current.add(const Duration(days: 1)), true);
     }
-    if (RegExp(r'\boggi\b').hasMatch(input)) return _DateParse(today, true);
+    if (RegExp(r'\boggi\b').hasMatch(input)) return _DateParse(current, true);
 
     const weekdays = {
       'lunedi': DateTime.monday,
@@ -330,12 +397,36 @@ class VoiceTransactionParser {
       'domenica': DateTime.sunday,
     };
     for (final entry in weekdays.entries) {
-      if (!RegExp('\\b${entry.key}\\b').hasMatch(input)) continue;
+      if (!RegExp(r'\b' + entry.key + r'\b').hasMatch(input)) continue;
       var delta = entry.value - now.weekday;
       if (delta > 0) delta -= 7;
-      return _DateParse(today.add(Duration(days: delta)), true);
+      return _DateParse(current.add(Duration(days: delta)), true);
     }
-    return _DateParse(today, false);
+
+    const months = {
+      'gennaio': 1,
+      'febbraio': 2,
+      'marzo': 3,
+      'aprile': 4,
+      'maggio': 5,
+      'giugno': 6,
+      'luglio': 7,
+      'agosto': 8,
+      'settembre': 9,
+      'ottobre': 10,
+      'novembre': 11,
+      'dicembre': 12,
+    };
+    for (final entry in months.entries) {
+      final match = RegExp(r'\b(?:il\s+)?(\d{1,2})\s+' + entry.key + r'\b')
+          .firstMatch(input);
+      if (match == null) continue;
+      final day = int.parse(match.group(1)!);
+      if (day < 1 || day > 31) continue;
+      final candidate = DateTime(now.year, entry.value, day, now.hour, now.minute);
+      return _DateParse(candidate, true);
+    }
+    return _DateParse(current, false);
   }
 
   String? _extractNote(
@@ -345,37 +436,73 @@ class VoiceTransactionParser {
     required List<Category> categories,
   }) {
     final merchant = RegExp(
-      r"\b(?:al|alla|da|dal|presso)\s+([A-Za-zÀ-ÿ0-9'’&. -]+?)(?=\s+(?:con|nel|sul|su|oggi|ieri|domani|da|a)\b|,|$)",
+      r"\b(?:al|alla|presso)\s+([A-Za-zÀ-ÿ0-9'’&. -]+?)(?=\s+(?:con|nel|sul|su|oggi|ieri|domani)\b|,|$)",
       caseSensitive: false,
     ).firstMatch(original)?.group(1)?.trim();
     if (merchant != null && merchant.length >= 2) return merchant;
 
-    final commaTail = original.contains(',') ? original.split(',').last.trim() : null;
-    if (commaTail != null && commaTail.length >= 2 && !_containsOnlyKnownEntity(commaTail, accounts, categories)) {
-      return commaTail;
+    if (original.contains(',')) {
+      final tail = original.split(',').last.trim();
+      if (tail.length >= 2 &&
+          !_containsOnlyKnownEntity(tail, accounts, categories)) {
+        return tail;
+      }
     }
 
-    final knownWords = <String>{
-      'segna', 'in', 'per', 'nel', 'conto', 'con', 'su', 'sul', 'oggi', 'ieri',
-      'domani', 'euro', 'eur', 'ho', 'speso', 'spesa', 'pagato', 'entrata',
-      'ricevuto', 'incasso', 'accredito', 'trasferisci', 'trasferimento', 'sposta',
-      'sposto', 'giroconto', 'da', 'a', 'di', 'un', 'una', 'il', 'la', 'al', 'alla',
+    final words = normalized.split(' ');
+    const commands = {
+      'segna',
+      'in',
+      'per',
+      'nel',
+      'conto',
+      'con',
+      'su',
+      'sul',
+      'oggi',
+      'ieri',
+      'domani',
+      'euro',
+      'eur',
+      'ho',
+      'speso',
+      'spesa',
+      'pagato',
+      'entrata',
+      'ricevuto',
+      'incasso',
+      'accredito',
+      'stipendio',
+      'trasferisci',
+      'trasferimento',
+      'sposta',
+      'sposto',
+      'giroconto',
+      'da',
+      'a',
+      'di',
+      'un',
+      'una',
+      'il',
+      'la',
+      'al',
+      'alla',
+      'e',
     };
-    final entityTokens = <String>{
+    final entities = <String>{
       for (final account in accounts) ..._normalize(account.name).split(' '),
       for (final category in categories) ..._normalize(category.name).split(' '),
     };
-    final tokens = normalized
-        .split(' ')
-        .where((token) =>
-            token.length > 1 &&
-            !knownWords.contains(token) &&
-            !entityTokens.contains(token) &&
-            !RegExp(r'^\d+(?:[\.,]\d+)?$').hasMatch(token) &&
-            _parseNumberToken(token) == null)
-        .toList();
-    if (tokens.isEmpty) return null;
-    return tokens.join(' ');
+    final remaining = words.where((word) {
+      if (word.length < 2 || commands.contains(word) || entities.contains(word)) {
+        return false;
+      }
+      if (RegExp(r'^\d+(?:[\.,]\d+)?€?$').hasMatch(word)) return false;
+      if (_parseNumberToken(word) != null) return false;
+      return true;
+    }).toList();
+    if (remaining.isEmpty) return null;
+    return remaining.join(' ');
   }
 
   bool _containsOnlyKnownEntity(
@@ -383,14 +510,15 @@ class VoiceTransactionParser {
     List<Account> accounts,
     List<Category> categories,
   ) {
-    final normalized = _normalize(text);
-    return accounts.any((item) => _normalize(item.name) == normalized) ||
-        categories.any((item) => _normalize(item.name) == normalized);
+    final value = _normalize(text);
+    return accounts.any((item) => _normalize(item.name) == value) ||
+        categories.any((item) => _normalize(item.name) == value);
   }
 
-  bool _containsAny(String input, List<String> values) => values.any(
-        (value) => RegExp('(?:^| )${RegExp.escape(value)}(?: |\\$)').hasMatch(input),
-      );
+  bool _containsAny(String input, List<String> values) => values.any((value) {
+        final matcher = RegExp(r'(?:^| )' + RegExp.escape(value) + r'(?: |$)');
+        return matcher.hasMatch(input);
+      });
 
   String _normalize(String value) => _stripAccents(value.toLowerCase())
       .replaceAll('’', "'")
@@ -402,8 +530,8 @@ class VoiceTransactionParser {
     const from = 'àáâäèéêëìíîïòóôöùúûü';
     const to = 'aaaaeeeeiiiioooouuuu';
     var output = value;
-    for (var i = 0; i < from.length; i++) {
-      output = output.replaceAll(from[i], to[i]);
+    for (var index = 0; index < from.length; index++) {
+      output = output.replaceAll(from[index], to[index]);
     }
     return output;
   }
@@ -422,15 +550,13 @@ class _EntityMatch {
   final List<int> candidates;
 }
 
-class _CategoryMatch {
-  const _CategoryMatch({this.id, this.ambiguous = false, this.candidates = const []});
-  final int? id;
-  final bool ambiguous;
-  final List<int> candidates;
-}
-
 class _TransferMatch {
-  const _TransferMatch({this.fromId, this.toId, this.ambiguous = false, this.candidates = const []});
+  const _TransferMatch({
+    this.fromId,
+    this.toId,
+    this.ambiguous = false,
+    this.candidates = const [],
+  });
   final int? fromId;
   final int? toId;
   final bool ambiguous;
@@ -441,4 +567,11 @@ class _DateParse {
   const _DateParse(this.value, this.explicit);
   final DateTime value;
   final bool explicit;
+}
+
+class _ScoredEntity<T> {
+  const _ScoredEntity(this.item, this.name, this.score);
+  final T item;
+  final String name;
+  final double score;
 }
