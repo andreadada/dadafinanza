@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
       - name: Apply patch
         run: python3 tool/apply_voice_listening_ux.py
       - name: Format Dart
