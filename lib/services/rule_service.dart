@@ -47,8 +47,7 @@ class RuleService {
       where: 'id = ?',
       whereArgs: [rule.id],
     );
-    state.rules = await state.database.rules();
-    state.notifyListeners();
+    await state.load();
   }
 
   Future<void> duplicate(AppState state, AutomationRule rule) async {
@@ -68,17 +67,16 @@ class RuleService {
         );
       }
     });
-    state.rules = await state.database.rules();
-    state.notifyListeners();
+    await state.load();
   }
 
   Future<int> applyToHistory(
     AppState state,
     AutomationRule rule,
   ) async {
-    final matches = preview(state, rule).matches;
+    final matched = preview(state, rule).matches;
     var changed = 0;
-    for (final old in matches) {
+    for (final old in matched) {
       final next = old.copyWith(
         categoryId: rule.categoryId ?? old.categoryId,
         accountId: rule.accountId ?? old.accountId,
@@ -98,9 +96,7 @@ class RuleService {
       await state.database.updateTransaction(old, next);
       changed++;
     }
-    if (changed > 0) {
-      await state.refreshCore(includePlanning: true);
-    }
+    if (changed > 0) await state.load();
     return changed;
   }
 
