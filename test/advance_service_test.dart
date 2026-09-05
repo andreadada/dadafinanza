@@ -99,10 +99,7 @@ void main() {
   });
 
   test('rejects an empty finance person name', () async {
-    expect(
-      () => service.createPerson('   '),
-      throwsA(isA<StateError>()),
-    );
+    expect(() => service.createPerson('   '), throwsA(isA<StateError>()));
   });
 
   test('renames a finance person', () async {
@@ -152,26 +149,29 @@ void main() {
     expect(item.includeInAnalytics, isFalse);
   });
 
-  test('mixed expense keeps real cash amount and tracks only advanced share', () async {
-    final transactionId = await service.createMixedExpense(
-      personId: personId,
-      totalAmount: 40,
-      personalAmount: 10,
-      advanceAmount: 30,
-      accountId: accountId,
-      categoryId: expenseCategoryId,
-      date: now,
-    );
-    final item = await transaction(transactionId);
-    final advance = (await service.advances()).single;
+  test(
+    'mixed expense keeps real cash amount and tracks only advanced share',
+    () async {
+      final transactionId = await service.createMixedExpense(
+        personId: personId,
+        totalAmount: 40,
+        personalAmount: 10,
+        advanceAmount: 30,
+        accountId: accountId,
+        categoryId: expenseCategoryId,
+        date: now,
+      );
+      final item = await transaction(transactionId);
+      final advance = (await service.advances()).single;
 
-    expect(await balance(accountId), 960);
-    expect(item.amount, 40);
-    expect(item.kind, 'mixed_advance');
-    expect(item.includeInAnalytics, isTrue);
-    expect(advance.originalAmountCents, 3000);
-    expect(await service.remainingCents(advance.id), 3000);
-  });
+      expect(await balance(accountId), 960);
+      expect(item.amount, 40);
+      expect(item.kind, 'mixed_advance');
+      expect(item.includeInAnalytics, isTrue);
+      expect(advance.originalAmountCents, 3000);
+      expect(await service.remainingCents(advance.id), 3000);
+    },
+  );
 
   test('mixed expense rejects inconsistent split amounts', () async {
     expect(
@@ -188,29 +188,32 @@ void main() {
     );
   });
 
-  test('partial receivable settlement increases cash and reduces remaining', () async {
-    final advanceId = await service.createPureAdvance(
-      direction: AdvanceDirection.receivable,
-      personId: personId,
-      amount: 100,
-      accountId: accountId,
-      date: now,
-    );
-    await service.recordSettlement(
-      advanceId: advanceId,
-      amount: 35,
-      accountId: accountId,
-      date: now.add(const Duration(days: 1)),
-    );
+  test(
+    'partial receivable settlement increases cash and reduces remaining',
+    () async {
+      final advanceId = await service.createPureAdvance(
+        direction: AdvanceDirection.receivable,
+        personId: personId,
+        amount: 100,
+        accountId: accountId,
+        date: now,
+      );
+      await service.recordSettlement(
+        advanceId: advanceId,
+        amount: 35,
+        accountId: accountId,
+        date: now.add(const Duration(days: 1)),
+      );
 
-    expect(await balance(accountId), 935);
-    expect(await service.remainingCents(advanceId), 6500);
-    final settlement = (await service.settlements()).single;
-    final item = await transaction(settlement.transactionId);
-    expect(item.type, TransactionType.income);
-    expect(item.kind, 'advance_settlement');
-    expect(item.includeInAnalytics, isFalse);
-  });
+      expect(await balance(accountId), 935);
+      expect(await service.remainingCents(advanceId), 6500);
+      final settlement = (await service.settlements()).single;
+      final item = await transaction(settlement.transactionId);
+      expect(item.type, TransactionType.income);
+      expect(item.kind, 'advance_settlement');
+      expect(item.includeInAnalytics, isFalse);
+    },
+  );
 
   test('full settlement closes the remaining amount to zero', () async {
     final advanceId = await service.createPureAdvance(
@@ -468,7 +471,10 @@ void main() {
     await service.archivePerson(personId, true);
     expect(await service.people(), isEmpty);
     final archived = await service.people(includeArchived: true);
-    expect(archived.singleWhere((item) => item.id == personId).archived, isTrue);
+    expect(
+      archived.singleWhere((item) => item.id == personId).archived,
+      isTrue,
+    );
   });
 
   test('updates editable advance metadata', () async {
@@ -498,46 +504,55 @@ void main() {
     expect(advance.note, 'Cena');
   });
 
-  test('cancelling a pure receivable reverses its original cash movement', () async {
-    final advanceId = await service.createPureAdvance(
-      direction: AdvanceDirection.receivable,
-      personId: personId,
-      amount: 100,
-      accountId: accountId,
-      date: now,
-    );
-    final sourceId = (await service.advances()).single.sourceTransactionId!;
-    await service.cancelAdvance(advanceId);
+  test(
+    'cancelling a pure receivable reverses its original cash movement',
+    () async {
+      final advanceId = await service.createPureAdvance(
+        direction: AdvanceDirection.receivable,
+        personId: personId,
+        amount: 100,
+        accountId: accountId,
+        date: now,
+      );
+      final sourceId = (await service.advances()).single.sourceTransactionId!;
+      await service.cancelAdvance(advanceId);
 
-    expect(await balance(accountId), 1000);
-    final advance = (await service.advances()).single;
-    expect(advance.closedKind, AdvanceClosedKind.cancelled);
-    expect(advance.sourceTransactionId, isNull);
-    final source = await database.db.query(
-      'transactions',
-      where: 'id = ?',
-      whereArgs: [sourceId],
-    );
-    expect(source, isEmpty);
-  });
+      expect(await balance(accountId), 1000);
+      final advance = (await service.advances()).single;
+      expect(advance.closedKind, AdvanceClosedKind.cancelled);
+      expect(advance.sourceTransactionId, isNull);
+      final source = await database.db.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [sourceId],
+      );
+      expect(source, isEmpty);
+    },
+  );
 
-  test('cancelling a mixed expense preserves cash and makes purchase normal', () async {
-    final transactionId = await service.createMixedExpense(
-      personId: personId,
-      totalAmount: 40,
-      personalAmount: 10,
-      advanceAmount: 30,
-      accountId: accountId,
-      categoryId: expenseCategoryId,
-      date: now,
-    );
-    final advanceId = (await service.advances()).single.id;
-    await service.cancelAdvance(advanceId);
+  test(
+    'cancelling a mixed expense preserves cash and makes purchase normal',
+    () async {
+      final transactionId = await service.createMixedExpense(
+        personId: personId,
+        totalAmount: 40,
+        personalAmount: 10,
+        advanceAmount: 30,
+        accountId: accountId,
+        categoryId: expenseCategoryId,
+        date: now,
+      );
+      final advanceId = (await service.advances()).single.id;
+      await service.cancelAdvance(advanceId);
 
-    expect(await balance(accountId), 960);
-    expect((await transaction(transactionId)).kind, 'normal');
-    expect((await service.advances()).single.closedKind, AdvanceClosedKind.cancelled);
-  });
+      expect(await balance(accountId), 960);
+      expect((await transaction(transactionId)).kind, 'normal');
+      expect(
+        (await service.advances()).single.closedKind,
+        AdvanceClosedKind.cancelled,
+      );
+    },
+  );
 
   test('cancelling an advance with settlements is rejected', () async {
     final advanceId = await service.createPureAdvance(
@@ -553,31 +568,31 @@ void main() {
       accountId: accountId,
       date: now,
     );
-    expect(
-      () => service.cancelAdvance(advanceId),
-      throwsA(isA<StateError>()),
-    );
+    expect(() => service.cancelAdvance(advanceId), throwsA(isA<StateError>()));
   });
 
-  test('write-off without analytics closes receivable without moving cash', () async {
-    final advanceId = await service.createPureAdvance(
-      direction: AdvanceDirection.receivable,
-      personId: personId,
-      amount: 100,
-      accountId: accountId,
-      date: now,
-    );
-    final before = await balance(accountId);
-    final transactionCount = (await database.transactions()).length;
-    await service.closeWithoutRecovery(
-      advanceId: advanceId,
-      recognizeInAnalytics: false,
-    );
-    final advance = (await service.advances()).single;
-    expect(advance.closedKind, AdvanceClosedKind.writtenOff);
-    expect(await balance(accountId), before);
-    expect((await database.transactions()).length, transactionCount);
-  });
+  test(
+    'write-off without analytics closes receivable without moving cash',
+    () async {
+      final advanceId = await service.createPureAdvance(
+        direction: AdvanceDirection.receivable,
+        personId: personId,
+        amount: 100,
+        accountId: accountId,
+        date: now,
+      );
+      final before = await balance(accountId);
+      final transactionCount = (await database.transactions()).length;
+      await service.closeWithoutRecovery(
+        advanceId: advanceId,
+        recognizeInAnalytics: false,
+      );
+      final advance = (await service.advances()).single;
+      expect(advance.closedKind, AdvanceClosedKind.writtenOff);
+      expect(await balance(accountId), before);
+      expect((await database.transactions()).length, transactionCount);
+    },
+  );
 
   test('forgiven payable closes without moving cash', () async {
     final advanceId = await service.createPureAdvance(
@@ -592,32 +607,40 @@ void main() {
       advanceId: advanceId,
       recognizeInAnalytics: false,
     );
-    expect((await service.advances()).single.closedKind, AdvanceClosedKind.forgiven);
+    expect(
+      (await service.advances()).single.closedKind,
+      AdvanceClosedKind.forgiven,
+    );
     expect(await balance(accountId), before);
   });
 
-  test('recognized write-off creates analytics adjustment without cash delta', () async {
-    final advanceId = await service.createPureAdvance(
-      direction: AdvanceDirection.receivable,
-      personId: personId,
-      amount: 100,
-      accountId: accountId,
-      date: now,
-    );
-    final before = await balance(accountId);
-    await service.closeWithoutRecovery(
-      advanceId: advanceId,
-      recognizeInAnalytics: true,
-      categoryId: expenseCategoryId,
-      accountId: accountId,
-      date: now.add(const Duration(days: 2)),
-    );
-    expect(await balance(accountId), before);
-    final items = await database.transactions();
-    final adjustment = items.singleWhere((item) => item.kind == 'advance_writeoff');
-    expect(adjustment.includeInAnalytics, isTrue);
-    expect(adjustment.amount, 100);
-  });
+  test(
+    'recognized write-off creates analytics adjustment without cash delta',
+    () async {
+      final advanceId = await service.createPureAdvance(
+        direction: AdvanceDirection.receivable,
+        personId: personId,
+        amount: 100,
+        accountId: accountId,
+        date: now,
+      );
+      final before = await balance(accountId);
+      await service.closeWithoutRecovery(
+        advanceId: advanceId,
+        recognizeInAnalytics: true,
+        categoryId: expenseCategoryId,
+        accountId: accountId,
+        date: now.add(const Duration(days: 2)),
+      );
+      expect(await balance(accountId), before);
+      final items = await database.transactions();
+      final adjustment = items.singleWhere(
+        (item) => item.kind == 'advance_writeoff',
+      );
+      expect(adjustment.includeInAnalytics, isTrue);
+      expect(adjustment.amount, 100);
+    },
+  );
 
   test('mixed expense analytics expose only the personal share', () async {
     final transactionId = await service.createMixedExpense(

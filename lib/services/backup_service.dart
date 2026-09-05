@@ -37,16 +37,21 @@ class BackupPreview {
 }
 
 class BackupService {
-  BackupService(this.database, {AttachmentService? attachments})
-    : attachments = attachments ?? AttachmentService();
+  BackupService(
+    this.database, {
+    AttachmentService? attachments,
+    Future<Directory> Function()? temporaryDirectory,
+  }) : attachments = attachments ?? AttachmentService(),
+       _temporaryDirectory = temporaryDirectory ?? getTemporaryDirectory;
 
   static const formatVersion = 1;
   final AppDatabase database;
   final AttachmentService attachments;
+  final Future<Directory> Function() _temporaryDirectory;
 
   Future<File> create({String? password}) async {
     await database.db.rawQuery('PRAGMA wal_checkpoint(FULL)');
-    final temp = await getTemporaryDirectory();
+    final temp = await _temporaryDirectory();
     final work = Directory(
       p.join(temp.path, 'dada-backup-${DateTime.now().microsecondsSinceEpoch}'),
     );
@@ -128,7 +133,7 @@ class BackupService {
 
   Future<void> restore(String path, {String? password}) async {
     await inspect(path, password: password);
-    final temp = await getTemporaryDirectory();
+    final temp = await _temporaryDirectory();
     final extract = Directory(
       p.join(
         temp.path,
