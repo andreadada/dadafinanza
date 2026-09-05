@@ -7,7 +7,7 @@ import 'package:home_widget/home_widget.dart';
 import 'app_state.dart';
 import 'data/app_database.dart';
 import 'models/models.dart';
-import 'screens/canonical_shell.dart';
+import 'screens/app_shell.dart';
 import 'screens/quick_add_page.dart';
 import 'services/finance_schema_service.dart';
 import 'services/notification_service.dart';
@@ -144,7 +144,7 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
             ],
             home: AppLockGate(
               security: security,
-              child: const CanonicalRootScreen(),
+              child: const DadaAppShell(),
             ),
           ),
         ),
