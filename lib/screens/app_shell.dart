@@ -121,9 +121,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
-    final presets = await QuickPresetService(
-      state.database,
-    ).all(enabledOnly: true);
+    final presets = await QuickPresetService(state.database)
+        .all(enabledOnly: true);
     if (!mounted) return;
     final choice = await showModalBottomSheet<Object>(
       context: context,

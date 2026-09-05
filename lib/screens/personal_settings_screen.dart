@@ -107,8 +107,7 @@ class PersonalSettingsScreen extends StatelessWidget {
           _Link(
             icon: Icons.widgets_outlined,
             title: 'Widget Android',
-            subtitle:
-                'Saldo, Quick Capture, importi rapidi e riepilogo configurabili',
+            subtitle: 'Saldo, Quick Capture, importi rapidi e riepilogo configurabili',
             onTap: () => _open(context, const AndroidWidgetsScreen()),
           ),
           const SizedBox(height: 32),

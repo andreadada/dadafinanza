@@ -192,8 +192,10 @@ Durante l'ascolto usare un bottom sheet piccolo e chiaro:
 
 - titolo `Ti ascolto`;
 - trascrizione parziale;
-- badge/testo `Sul dispositivo` quando effettivamente on-device;
-- azioni `Annulla` e `Termina`;
+- waveform semplice derivata dal livello microfono quando disponibile;
+- niente badge tecnico ridondante nel modal: la privacy/on-device resta esplicitata nelle Impostazioni;
+- `X` in alto a destra per chiudere, icona restart per ripartire da zero e conferma separata `Usa questo`;
+- dopo circa 1 secondo senza nuovi risultati la trascrizione resta visibile nel modal senza resettarsi; se il recognizer è ancora attivo, nuovo parlato aggiorna la stessa frase;
 - niente waveform decorative complesse;
 - stato annunciabile a TalkBack tramite live region/Semantics.
 

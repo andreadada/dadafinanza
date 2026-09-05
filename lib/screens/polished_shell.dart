@@ -181,9 +181,8 @@ class PolishedHomeScreen extends StatelessWidget {
               ],
               Text(
                 'PATRIMONIO',
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(letterSpacing: 1.1),
+                style: Theme.of(context).textTheme.labelMedium
+                    ?.copyWith(letterSpacing: 1.1),
               ),
               const SizedBox(height: 4),
               Text(
@@ -331,8 +330,7 @@ class PolishedHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Nessun conto ancora',
-                  subtitle:
-                      'Aggiungi il conto che usi davvero o continua con movimenti Non assegnati.',
+                  subtitle: 'Aggiungi il conto che usi davvero o continua con movimenti Non assegnati.',
                   action: FilledButton.icon(
                     onPressed: () => showAccountEditor(context),
                     icon: const Icon(Icons.add_rounded),
@@ -351,8 +349,7 @@ class PolishedHomeScreen extends StatelessWidget {
                 const EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'Inizia dal primo movimento',
-                  subtitle:
-                      'Usa il pulsante + per registrare una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
+                  subtitle: 'Usa il pulsante + per registrare una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
                 )
               else
                 ...recent.map((item) => TransactionListTile(item: item)),
@@ -371,8 +368,7 @@ class PolishedHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.event_available_outlined,
                   title: 'Nessuna scadenza prevista',
-                  subtitle:
-                      'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
+                  subtitle: 'Aggiungi bollette, abbonamenti o stipendio per prevedere il saldo futuro.',
                   action: TextButton.icon(
                     onPressed: () => showRecurringEditor(context),
                     icon: const Icon(Icons.add_rounded),
@@ -443,10 +439,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w800,
-          ),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color, fontWeight: FontWeight.w800),
         ),
       ),
     ],
@@ -954,9 +948,8 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
                   (entry) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor: Color(
-                        entry.key.colorValue,
-                      ).withValues(alpha: .12),
+                      backgroundColor: Color(entry.key.colorValue)
+                          .withValues(alpha: .12),
                       child: Icon(
                         categoryIcon(entry.key.iconKey),
                         color: Color(entry.key.colorValue),

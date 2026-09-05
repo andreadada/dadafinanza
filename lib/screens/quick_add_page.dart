@@ -309,7 +309,6 @@ class _QuickAddPageState extends State<QuickAddPage> {
       useSafeArea: true,
       isDismissible: false,
       enableDrag: false,
-      showDragHandle: true,
       builder: (_) =>
           _VoiceListeningSheet(voice: voice, onDevice: status.onDevice),
     );
@@ -784,9 +783,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
     }
   }
 
-  void _error(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  void _error(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _chooseCategory() async {
     final state = AppScope.of(context);
@@ -988,9 +987,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
             ],
             Text(
               'IMPORTO',
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(letterSpacing: 1.2),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(letterSpacing: 1.2),
             ),
             TextField(
               controller: amount,
@@ -1003,9 +1001,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 decimal: true,
               ),
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.displaySmall?.copyWith(fontSize: 48),
+              style: Theme.of(context).textTheme.displaySmall
+                  ?.copyWith(fontSize: 48),
               decoration: const InputDecoration(
                 hintText: '0,00',
                 suffixText: '€',
@@ -1028,7 +1025,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                   ),
                   ButtonSegment(
                     value: TransactionType.transfer,
-                    label: Text('Trasferimento'),
+                    label: Text('Trasferisci', maxLines: 1),
                   ),
                 ],
                 selected: {type},
@@ -1299,10 +1296,18 @@ class _VoiceListeningSheet extends StatefulWidget {
 }
 
 class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
+  static const _silenceWindow = Duration(seconds: 1);
+  static const _waveBarCount = 20;
+
   String partial = '';
   String? error;
   bool ready = false;
-  bool finished = false;
+  bool settled = false;
+  bool closing = false;
+  bool restarting = false;
+  Timer? _silenceTimer;
+  DateTime _lastWaveUpdate = DateTime.fromMillisecondsSinceEpoch(0);
+  final List<double> _levels = List<double>.filled(_waveBarCount, 0);
 
   @override
   void initState() {
@@ -1310,14 +1315,55 @@ class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _begin());
   }
 
-  Future<void> _begin() async {
+  @override
+  void dispose() {
+    _silenceTimer?.cancel();
+    unawaited(widget.voice.cancel());
+    super.dispose();
+  }
+
+  Future<void> _begin({bool clearTranscript = false}) async {
+    _silenceTimer?.cancel();
+    if (clearTranscript && mounted) {
+      setState(() {
+        partial = '';
+        error = null;
+        ready = false;
+        settled = false;
+        for (var index = 0; index < _levels.length; index++) {
+          _levels[index] = 0;
+        }
+      });
+    }
+
     final initialized = await widget.voice.initialize(
       onStatus: (status) {
-        if (!mounted) return;
-        setState(() => ready = status == 'listening' || ready);
+        if (!mounted || closing) return;
+        final normalized = status.toLowerCase();
+        if (normalized == 'listening') {
+          setState(() => ready = true);
+        } else if (normalized == 'done' || normalized == 'notlistening') {
+          setState(() {
+            ready = false;
+            if (partial.trim().isNotEmpty) settled = true;
+          });
+        }
       },
       onError: (message) {
-        if (mounted) setState(() => error = _friendlyError(message));
+        if (!mounted || closing) return;
+        final friendly = _friendlyError(message);
+        final value = message.toLowerCase();
+        final harmlessAfterSpeech =
+            partial.trim().isNotEmpty &&
+            (value.contains('no_match') || value.contains('speech_timeout'));
+        setState(() {
+          ready = false;
+          if (harmlessAfterSpeech) {
+            settled = true;
+          } else {
+            error = friendly;
+          }
+        });
       },
     );
     if (!initialized) {
@@ -1329,99 +1375,232 @@ class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
       }
       return;
     }
+
     try {
       await widget.voice.listen(
         onDevice: widget.onDevice,
+        onSoundLevel: _onSoundLevel,
         onResult: (text, finalResult) {
-          if (!mounted) return;
-          setState(() => partial = text);
-          if (finalResult && text.trim().isNotEmpty && !finished) {
-            finished = true;
-            Navigator.pop(context, text.trim());
+          if (!mounted || closing) return;
+          final cleaned = text.trim();
+          if (cleaned.isEmpty) return;
+          final changed = cleaned != partial.trim();
+          setState(() {
+            partial = text;
+            ready = !finalResult;
+            settled = finalResult;
+            error = null;
+          });
+          if (finalResult) {
+            _silenceTimer?.cancel();
+          } else if (changed) {
+            _markActivePhrase();
           }
         },
       );
     } catch (exception) {
-      if (mounted) setState(() => error = _friendlyError('$exception'));
+      if (mounted && !closing) {
+        setState(() => error = _friendlyError('$exception'));
+      }
     }
+  }
+
+  void _markActivePhrase() {
+    _silenceTimer?.cancel();
+    if (mounted && settled) setState(() => settled = false);
+    _silenceTimer = Timer(_silenceWindow, () {
+      if (!mounted || closing || partial.trim().isEmpty) return;
+      setState(() => settled = true);
+    });
+  }
+
+  void _onSoundLevel(double level) {
+    if (!mounted || closing) return;
+    final now = DateTime.now();
+    if (now.difference(_lastWaveUpdate) < const Duration(milliseconds: 55)) {
+      return;
+    }
+    _lastWaveUpdate = now;
+    setState(() {
+      _levels.removeAt(0);
+      _levels.add(level);
+    });
+  }
+
+  Future<void> _restart() async {
+    if (restarting || closing) return;
+    setState(() => restarting = true);
+    await widget.voice.cancel();
+    if (!mounted || closing) return;
+    await _begin(clearTranscript: true);
+    if (mounted && !closing) setState(() => restarting = false);
+  }
+
+  Future<void> _close() async {
+    if (closing) return;
+    closing = true;
+    _silenceTimer?.cancel();
+    await widget.voice.cancel();
+    if (mounted) Navigator.pop(context);
+  }
+
+  Future<void> _accept() async {
+    final result = partial.trim();
+    if (result.isEmpty || closing) return;
+    closing = true;
+    _silenceTimer?.cancel();
+    await widget.voice.stop();
+    if (mounted) Navigator.pop(context, result);
   }
 
   String _friendlyError(String raw) {
     final value = raw.toLowerCase();
-    if (value.contains('permission'))
+    if (value.contains('permission')) {
       return 'Il permesso microfono non è disponibile.';
-    if (value.contains('no_match'))
-      return 'Non ho riconosciuto parole. Puoi riprovare.';
-    if (value.contains('network'))
+    }
+    if (value.contains('no_match')) {
+      return 'Non ho riconosciuto parole. Puoi ricominciare.';
+    }
+    if (value.contains('network')) {
       return 'Il recognizer di sistema non è disponibile offline.';
-    return 'Riconoscimento vocale non riuscito. Puoi riprovare.';
+    }
+    return 'Riconoscimento vocale non riuscito. Puoi ricominciare.';
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            const Icon(Icons.mic_rounded),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                ready ? 'Ti ascolto' : 'Preparo il microfono…',
-                style: Theme.of(context).textTheme.titleLarge,
+  Widget build(BuildContext context) {
+    final hasTranscript = partial.trim().isNotEmpty;
+    final title = error != null
+        ? 'Riconoscimento interrotto'
+        : settled && hasTranscript
+        ? 'Ho capito'
+        : ready
+        ? 'Ti ascolto'
+        : 'Preparo il microfono…';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 12, 12, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.mic_rounded),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
-            ),
-            if (widget.onDevice)
-              const Chip(
-                avatar: Icon(Icons.phonelink_lock_outlined, size: 16),
-                label: Text('Sul dispositivo'),
+              IconButton(
+                tooltip: 'Ricomincia',
+                onPressed: restarting ? null : _restart,
+                icon: restarting
+                    ? const SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.restart_alt_rounded),
               ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Semantics(
-          liveRegion: true,
-          label: partial.isEmpty ? 'In ascolto' : partial,
-          child: Text(
-            error ?? (partial.isEmpty ? 'Parla normalmente…' : '“$partial”'),
-            style: Theme.of(context).textTheme.bodyLarge,
+              IconButton(
+                tooltip: 'Chiudi',
+                onPressed: _close,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: TextButton(
-                onPressed: () async {
-                  await widget.voice.cancel();
-                  if (context.mounted) Navigator.pop(context);
-                },
-                child: const Text('Annulla'),
-              ),
+          const SizedBox(height: 12),
+          _VoiceWaveform(levels: _levels, active: ready && error == null),
+          const SizedBox(height: 12),
+          Semantics(
+            liveRegion: true,
+            label: error ?? (hasTranscript ? partial : 'In ascolto'),
+            child: Text(
+              error ?? (hasTranscript ? '“$partial”' : 'Parla normalmente…'),
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
-            Expanded(
-              child: FilledButton(
-                onPressed: partial.trim().isEmpty
-                    ? null
-                    : () async {
-                        final result = partial.trim();
-                        await widget.voice.stop();
-                        if (context.mounted && !finished) {
-                          finished = true;
-                          Navigator.pop(context, result);
-                        }
-                      },
-                child: const Text('Termina'),
-              ),
+          ),
+          if (settled && hasTranscript && error == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Rimane qui. Se continui a parlare, aggiorno la frase; usa ↻ per ricominciare da zero.',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: hasTranscript && error == null ? _accept : null,
+              icon: const Icon(Icons.check_rounded),
+              label: const Text('Usa questo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoiceWaveform extends StatelessWidget {
+  const _VoiceWaveform({required this.levels, required this.active});
+
+  final List<double> levels;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    var minimum = levels.first;
+    var maximum = levels.first;
+    for (final level in levels.skip(1)) {
+      if (level < minimum) minimum = level;
+      if (level > maximum) maximum = level;
+    }
+    final range = maximum - minimum;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Semantics(
+      label: active ? 'Livello microfono attivo' : 'Livello microfono in pausa',
+      child: SizedBox(
+        height: 52,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            for (var index = 0; index < levels.length; index++) ...[
+              Expanded(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 70),
+                    curve: Curves.easeOut,
+                    width: 3,
+                    height:
+                        8 +
+                        36 *
+                            (range.abs() < 0.05
+                                ? 0.08
+                                : ((levels[index] - minimum) / range).clamp(
+                                    0.08,
+                                    1.0,
+                                  )),
+                    decoration: BoxDecoration(
+                      color: active
+                          ? colorScheme.primary
+                          : colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+              ),
+              if (index != levels.length - 1) const SizedBox(width: 2),
+            ],
+          ],
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class _PickerRow extends StatelessWidget {

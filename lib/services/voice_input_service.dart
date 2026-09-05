@@ -54,8 +54,7 @@ class VoiceInputService {
       return const VoiceInputStatus(
         available: false,
         onDevice: false,
-        message:
-            'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
+        message: 'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
       );
     }
     if (!onDevice && !await isSystemRecognizerAvailable()) {
@@ -83,19 +82,24 @@ class VoiceInputService {
   Future<void> listen({
     required bool onDevice,
     required void Function(String text, bool finalResult) onResult,
+    void Function(double level)? onSoundLevel,
     String localeId = 'it_IT',
   }) async {
     if (!_initialized) throw StateError('VoiceInputService non inizializzato.');
     await _speech.listen(
       onResult: (SpeechRecognitionResult result) =>
           onResult(result.recognizedWords, result.finalResult),
+      onSoundLevelChange: onSoundLevel,
       listenOptions: SpeechListenOptions(
         partialResults: true,
         onDevice: onDevice,
         cancelOnError: true,
-        listenMode: ListenMode.confirmation,
-        pauseFor: const Duration(seconds: 3),
-        listenFor: const Duration(seconds: 18),
+        listenMode: ListenMode.dictation,
+        // The sheet decides after one second that the current phrase is stable,
+        // while the platform recognizer stays alive so the user can keep talking
+        // without seeing a brand-new prompt.
+        pauseFor: const Duration(seconds: 30),
+        listenFor: const Duration(seconds: 90),
         localeId: localeId,
       ),
     );
