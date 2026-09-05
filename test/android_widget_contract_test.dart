@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('Android manifest publishes all DadaFinanza widget variants', () {
-    final manifest = File('android/app/src/main/AndroidManifest.xml')
-        .readAsStringSync();
+    final manifest = File(
+      'android/app/src/main/AndroidManifest.xml',
+    ).readAsStringSync();
     expect(manifest, contains('.DadaFinanceWidgetProvider'));
     expect(manifest, contains('.DadaBalanceWidgetProvider'));
     expect(manifest, contains('.DadaQuickAddWidgetProvider'));
