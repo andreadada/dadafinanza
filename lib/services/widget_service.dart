@@ -9,6 +9,8 @@ class WidgetService {
       'com.dadafinanza.app.DadaBalanceWidgetProvider';
   static const quickProvider =
       'com.dadafinanza.app.DadaQuickAddWidgetProvider';
+  static const amountsProvider =
+      'com.dadafinanza.app.DadaQuickAmountsWidgetProvider';
 
   Future<void> sync({
     required double balance,
@@ -18,11 +20,19 @@ class WidgetService {
       'balance',
       balance.toStringAsFixed(2),
     );
-    final quick = expenseCategories.take(4).map((c) => c.name).toList();
-    for (var i = 0; i < 4; i++) {
+    final ordered = [...expenseCategories]
+      ..sort((a, b) {
+        final quickA = a.quickOrder ?? 999;
+        final quickB = b.quickOrder ?? 999;
+        if (quickA != quickB) return quickA.compareTo(quickB);
+        if (a.isFavorite != b.isFavorite) return a.isFavorite ? -1 : 1;
+        return a.name.compareTo(b.name);
+      });
+    final quick = ordered.take(4).map((item) => item.name).toList();
+    for (var index = 0; index < 4; index++) {
       await HomeWidget.saveWidgetData<String>(
-        'quick_category_$i',
-        i < quick.length ? quick[i] : 'Spesa',
+        'quick_category_$index',
+        index < quick.length ? quick[index] : 'Spesa',
       );
     }
 
@@ -38,6 +48,10 @@ class WidgetService {
       HomeWidget.updateWidget(
         androidName: 'DadaQuickAddWidgetProvider',
         qualifiedAndroidName: quickProvider,
+      ),
+      HomeWidget.updateWidget(
+        androidName: 'DadaQuickAmountsWidgetProvider',
+        qualifiedAndroidName: amountsProvider,
       ),
     ]);
   }
