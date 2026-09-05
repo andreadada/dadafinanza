@@ -2,6 +2,7 @@ import 'package:dadafinanza/app_state.dart';
 import 'package:dadafinanza/data/app_database.dart';
 import 'package:dadafinanza/main.dart';
 import 'package:dadafinanza/screens/home_screen.dart';
+import 'package:dadafinanza/theme/app_theme.dart';
 import 'package:dadafinanza/widgets/ui_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -29,7 +30,7 @@ void main() {
           AppScope(
             notifier: state,
             child: MaterialApp(
-              theme: ThemeData.light(useMaterial3: true),
+              theme: AppTheme.light(),
               home: Scaffold(
                 body: DadaHomeScreen(
                   selectedAccountId: null,
@@ -80,7 +81,7 @@ void main() {
         child: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.6)),
           child: MaterialApp(
-            theme: ThemeData.dark(useMaterial3: true),
+            theme: AppTheme.dark(),
             home: Scaffold(
               body: DadaHomeScreen(
                 selectedAccountId: null,
