@@ -33,6 +33,8 @@ void main() {
 
   test('transfer segment uses a single-line compact action label', () async {
     final source = await File('lib/screens/quick_add_page.dart').readAsString();
-    expect(source, contains("label: Text('Trasferisci', maxLines: 1)"));
+    expect(source, contains("'Trasferimento'"));
+    expect(source, contains('fit: BoxFit.scaleDown'));
+    expect(source, contains('softWrap: false'));
   });
 }

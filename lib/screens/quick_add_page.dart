@@ -1027,7 +1027,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
                   ),
                   ButtonSegment(
                     value: TransactionType.transfer,
-                    label: Text('Trasferisci', maxLines: 1),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'Trasferimento',
+                        maxLines: 1,
+                        softWrap: false,
+                      ),
+                    ),
                   ),
                 ],
                 selected: {type},
