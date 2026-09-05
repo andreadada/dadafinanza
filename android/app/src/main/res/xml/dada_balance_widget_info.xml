@@ -10,4 +10,6 @@
     android:resizeMode="horizontal"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen"
+    android:configure="com.dadafinanza.app.DadaWidgetConfigActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:description="@string/widget_balance_description" />
