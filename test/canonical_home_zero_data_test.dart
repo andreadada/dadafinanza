@@ -16,43 +16,44 @@ void main() {
     Size(390, 844),
     Size(430, 932),
   ]) {
-    testWidgets('zero-data Home keeps the account empty state compact at ${size.width}dp', (
-      tester,
-    ) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+    testWidgets(
+      'zero-data Home keeps the account empty state compact at ${size.width}dp',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
 
-      final state = AppState(AppDatabase())..loading = false;
-      await tester.pumpWidget(
-        AppScope(
-          notifier: state,
-          child: MaterialApp(
-            theme: AppTheme.light(),
-            home: const Scaffold(body: DadaHomeScreen()),
+        final state = AppState(AppDatabase())..loading = false;
+        await tester.pumpWidget(
+          AppScope(
+            notifier: state,
+            child: MaterialApp(
+              theme: AppTheme.light(),
+              home: const Scaffold(body: DadaHomeScreen()),
+            ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
-      expect(find.text('PATRIMONIO'), findsOneWidget);
-      expect(tester.takeException(), isNull);
+        expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
+        expect(find.text('PATRIMONIO'), findsOneWidget);
+        expect(tester.takeException(), isNull);
 
-      await tester.scrollUntilVisible(
-        find.text('Nessun conto'),
-        240,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.pump();
+        await tester.scrollUntilVisible(
+          find.text('Nessun conto'),
+          240,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pump();
 
-      expect(find.text('Nessun conto'), findsOneWidget);
-      final sectionTop = tester.getTopLeft(find.text('Conti')).dy;
-      final emptyTop = tester.getTopLeft(find.text('Nessun conto')).dy;
-      expect(emptyTop - sectionTop, lessThan(260));
-      expect(tester.takeException(), isNull);
-    });
+        expect(find.text('Nessun conto'), findsOneWidget);
+        final sectionTop = tester.getTopLeft(find.text('Conti')).dy;
+        final emptyTop = tester.getTopLeft(find.text('Nessun conto')).dy;
+        expect(emptyTop - sectionTop, lessThan(260));
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('zero-data Home supports large text without overflow', (
