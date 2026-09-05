@@ -23,7 +23,9 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Format changed Dart sources
+      - name: Resolve packages
+        run: flutter pub get
+      - name: Format Dart sources
         run: dart format lib test
       - name: Commit formatting when needed
         run: |
