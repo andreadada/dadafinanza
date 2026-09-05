@@ -6,6 +6,7 @@ on:
       - build/anticipi-ledger
     paths:
       - tooling/apply_anticipi_core_patch.py
+      - tooling/trigger_anticipi_core_patch
 
 permissions:
   contents: write
