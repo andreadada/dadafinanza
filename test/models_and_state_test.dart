@@ -14,32 +14,31 @@ void main() {
     bool includeInAnalytics = true,
     bool archived = false,
     bool system = false,
-  }) =>
-      Account(
-        id: id,
-        name: name,
-        balance: balance,
-        colorValue: 0xFF8E8E93,
-        iconKey: system ? 'help' : 'wallet',
-        accountType: AccountType.checking,
-        includeInTotal: includeInTotal,
-        includeInAnalytics: includeInAnalytics,
-        isLocked: false,
-        isArchived: archived,
-        hideBalance: false,
-        isSystem: system,
-        createdAt: now,
-        updatedAt: now,
-      );
+  }) => Account(
+    id: id,
+    name: name,
+    balance: balance,
+    colorValue: 0xFF8E8E93,
+    iconKey: system ? 'help' : 'wallet',
+    accountType: AccountType.checking,
+    includeInTotal: includeInTotal,
+    includeInAnalytics: includeInAnalytics,
+    isLocked: false,
+    isArchived: archived,
+    hideBalance: false,
+    isSystem: system,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   Category category(int id, String name) => Category(
-        id: id,
-        name: name,
-        iconKey: 'category',
-        colorValue: 0xFF8E8E93,
-        type: TransactionType.expense,
-        quickOrder: null,
-      );
+    id: id,
+    name: name,
+    iconKey: 'category',
+    colorValue: 0xFF8E8E93,
+    type: TransactionType.expense,
+    quickOrder: null,
+  );
 
   FinanceTransaction transaction({
     required int id,
@@ -49,19 +48,18 @@ void main() {
     int? categoryId,
     int? refundOf,
     bool analytics = true,
-  }) =>
-      FinanceTransaction(
-        id: id,
-        type: type,
-        amount: amount,
-        accountId: accountId,
-        categoryId: categoryId,
-        date: now,
-        includeInAnalytics: analytics,
-        refundOfTransactionId: refundOf,
-        createdAt: now,
-        updatedAt: now,
-      );
+  }) => FinanceTransaction(
+    id: id,
+    type: type,
+    amount: amount,
+    accountId: accountId,
+    categoryId: categoryId,
+    date: now,
+    includeInAnalytics: analytics,
+    refundOfTransactionId: refundOf,
+    createdAt: now,
+    updatedAt: now,
+  );
 
   test('total balance excludes archived, system and excluded accounts', () {
     final state = AppState(AppDatabase());
@@ -77,43 +75,46 @@ void main() {
     expect(state.activeAccounts.map((item) => item.id), isNot(contains(3)));
   });
 
-  test('refund reduces effective expense and is not counted as ordinary income', () {
-    final state = AppState(AppDatabase());
-    state.accounts = [account(id: 1, name: 'Main', balance: 1000)];
-    final dinner = transaction(
-      id: 10,
-      type: TransactionType.expense,
-      amount: 120,
-      accountId: 1,
-    );
-    final refund = transaction(
-      id: 11,
-      type: TransactionType.income,
-      amount: 80,
-      accountId: 1,
-      refundOf: 10,
-    );
-    state.transactions = [dinner, refund];
+  test(
+    'refund reduces effective expense and is not counted as ordinary income',
+    () {
+      final state = AppState(AppDatabase());
+      state.accounts = [account(id: 1, name: 'Main', balance: 1000)];
+      final dinner = transaction(
+        id: 10,
+        type: TransactionType.expense,
+        amount: 120,
+        accountId: 1,
+      );
+      final refund = transaction(
+        id: 11,
+        type: TransactionType.income,
+        amount: 80,
+        accountId: 1,
+        refundOf: 10,
+      );
+      state.transactions = [dinner, refund];
 
-    expect(state.refundsFor(10), 80);
-    expect(state.effectiveExpense(dinner), 40);
-    expect(
-      state.periodTotal(
-        TransactionType.expense,
-        DateTime(2026, 9, 1),
-        DateTime(2026, 10, 1),
-      ),
-      40,
-    );
-    expect(
-      state.periodTotal(
-        TransactionType.income,
-        DateTime(2026, 9, 1),
-        DateTime(2026, 10, 1),
-      ),
-      0,
-    );
-  });
+      expect(state.refundsFor(10), 80);
+      expect(state.effectiveExpense(dinner), 40);
+      expect(
+        state.periodTotal(
+          TransactionType.expense,
+          DateTime(2026, 9, 1),
+          DateTime(2026, 10, 1),
+        ),
+        40,
+      );
+      expect(
+        state.periodTotal(
+          TransactionType.income,
+          DateTime(2026, 9, 1),
+          DateTime(2026, 10, 1),
+        ),
+        0,
+      );
+    },
+  );
 
   test('excluded transaction is ignored by analytics', () {
     final state = AppState(AppDatabase());
@@ -144,28 +145,31 @@ void main() {
     );
   });
 
-  test('category totals use split amounts without duplicating parent amount', () {
-    final state = AppState(AppDatabase());
-    state.accounts = [account(id: 1, name: 'Main', balance: 1000)];
-    state.categories = [category(1, 'Food'), category(2, 'Home')];
-    state.transactions = [
-      transaction(
-        id: 20,
-        type: TransactionType.expense,
-        amount: 82,
-        accountId: 1,
-        categoryId: 1,
-      ),
-    ];
-    state.splits = const [
-      TransactionSplit(id: 1, transactionId: 20, amount: 54, categoryId: 1),
-      TransactionSplit(id: 2, transactionId: 20, amount: 28, categoryId: 2),
-    ];
+  test(
+    'category totals use split amounts without duplicating parent amount',
+    () {
+      final state = AppState(AppDatabase());
+      state.accounts = [account(id: 1, name: 'Main', balance: 1000)];
+      state.categories = [category(1, 'Food'), category(2, 'Home')];
+      state.transactions = [
+        transaction(
+          id: 20,
+          type: TransactionType.expense,
+          amount: 82,
+          accountId: 1,
+          categoryId: 1,
+        ),
+      ];
+      state.splits = const [
+        TransactionSplit(id: 1, transactionId: 20, amount: 54, categoryId: 1),
+        TransactionSplit(id: 2, transactionId: 20, amount: 28, categoryId: 2),
+      ];
 
-    expect(state.monthCategoryTotal(1, month: now), 54);
-    expect(state.monthCategoryTotal(2, month: now), 28);
-    expect(state.monthTotal(TransactionType.expense, month: now), 82);
-  });
+      expect(state.monthCategoryTotal(1, month: now), 54);
+      expect(state.monthCategoryTotal(2, month: now), 28);
+      expect(state.monthTotal(TransactionType.expense, month: now), 82);
+    },
+  );
 
   test('transfers are excluded from analytics by default', () {
     final state = AppState(AppDatabase());
@@ -280,22 +284,25 @@ void main() {
     }
   });
 
-  test('transaction copyWith preserves immutable identity and updates fields', () {
-    final original = transaction(
-      id: 40,
-      type: TransactionType.expense,
-      amount: 10,
-      accountId: 1,
-    );
-    final edited = original.copyWith(
-      amount: 25,
-      type: TransactionType.income,
-      updatedAt: now.add(const Duration(minutes: 1)),
-    );
+  test(
+    'transaction copyWith preserves immutable identity and updates fields',
+    () {
+      final original = transaction(
+        id: 40,
+        type: TransactionType.expense,
+        amount: 10,
+        accountId: 1,
+      );
+      final edited = original.copyWith(
+        amount: 25,
+        type: TransactionType.income,
+        updatedAt: now.add(const Duration(minutes: 1)),
+      );
 
-    expect(edited.id, 40);
-    expect(edited.amount, 25);
-    expect(edited.type, TransactionType.income);
-    expect(edited.createdAt, original.createdAt);
-  });
+      expect(edited.id, 40);
+      expect(edited.amount, 25);
+      expect(edited.type, TransactionType.income);
+      expect(edited.createdAt, original.createdAt);
+    },
+  );
 }

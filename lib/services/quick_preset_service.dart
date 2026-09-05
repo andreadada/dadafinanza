@@ -30,23 +30,23 @@ class QuickPreset {
   final bool enabled;
 
   factory QuickPreset.fromMap(Map<String, Object?> map) => QuickPreset(
-        id: map['id'] as int,
-        name: map['name'] as String,
-        type: TransactionTypeX.fromDb(map['type'] as String),
-        accountId: map['account_id'] as int?,
-        toAccountId: map['to_account_id'] as int?,
-        categoryId: map['category_id'] as int?,
-        amount: map['amount_cents'] == null
-            ? null
-            : Money.fromCents((map['amount_cents'] as num).toInt()),
-        note: map['note'] as String?,
-        tags: ((map['tags'] as String?) ?? '')
-            .split('|')
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        position: map['position'] as int? ?? 0,
-        enabled: (map['enabled'] as int? ?? 1) == 1,
-      );
+    id: map['id'] as int,
+    name: map['name'] as String,
+    type: TransactionTypeX.fromDb(map['type'] as String),
+    accountId: map['account_id'] as int?,
+    toAccountId: map['to_account_id'] as int?,
+    categoryId: map['category_id'] as int?,
+    amount: map['amount_cents'] == null
+        ? null
+        : Money.fromCents((map['amount_cents'] as num).toInt()),
+    note: map['note'] as String?,
+    tags: ((map['tags'] as String?) ?? '')
+        .split('|')
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    position: map['position'] as int? ?? 0,
+    enabled: (map['enabled'] as int? ?? 1) == 1,
+  );
 }
 
 class QuickPresetService {
@@ -102,18 +102,18 @@ class QuickPresetService {
     return id;
   }
 
-  Future<void> delete(int id) => database.db.delete(
-        'quick_presets',
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+  Future<void> delete(int id) =>
+      database.db.delete('quick_presets', where: 'id = ?', whereArgs: [id]);
 
   Future<void> reorder(List<QuickPreset> presets) async {
     await database.db.transaction((txn) async {
       for (var index = 0; index < presets.length; index++) {
         await txn.update(
           'quick_presets',
-          {'position': index, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+          {
+            'position': index,
+            'updated_at': DateTime.now().millisecondsSinceEpoch,
+          },
           where: 'id = ?',
           whereArgs: [presets[index].id],
         );

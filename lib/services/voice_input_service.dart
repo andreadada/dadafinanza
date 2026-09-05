@@ -18,7 +18,8 @@ class VoiceInputStatus {
 }
 
 class VoiceInputService {
-  VoiceInputService({SpeechToText? speech}) : _speech = speech ?? SpeechToText();
+  VoiceInputService({SpeechToText? speech})
+    : _speech = speech ?? SpeechToText();
 
   static const _channel = MethodChannel('dadafinanza/speech');
   final SpeechToText _speech;
@@ -38,19 +39,23 @@ class VoiceInputService {
   Future<bool> isSystemRecognizerAvailable() async {
     if (!Platform.isAndroid) return true;
     try {
-      return await _channel.invokeMethod<bool>('isRecognitionAvailable') ?? false;
+      return await _channel.invokeMethod<bool>('isRecognitionAvailable') ??
+          false;
     } on PlatformException {
       return false;
     }
   }
 
-  Future<VoiceInputStatus> prepare({required bool allowSystemRecognizer}) async {
+  Future<VoiceInputStatus> prepare({
+    required bool allowSystemRecognizer,
+  }) async {
     final onDevice = await isOnDeviceAvailable();
     if (!onDevice && !allowSystemRecognizer) {
       return const VoiceInputStatus(
         available: false,
         onDevice: false,
-        message: 'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
+        message:
+            'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
       );
     }
     if (!onDevice && !await isSystemRecognizerAvailable()) {

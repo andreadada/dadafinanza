@@ -101,24 +101,36 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                         final confirmed = await confirmDestructiveAction(
                           context,
                           title: 'Eliminare “${rule.name}”?',
-                          message: 'I movimenti già classificati non cambieranno.',
+                          message:
+                              'I movimenti già classificati non cambieranno.',
                         );
                         if (confirmed) await state.deleteRule(rule);
                       }
                     },
                     itemBuilder: (_) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Modifica'),
+                      ),
                       PopupMenuItem(
                         value: 'toggle',
                         child: Text(rule.enabled ? 'Disattiva' : 'Attiva'),
                       ),
-                      const PopupMenuItem(value: 'duplicate', child: Text('Duplica')),
-                      const PopupMenuItem(value: 'test', child: Text('Prova regola')),
+                      const PopupMenuItem(
+                        value: 'duplicate',
+                        child: Text('Duplica'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'test',
+                        child: Text('Prova regola'),
+                      ),
                       PopupMenuItem(
                         value: 'delete',
                         child: Text(
                           'Elimina',
-                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
                         ),
                       ),
                     ],
@@ -136,8 +148,10 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
       conditions.add('“${rule.containsText}”');
     }
     if (rule.type != null) conditions.add(rule.type!.label);
-    if (rule.minAmount != null) conditions.add('≥ ${moneyFor(state, rule.minAmount!)}');
-    if (rule.maxAmount != null) conditions.add('≤ ${moneyFor(state, rule.maxAmount!)}');
+    if (rule.minAmount != null)
+      conditions.add('≥ ${moneyFor(state, rule.minAmount!)}');
+    if (rule.maxAmount != null)
+      conditions.add('≤ ${moneyFor(state, rule.maxAmount!)}');
     final actions = <String>[];
     final category = state.categoryById(rule.categoryId);
     final account = state.accountById(rule.accountId);
@@ -163,7 +177,10 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Prova regola', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Prova regola',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
             Text(
               preview.count == 1
@@ -171,7 +188,9 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                   : 'Questa regola corrisponde a ${preview.count} movimenti.',
             ),
             const SizedBox(height: 12),
-            ...preview.matches.take(4).map(
+            ...preview.matches
+                .take(4)
+                .map(
                   (item) => FlatMetric(
                     label: item.note ?? item.type.label,
                     value: moneyFor(state, item.amount),
@@ -179,7 +198,10 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                   ),
                 ),
             if (preview.count > 4)
-              Text('+ ${preview.count - 4} altri', style: Theme.of(sheetContext).textTheme.bodySmall),
+              Text(
+                '+ ${preview.count - 4} altri',
+                style: Theme.of(sheetContext).textTheme.bodySmall,
+              ),
             const SizedBox(height: 20),
             Row(
               children: [
@@ -206,15 +228,16 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
     final confirmed = await confirmDestructiveAction(
       context,
       title: 'Applicare allo storico?',
-      message: 'La regola aggiornerà ${preview.count} movimenti corrispondenti. I saldi vengono ricalcolati se cambia il conto.',
+      message:
+          'La regola aggiornerà ${preview.count} movimenti corrispondenti. I saldi vengono ricalcolati se cambia il conto.',
       confirmLabel: 'Applica',
     );
     if (!confirmed) return;
     final changed = await service.applyToHistory(state, rule);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$changed movimenti aggiornati.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$changed movimenti aggiornati.')));
     }
   }
 
@@ -296,16 +319,24 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                     Expanded(
                       child: TextField(
                         controller: min,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Importo min.'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Importo min.',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: TextField(
                         controller: max,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        decoration: const InputDecoration(labelText: 'Importo max.'),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Importo max.',
+                        ),
                       ),
                     ),
                   ],
@@ -366,15 +397,22 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                     analytics == null
                         ? 'Non cambiare'
                         : analytics!
-                            ? 'Includi'
-                            : 'Escludi',
+                        ? 'Includi'
+                        : 'Escludi',
                   ),
                   trailing: PopupMenuButton<bool?>(
-                    onSelected: (value) => setSheetState(() => analytics = value),
+                    onSelected: (value) =>
+                        setSheetState(() => analytics = value),
                     itemBuilder: (_) => const [
-                      PopupMenuItem<bool?>(value: null, child: Text('Non cambiare')),
+                      PopupMenuItem<bool?>(
+                        value: null,
+                        child: Text('Non cambiare'),
+                      ),
                       PopupMenuItem<bool?>(value: true, child: Text('Includi')),
-                      PopupMenuItem<bool?>(value: false, child: Text('Escludi')),
+                      PopupMenuItem<bool?>(
+                        value: false,
+                        child: Text('Escludi'),
+                      ),
                     ],
                   ),
                 ),
@@ -392,20 +430,28 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                       if (name.text.trim().isEmpty ||
                           (min.text.trim().isNotEmpty && minValue == null) ||
                           (max.text.trim().isNotEmpty && maxValue == null) ||
-                          (minValue != null && maxValue != null && minValue > maxValue)) {
+                          (minValue != null &&
+                              maxValue != null &&
+                              minValue > maxValue)) {
                         return;
                       }
                       final rule = AutomationRule(
                         id: existing?.id ?? 0,
                         name: name.text.trim(),
                         enabled: enabled,
-                        containsText: contains.text.trim().isEmpty ? null : contains.text.trim(),
+                        containsText: contains.text.trim().isEmpty
+                            ? null
+                            : contains.text.trim(),
                         type: type,
                         minAmount: minValue,
                         maxAmount: maxValue,
-                        categoryId: type == TransactionType.transfer ? null : categoryId,
+                        categoryId: type == TransactionType.transfer
+                            ? null
+                            : categoryId,
                         accountId: accountId,
-                        addTag: tag.text.trim().isEmpty ? null : tag.text.trim(),
+                        addTag: tag.text.trim().isEmpty
+                            ? null
+                            : tag.text.trim(),
                         includeInAnalytics: analytics,
                         priority: existing?.priority ?? state.rules.length,
                       );
@@ -416,7 +462,9 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                       }
                       if (sheetContext.mounted) Navigator.pop(sheetContext);
                     },
-                    child: Text(existing == null ? 'Crea regola' : 'Salva modifiche'),
+                    child: Text(
+                      existing == null ? 'Crea regola' : 'Salva modifiche',
+                    ),
                   ),
                 ),
               ],

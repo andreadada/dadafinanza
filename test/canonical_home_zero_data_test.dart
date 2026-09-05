@@ -16,7 +16,9 @@ void main() {
     Size(390, 844),
     Size(430, 932),
   ]) {
-    testWidgets('zero-data Home stays compact at ${size.width}dp', (tester) async {
+    testWidgets('zero-data Home stays compact at ${size.width}dp', (
+      tester,
+    ) async {
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
@@ -42,7 +44,9 @@ void main() {
     });
   }
 
-  testWidgets('zero-data Home supports large text without overflow', (tester) async {
+  testWidgets('zero-data Home supports large text without overflow', (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);

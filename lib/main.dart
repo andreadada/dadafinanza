@@ -41,7 +41,7 @@ class DadaFinanzaApp extends StatefulWidget {
 class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   final security = SecurityService();
   final notificationService = NotificationService();
-  const deepLinks = QuickCaptureDeepLinkService();
+  final deepLinks = QuickCaptureDeepLinkService();
   StreamSubscription<Uri?>? _widgetSubscription;
   Timer? _notificationDebounce;
   bool? _lastWidgetPrivacy;
@@ -55,9 +55,8 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     widget.state.addListener(_handleStateChanged);
     _handleStateChanged();
     WidgetsBinding.instance.addPostFrameCallback(
-      (_) async => _handleWidgetUri(
-        await HomeWidget.initiallyLaunchedFromHomeWidget(),
-      ),
+      (_) async =>
+          _handleWidgetUri(await HomeWidget.initiallyLaunchedFromHomeWidget()),
     );
   }
 
@@ -75,9 +74,7 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     final draft = await deepLinks.fromUri(widget.state, uri);
     if (draft == null) return;
     navigatorKey.currentState?.push(
-      MaterialPageRoute(
-        builder: (_) => QuickAddPage(initialDraft: draft),
-      ),
+      MaterialPageRoute(builder: (_) => QuickAddPage(initialDraft: draft)),
     );
   }
 
@@ -105,7 +102,8 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
       ),
       HomeWidget.updateWidget(
         androidName: 'DadaQuickAmountsWidgetProvider',
-        qualifiedAndroidName: 'com.dadafinanza.app.DadaQuickAmountsWidgetProvider',
+        qualifiedAndroidName:
+            'com.dadafinanza.app.DadaQuickAmountsWidgetProvider',
       ),
     ]);
   }
@@ -119,36 +117,33 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   }
 
   ThemeMode get _themeMode => switch (widget.state.themePreference) {
-        AppThemePreference.system => ThemeMode.system,
-        AppThemePreference.light => ThemeMode.light,
-        AppThemePreference.dark => ThemeMode.dark,
-      };
+    AppThemePreference.system => ThemeMode.system,
+    AppThemePreference.light => ThemeMode.light,
+    AppThemePreference.dark => ThemeMode.dark,
+  };
 
   @override
   Widget build(BuildContext context) => AppScope(
-        notifier: widget.state,
-        child: AnimatedBuilder(
-          animation: widget.state,
-          builder: (context, _) => MaterialApp(
-            title: 'DadaFinanza',
-            navigatorKey: navigatorKey,
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.light(),
-            darkTheme: AppTheme.dark(),
-            themeMode: _themeMode,
-            supportedLocales: const [Locale('it', 'IT')],
-            localizationsDelegates: const [
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            home: AppLockGate(
-              security: security,
-              child: const DadaAppShell(),
-            ),
-          ),
-        ),
-      );
+    notifier: widget.state,
+    child: AnimatedBuilder(
+      animation: widget.state,
+      builder: (context, _) => MaterialApp(
+        title: 'DadaFinanza',
+        navigatorKey: navigatorKey,
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: _themeMode,
+        supportedLocales: const [Locale('it', 'IT')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: AppLockGate(security: security, child: const DadaAppShell()),
+      ),
+    ),
+  );
 }
 
 class AppScope extends InheritedNotifier<AppState> {

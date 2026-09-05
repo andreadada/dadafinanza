@@ -27,10 +27,14 @@ class QuickCaptureDeepLinkService {
     final presetId = int.tryParse(query['presetId'] ?? '');
     if (presetId != null) {
       final preset = await QuickPresetService(state.database).all();
-      final selected = preset.where((item) => item.id == presetId && item.enabled).firstOrNull;
+      final selected = preset
+          .where((item) => item.id == presetId && item.enabled)
+          .firstOrNull;
       if (selected != null) {
         type = selected.type;
-        amountCents = selected.amount == null ? null : Money.toCents(selected.amount!);
+        amountCents = selected.amount == null
+            ? null
+            : Money.toCents(selected.amount!);
         accountId = _validAccount(state, selected.accountId);
         toAccountId = _validAccount(state, selected.toAccountId);
         categoryId = _validCategory(state, selected.categoryId, type);
@@ -83,11 +87,7 @@ class QuickCaptureDeepLinkService {
     return matches.length == 1 ? matches.single.id : null;
   }
 
-  int? _resolveCategory(
-    AppState state,
-    String value,
-    TransactionType type,
-  ) {
+  int? _resolveCategory(AppState state, String value, TransactionType type) {
     final numeric = int.tryParse(value);
     if (numeric != null) return _validCategory(state, numeric, type);
     final normalized = _normalize(value);
@@ -116,8 +116,6 @@ class QuickCaptureDeepLinkService {
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
 
-  String _normalize(String value) => value
-      .trim()
-      .toLowerCase()
-      .replaceAll(RegExp(r'\s+'), ' ');
+  String _normalize(String value) =>
+      value.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 }

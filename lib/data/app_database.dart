@@ -147,7 +147,9 @@ class AppDatabase {
       date INTEGER PRIMARY KEY,
       amount REAL NOT NULL
     )''');
-    await db.execute('CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    await db.execute(
+      'CREATE TABLE settings(key TEXT PRIMARY KEY, value TEXT NOT NULL)',
+    );
     await _createSmartTables(db);
 
     final defaults = <String, String>{
@@ -187,29 +189,106 @@ class AppDatabase {
   Future<void> _upgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 3) {
       final now = DateTime.now().millisecondsSinceEpoch;
-      await _addColumnIfMissing(db, 'accounts', 'icon_key', "TEXT NOT NULL DEFAULT 'wallet'");
-      await _addColumnIfMissing(db, 'accounts', 'account_type', "TEXT NOT NULL DEFAULT 'other'");
-      await _addColumnIfMissing(db, 'accounts', 'include_in_analytics', 'INTEGER NOT NULL DEFAULT 1');
-      await _addColumnIfMissing(db, 'accounts', 'is_locked', 'INTEGER NOT NULL DEFAULT 0');
-      await _addColumnIfMissing(db, 'accounts', 'is_archived', 'INTEGER NOT NULL DEFAULT 0');
-      await _addColumnIfMissing(db, 'accounts', 'hide_balance', 'INTEGER NOT NULL DEFAULT 0');
-      await _addColumnIfMissing(db, 'accounts', 'is_system', 'INTEGER NOT NULL DEFAULT 0');
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'icon_key',
+        "TEXT NOT NULL DEFAULT 'wallet'",
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'account_type',
+        "TEXT NOT NULL DEFAULT 'other'",
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'include_in_analytics',
+        'INTEGER NOT NULL DEFAULT 1',
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'is_locked',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'is_archived',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'hide_balance',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'is_system',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
       await _addColumnIfMissing(db, 'accounts', 'note', 'TEXT');
-      await _addColumnIfMissing(db, 'accounts', 'created_at', 'INTEGER NOT NULL DEFAULT 0');
-      await _addColumnIfMissing(db, 'accounts', 'updated_at', 'INTEGER NOT NULL DEFAULT 0');
-      await db.update('accounts', {'created_at': now, 'updated_at': now}, where: 'created_at = 0 OR updated_at = 0');
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'created_at',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        'accounts',
+        'updated_at',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.update('accounts', {
+        'created_at': now,
+        'updated_at': now,
+      }, where: 'created_at = 0 OR updated_at = 0');
 
-      await _addColumnIfMissing(db, 'transactions', 'include_in_analytics', 'INTEGER NOT NULL DEFAULT 1');
+      await _addColumnIfMissing(
+        db,
+        'transactions',
+        'include_in_analytics',
+        'INTEGER NOT NULL DEFAULT 1',
+      );
       await _addColumnIfMissing(db, 'transactions', 'recurring_id', 'INTEGER');
-      await _addColumnIfMissing(db, 'transactions', 'refund_of_transaction_id', 'INTEGER');
-      await _addColumnIfMissing(db, 'transactions', 'created_at', 'INTEGER NOT NULL DEFAULT 0');
-      await _addColumnIfMissing(db, 'transactions', 'updated_at', 'INTEGER NOT NULL DEFAULT 0');
-      await db.rawUpdate('UPDATE transactions SET created_at = date WHERE created_at = 0');
-      await db.rawUpdate('UPDATE transactions SET updated_at = date WHERE updated_at = 0');
+      await _addColumnIfMissing(
+        db,
+        'transactions',
+        'refund_of_transaction_id',
+        'INTEGER',
+      );
+      await _addColumnIfMissing(
+        db,
+        'transactions',
+        'created_at',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await _addColumnIfMissing(
+        db,
+        'transactions',
+        'updated_at',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
+      await db.rawUpdate(
+        'UPDATE transactions SET created_at = date WHERE created_at = 0',
+      );
+      await db.rawUpdate(
+        'UPDATE transactions SET updated_at = date WHERE updated_at = 0',
+      );
 
       await _addColumnIfMissing(db, 'recurring', 'note', 'TEXT');
       await _addColumnIfMissing(db, 'recurring', 'end_date', 'INTEGER');
-      await _addColumnIfMissing(db, 'recurring', 'auto_create', 'INTEGER NOT NULL DEFAULT 0');
+      await _addColumnIfMissing(
+        db,
+        'recurring',
+        'auto_create',
+        'INTEGER NOT NULL DEFAULT 0',
+      );
 
       await db.execute('''CREATE TABLE IF NOT EXISTS transaction_splits(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,17 +338,35 @@ class AppDatabase {
         add_tag TEXT,
         include_in_analytics INTEGER
       )''');
-      await db.execute('CREATE TABLE IF NOT EXISTS net_worth_snapshots(date INTEGER PRIMARY KEY, amount REAL NOT NULL)');
-      final legacyBudget = await db.query('settings', columns: ['value'], where: 'key = ?', whereArgs: ['monthly_budget'], limit: 1);
-      final legacyValue = legacyBudget.isEmpty ? 0.0 : double.tryParse(legacyBudget.first['value'] as String? ?? '') ?? 0.0;
-      final budgetCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM budgets')) ?? 0;
+      await db.execute(
+        'CREATE TABLE IF NOT EXISTS net_worth_snapshots(date INTEGER PRIMARY KEY, amount REAL NOT NULL)',
+      );
+      final legacyBudget = await db.query(
+        'settings',
+        columns: ['value'],
+        where: 'key = ?',
+        whereArgs: ['monthly_budget'],
+        limit: 1,
+      );
+      final legacyValue = legacyBudget.isEmpty
+          ? 0.0
+          : double.tryParse(legacyBudget.first['value'] as String? ?? '') ??
+                0.0;
+      final budgetCount =
+          Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM budgets'),
+          ) ??
+          0;
       if (legacyValue > 0 && budgetCount == 0) {
         await db.insert('budgets', {
           'name': 'Budget mensile',
           'category_id': null,
           'limit_amount': legacyValue,
           'period': BudgetPeriod.monthly.name,
-          'start_date': DateTime(DateTime.now().year, DateTime.now().month).millisecondsSinceEpoch,
+          'start_date': DateTime(
+            DateTime.now().year,
+            DateTime.now().month,
+          ).millisecondsSinceEpoch,
           'end_date': null,
           'enabled': 1,
         });
@@ -349,15 +446,19 @@ class AppDatabase {
       'smart_sensitivity': 'balanced',
     };
     for (final entry in defaults.entries) {
-      await db.insert(
-        'settings',
-        {'key': entry.key, 'value': entry.value},
-        conflictAlgorithm: ConflictAlgorithm.ignore,
-      );
+      await db.insert('settings', {
+        'key': entry.key,
+        'value': entry.value,
+      }, conflictAlgorithm: ConflictAlgorithm.ignore);
     }
   }
 
-  Future<void> _addColumnIfMissing(Database db, String table, String column, String definition) async {
+  Future<void> _addColumnIfMissing(
+    Database db,
+    String table,
+    String column,
+    String definition,
+  ) async {
     final columns = await db.rawQuery('PRAGMA table_info($table)');
     if (!columns.any((row) => row['name'] == column)) {
       await db.execute('ALTER TABLE $table ADD COLUMN $column $definition');
@@ -365,20 +466,44 @@ class AppDatabase {
   }
 
   Future<void> _createIndexes(Database db) async {
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_splits_transaction ON transaction_splits(transaction_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_patterns_text_type ON learned_patterns(normalized_text, type)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_patterns_last_seen ON learned_patterns(last_seen)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_feedback_pattern ON pattern_feedback(pattern_id)');
-    await db.execute('CREATE INDEX IF NOT EXISTS idx_detected_next ON detected_recurring_patterns(next_expected)');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_splits_transaction ON transaction_splits(transaction_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_patterns_text_type ON learned_patterns(normalized_text, type)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_patterns_last_seen ON learned_patterns(last_seen)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_feedback_pattern ON pattern_feedback(pattern_id)',
+    );
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS idx_detected_next ON detected_recurring_patterns(next_expected)',
+    );
   }
 
   Future<void> _seedDashboard(Database db) async {
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM dashboard_widgets')) ?? 0;
+    final count =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM dashboard_widgets'),
+        ) ??
+        0;
     if (count > 0) return;
     final defaults = <DashboardWidgetType>[
       DashboardWidgetType.totalBalance,
@@ -406,7 +531,11 @@ class AppDatabase {
   }
 
   Future<void> _ensureSystemRows() async {
-    final rows = await db.query('accounts', where: 'name = ? AND is_system = 1', whereArgs: [_unassignedName]);
+    final rows = await db.query(
+      'accounts',
+      where: 'name = ? AND is_system = 1',
+      whereArgs: [_unassignedName],
+    );
     if (rows.isEmpty) {
       final now = DateTime.now().millisecondsSinceEpoch;
       await db.insert('accounts', {
@@ -428,25 +557,80 @@ class AppDatabase {
     await _createIndexes(db);
   }
 
-  Future<List<Account>> accounts() async => (await db.query('accounts', orderBy: 'is_system, is_archived, id')).map(Account.fromMap).toList();
-  Future<List<Category>> categories() async => (await db.query('categories', orderBy: 'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name')).map(Category.fromMap).toList();
-  Future<List<FinanceTransaction>> transactions() async => (await db.query('transactions', orderBy: 'date DESC, id DESC')).map(FinanceTransaction.fromMap).toList();
-  Future<List<TransactionSplit>> splits() async => (await db.query('transaction_splits', orderBy: 'id')).map(TransactionSplit.fromMap).toList();
-  Future<List<RecurringPayment>> recurring() async => (await db.query('recurring', orderBy: 'next_date ASC')).map(RecurringPayment.fromMap).toList();
-  Future<List<Budget>> budgets() async => (await db.query('budgets', orderBy: 'enabled DESC, id DESC')).map(Budget.fromMap).toList();
-  Future<List<Goal>> goals() async => (await db.query('goals', orderBy: 'completed, archived, id DESC')).map(Goal.fromMap).toList();
-  Future<List<DashboardWidgetConfig>> dashboardWidgets() async => (await db.query('dashboard_widgets', orderBy: 'order_index')).map(DashboardWidgetConfig.fromMap).toList();
-  Future<List<AutomationRule>> rules() async => (await db.query('automation_rules', orderBy: 'id DESC')).map(AutomationRule.fromMap).toList();
-  Future<List<LearnedPattern>> learnedPatterns() async => (await db.query('learned_patterns', orderBy: 'last_seen DESC, sample_count DESC')).map(LearnedPattern.fromMap).toList();
-  Future<List<DetectedRecurringPattern>> detectedRecurringPatterns() async => (await db.query('detected_recurring_patterns', orderBy: 'confidence DESC, next_expected ASC')).map(DetectedRecurringPattern.fromMap).toList();
-  Future<Set<String>> suppressedSuggestionTexts() async => (await db.query('suggestion_suppressions', columns: ['normalized_text'])).map((row) => row['normalized_text'] as String).toSet();
+  Future<List<Account>> accounts() async => (await db.query(
+    'accounts',
+    orderBy: 'is_system, is_archived, id',
+  )).map(Account.fromMap).toList();
+  Future<List<Category>> categories() async => (await db.query(
+    'categories',
+    orderBy:
+        'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name',
+  )).map(Category.fromMap).toList();
+  Future<List<FinanceTransaction>> transactions() async => (await db.query(
+    'transactions',
+    orderBy: 'date DESC, id DESC',
+  )).map(FinanceTransaction.fromMap).toList();
+  Future<List<TransactionSplit>> splits() async => (await db.query(
+    'transaction_splits',
+    orderBy: 'id',
+  )).map(TransactionSplit.fromMap).toList();
+  Future<List<RecurringPayment>> recurring() async => (await db.query(
+    'recurring',
+    orderBy: 'next_date ASC',
+  )).map(RecurringPayment.fromMap).toList();
+  Future<List<Budget>> budgets() async => (await db.query(
+    'budgets',
+    orderBy: 'enabled DESC, id DESC',
+  )).map(Budget.fromMap).toList();
+  Future<List<Goal>> goals() async => (await db.query(
+    'goals',
+    orderBy: 'completed, archived, id DESC',
+  )).map(Goal.fromMap).toList();
+  Future<List<DashboardWidgetConfig>> dashboardWidgets() async =>
+      (await db.query(
+        'dashboard_widgets',
+        orderBy: 'order_index',
+      )).map(DashboardWidgetConfig.fromMap).toList();
+  Future<List<AutomationRule>> rules() async => (await db.query(
+    'automation_rules',
+    orderBy: 'id DESC',
+  )).map(AutomationRule.fromMap).toList();
+  Future<List<LearnedPattern>> learnedPatterns() async => (await db.query(
+    'learned_patterns',
+    orderBy: 'last_seen DESC, sample_count DESC',
+  )).map(LearnedPattern.fromMap).toList();
+  Future<List<DetectedRecurringPattern>> detectedRecurringPatterns() async =>
+      (await db.query(
+        'detected_recurring_patterns',
+        orderBy: 'confidence DESC, next_expected ASC',
+      )).map(DetectedRecurringPattern.fromMap).toList();
+  Future<Set<String>> suppressedSuggestionTexts() async => (await db.query(
+    'suggestion_suppressions',
+    columns: ['normalized_text'],
+  )).map((row) => row['normalized_text'] as String).toSet();
 
   Future<int> unassignedAccountId() async {
-    final rows = await db.query('accounts', columns: ['id'], where: 'name = ? AND is_system = 1', whereArgs: [_unassignedName], limit: 1);
+    final rows = await db.query(
+      'accounts',
+      columns: ['id'],
+      where: 'name = ? AND is_system = 1',
+      whereArgs: [_unassignedName],
+      limit: 1,
+    );
     return rows.first['id'] as int;
   }
 
-  Future<int> addAccount({required String name, required double balance, required int colorValue, required String iconKey, required AccountType type, required bool includeInTotal, required bool includeInAnalytics, required bool hideBalance, String? note}) async {
+  Future<int> addAccount({
+    required String name,
+    required double balance,
+    required int colorValue,
+    required String iconKey,
+    required AccountType type,
+    required bool includeInTotal,
+    required bool includeInAnalytics,
+    required bool hideBalance,
+    String? note,
+  }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     return db.insert('accounts', {
       'name': name,
@@ -464,89 +648,176 @@ class AppDatabase {
   }
 
   Future<void> updateAccount(Account account) async {
-    await db.update('accounts', {
-      'name': account.name,
-      'balance': account.balance,
-      'color': account.colorValue,
-      'icon_key': account.iconKey,
-      'account_type': account.accountType.name,
-      'include_in_total': account.includeInTotal ? 1 : 0,
-      'include_in_analytics': account.includeInAnalytics ? 1 : 0,
-      'is_locked': account.isLocked ? 1 : 0,
-      'is_archived': account.isArchived ? 1 : 0,
-      'hide_balance': account.hideBalance ? 1 : 0,
-      'note': account.note,
-      'updated_at': DateTime.now().millisecondsSinceEpoch,
-    }, where: 'id = ? AND is_system = 0', whereArgs: [account.id]);
+    await db.update(
+      'accounts',
+      {
+        'name': account.name,
+        'balance': account.balance,
+        'color': account.colorValue,
+        'icon_key': account.iconKey,
+        'account_type': account.accountType.name,
+        'include_in_total': account.includeInTotal ? 1 : 0,
+        'include_in_analytics': account.includeInAnalytics ? 1 : 0,
+        'is_locked': account.isLocked ? 1 : 0,
+        'is_archived': account.isArchived ? 1 : 0,
+        'hide_balance': account.hideBalance ? 1 : 0,
+        'note': account.note,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
+      where: 'id = ? AND is_system = 0',
+      whereArgs: [account.id],
+    );
   }
 
   Future<void> deleteAccount(int id) async {
     await db.transaction((txn) async {
-      final accountRows = await txn.query('accounts', where: 'id = ? AND is_system = 0', whereArgs: [id]);
+      final accountRows = await txn.query(
+        'accounts',
+        where: 'id = ? AND is_system = 0',
+        whereArgs: [id],
+      );
       if (accountRows.isEmpty) return;
-      final linkedRows = await txn.query('transactions', where: 'account_id = ? OR to_account_id = ?', whereArgs: [id, id], orderBy: 'date DESC, id DESC');
+      final linkedRows = await txn.query(
+        'transactions',
+        where: 'account_id = ? OR to_account_id = ?',
+        whereArgs: [id, id],
+        orderBy: 'date DESC, id DESC',
+      );
       for (final row in linkedRows) {
-        await _applyBalance(txn, FinanceTransaction.fromMap(row), -1, validateAccounts: false);
+        await _applyBalance(
+          txn,
+          FinanceTransaction.fromMap(row),
+          -1,
+          validateAccounts: false,
+        );
       }
-      await txn.delete('transaction_splits', where: 'transaction_id IN (SELECT id FROM transactions WHERE account_id = ? OR to_account_id = ?)', whereArgs: [id, id]);
-      await txn.delete('transactions', where: 'account_id = ? OR to_account_id = ?', whereArgs: [id, id]);
+      await txn.delete(
+        'transaction_splits',
+        where:
+            'transaction_id IN (SELECT id FROM transactions WHERE account_id = ? OR to_account_id = ?)',
+        whereArgs: [id, id],
+      );
+      await txn.delete(
+        'transactions',
+        where: 'account_id = ? OR to_account_id = ?',
+        whereArgs: [id, id],
+      );
       await txn.delete('recurring', where: 'account_id = ?', whereArgs: [id]);
-      await txn.update('goals', {'linked_account_id': null}, where: 'linked_account_id = ?', whereArgs: [id]);
+      await txn.update(
+        'goals',
+        {'linked_account_id': null},
+        where: 'linked_account_id = ?',
+        whereArgs: [id],
+      );
       await txn.delete('accounts', where: 'id = ?', whereArgs: [id]);
     });
   }
 
-  Future<int> addCategory({required String name, required TransactionType type, required String iconKey, required int colorValue}) async {
-    final quickCount = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM categories WHERE type = ? AND quick_order IS NOT NULL', [type.dbValue])) ?? 0;
+  Future<int> addCategory({
+    required String name,
+    required TransactionType type,
+    required String iconKey,
+    required int colorValue,
+  }) async {
+    final quickCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery(
+            'SELECT COUNT(*) FROM categories WHERE type = ? AND quick_order IS NOT NULL',
+            [type.dbValue],
+          ),
+        ) ??
+        0;
     return db.insert('categories', {
       'name': name,
       'type': type.dbValue,
       'icon_key': iconKey,
       'color': colorValue,
-      'quick_order': type == TransactionType.expense && quickCount < 4 ? quickCount : null,
+      'quick_order': type == TransactionType.expense && quickCount < 4
+          ? quickCount
+          : null,
     });
   }
 
-  Future<void> updateCategory(Category category) async => db.update('categories', {
-        'name': category.name,
-        'icon_key': category.iconKey,
-        'color': category.colorValue,
-        'type': category.type.dbValue,
-        'quick_order': category.quickOrder,
-      }, where: 'id = ?', whereArgs: [category.id]);
+  Future<void> updateCategory(Category category) async => db.update(
+    'categories',
+    {
+      'name': category.name,
+      'icon_key': category.iconKey,
+      'color': category.colorValue,
+      'type': category.type.dbValue,
+      'quick_order': category.quickOrder,
+    },
+    where: 'id = ?',
+    whereArgs: [category.id],
+  );
 
   Future<void> deleteCategory(int id) async {
     await db.transaction((txn) async {
-      await txn.update('transactions', {'category_id': null}, where: 'category_id = ?', whereArgs: [id]);
-      await txn.update('recurring', {'category_id': null}, where: 'category_id = ?', whereArgs: [id]);
-      await txn.update('budgets', {'category_id': null}, where: 'category_id = ?', whereArgs: [id]);
-      await txn.delete('transaction_splits', where: 'category_id = ?', whereArgs: [id]);
+      await txn.update(
+        'transactions',
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      await txn.update(
+        'recurring',
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      await txn.update(
+        'budgets',
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      await txn.delete(
+        'transaction_splits',
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
       await txn.delete('categories', where: 'id = ?', whereArgs: [id]);
     });
   }
 
-  Future<int> addTransaction({required TransactionType type, required double amount, required int accountId, int? toAccountId, int? categoryId, required DateTime date, String? note, List<String> tags = const [], String? receiptPath, bool includeInAnalytics = true, int? recurringId, int? refundOfTransactionId}) async {
-    final item = await _applyRules(FinanceTransaction(
-      id: 0,
-      type: type,
-      amount: amount,
-      accountId: accountId,
-      toAccountId: toAccountId,
-      categoryId: categoryId,
-      date: date,
-      note: note,
-      tags: tags,
-      receiptPath: receiptPath,
-      includeInAnalytics: includeInAnalytics,
-      recurringId: recurringId,
-      refundOfTransactionId: refundOfTransactionId,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    ));
+  Future<int> addTransaction({
+    required TransactionType type,
+    required double amount,
+    required int accountId,
+    int? toAccountId,
+    int? categoryId,
+    required DateTime date,
+    String? note,
+    List<String> tags = const [],
+    String? receiptPath,
+    bool includeInAnalytics = true,
+    int? recurringId,
+    int? refundOfTransactionId,
+  }) async {
+    final item = await _applyRules(
+      FinanceTransaction(
+        id: 0,
+        type: type,
+        amount: amount,
+        accountId: accountId,
+        toAccountId: toAccountId,
+        categoryId: categoryId,
+        date: date,
+        note: note,
+        tags: tags,
+        receiptPath: receiptPath,
+        includeInAnalytics: includeInAnalytics,
+        recurringId: recurringId,
+        refundOfTransactionId: refundOfTransactionId,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
     return db.transaction((txn) async {
       await _validateAccount(txn, item.accountId);
       if (item.type == TransactionType.transfer) {
-        if (item.toAccountId == null || item.toAccountId == item.accountId) throw StateError('Il trasferimento richiede due conti diversi.');
+        if (item.toAccountId == null || item.toAccountId == item.accountId)
+          throw StateError('Il trasferimento richiede due conti diversi.');
         await _validateAccount(txn, item.toAccountId!);
       }
       final now = DateTime.now().millisecondsSinceEpoch;
@@ -556,68 +827,113 @@ class AppDatabase {
     });
   }
 
-  Future<void> updateTransaction(FinanceTransaction oldItem, FinanceTransaction newItem) async {
+  Future<void> updateTransaction(
+    FinanceTransaction oldItem,
+    FinanceTransaction newItem,
+  ) async {
     await db.transaction((txn) async {
       await _validateAccount(txn, newItem.accountId);
       if (newItem.type == TransactionType.transfer) {
-        if (newItem.toAccountId == null || newItem.toAccountId == newItem.accountId) throw StateError('Il trasferimento richiede due conti diversi.');
+        if (newItem.toAccountId == null ||
+            newItem.toAccountId == newItem.accountId)
+          throw StateError('Il trasferimento richiede due conti diversi.');
         await _validateAccount(txn, newItem.toAccountId!);
       }
       await _applyBalance(txn, oldItem, -1, validateAccounts: false);
-      await txn.update('transactions', _transactionMap(newItem, DateTime.now().millisecondsSinceEpoch, preserveCreatedAt: true), where: 'id = ?', whereArgs: [oldItem.id]);
+      await txn.update(
+        'transactions',
+        _transactionMap(
+          newItem,
+          DateTime.now().millisecondsSinceEpoch,
+          preserveCreatedAt: true,
+        ),
+        where: 'id = ?',
+        whereArgs: [oldItem.id],
+      );
       await _applyBalance(txn, newItem, 1);
     });
   }
 
   Future<int> duplicateTransaction(FinanceTransaction item) => addTransaction(
-        type: item.type,
-        amount: item.amount,
-        accountId: item.accountId,
-        toAccountId: item.toAccountId,
-        categoryId: item.categoryId,
-        date: DateTime.now(),
-        note: item.note,
-        tags: item.tags,
-        receiptPath: item.receiptPath,
-        includeInAnalytics: item.includeInAnalytics,
-        refundOfTransactionId: item.refundOfTransactionId,
-      );
+    type: item.type,
+    amount: item.amount,
+    accountId: item.accountId,
+    toAccountId: item.toAccountId,
+    categoryId: item.categoryId,
+    date: DateTime.now(),
+    note: item.note,
+    tags: item.tags,
+    receiptPath: item.receiptPath,
+    includeInAnalytics: item.includeInAnalytics,
+    refundOfTransactionId: item.refundOfTransactionId,
+  );
 
   Future<void> deleteTransaction(FinanceTransaction item) async {
     await db.transaction((txn) async {
       await _applyBalance(txn, item, -1, validateAccounts: false);
-      await txn.delete('transaction_splits', where: 'transaction_id = ?', whereArgs: [item.id]);
-      await txn.update('transactions', {'refund_of_transaction_id': null}, where: 'refund_of_transaction_id = ?', whereArgs: [item.id]);
+      await txn.delete(
+        'transaction_splits',
+        where: 'transaction_id = ?',
+        whereArgs: [item.id],
+      );
+      await txn.update(
+        'transactions',
+        {'refund_of_transaction_id': null},
+        where: 'refund_of_transaction_id = ?',
+        whereArgs: [item.id],
+      );
       await txn.delete('transactions', where: 'id = ?', whereArgs: [item.id]);
     });
   }
 
-  Map<String, Object?> _transactionMap(FinanceTransaction item, int now, {bool preserveCreatedAt = false}) => {
-        'type': item.type.dbValue,
-        'amount': item.amount,
-        'account_id': item.accountId,
-        'to_account_id': item.type == TransactionType.transfer ? item.toAccountId : null,
-        'category_id': item.type == TransactionType.transfer ? null : item.categoryId,
-        'date': item.date.millisecondsSinceEpoch,
-        'note': item.note,
-        'tags': item.tags.join('|'),
-        'receipt_path': item.receiptPath,
-        'include_in_analytics': item.includeInAnalytics ? 1 : 0,
-        'recurring_id': item.recurringId,
-        'refund_of_transaction_id': item.refundOfTransactionId,
-        'created_at': preserveCreatedAt ? item.createdAt.millisecondsSinceEpoch : now,
-        'updated_at': now,
-      };
+  Map<String, Object?> _transactionMap(
+    FinanceTransaction item,
+    int now, {
+    bool preserveCreatedAt = false,
+  }) => {
+    'type': item.type.dbValue,
+    'amount': item.amount,
+    'account_id': item.accountId,
+    'to_account_id': item.type == TransactionType.transfer
+        ? item.toAccountId
+        : null,
+    'category_id': item.type == TransactionType.transfer
+        ? null
+        : item.categoryId,
+    'date': item.date.millisecondsSinceEpoch,
+    'note': item.note,
+    'tags': item.tags.join('|'),
+    'receipt_path': item.receiptPath,
+    'include_in_analytics': item.includeInAnalytics ? 1 : 0,
+    'recurring_id': item.recurringId,
+    'refund_of_transaction_id': item.refundOfTransactionId,
+    'created_at': preserveCreatedAt
+        ? item.createdAt.millisecondsSinceEpoch
+        : now,
+    'updated_at': now,
+  };
 
   Future<void> _validateAccount(Transaction txn, int id) async {
-    final rows = await txn.query('accounts', where: 'id = ?', whereArgs: [id], limit: 1);
+    final rows = await txn.query(
+      'accounts',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) throw StateError('Conto non trovato.');
     final account = Account.fromMap(rows.first);
-    if (!account.isSystem && account.isLocked) throw StateError('Il conto “${account.name}” è bloccato.');
-    if (!account.isSystem && account.isArchived) throw StateError('Il conto “${account.name}” è archiviato.');
+    if (!account.isSystem && account.isLocked)
+      throw StateError('Il conto “${account.name}” è bloccato.');
+    if (!account.isSystem && account.isArchived)
+      throw StateError('Il conto “${account.name}” è archiviato.');
   }
 
-  Future<void> _applyBalance(Transaction txn, FinanceTransaction item, int direction, {bool validateAccounts = true}) async {
+  Future<void> _applyBalance(
+    Transaction txn,
+    FinanceTransaction item,
+    int direction, {
+    bool validateAccounts = true,
+  }) async {
     if (validateAccounts) await _validateAccount(txn, item.accountId);
     switch (item.type) {
       case TransactionType.expense:
@@ -628,13 +944,17 @@ class AppDatabase {
         break;
       case TransactionType.transfer:
         await _increment(txn, item.accountId, -item.amount * direction);
-        if (item.toAccountId != null) await _increment(txn, item.toAccountId!, item.amount * direction);
+        if (item.toAccountId != null)
+          await _increment(txn, item.toAccountId!, item.amount * direction);
         break;
     }
   }
 
   Future<void> _increment(Transaction txn, int id, double delta) async {
-    await txn.rawUpdate('UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?', [delta, DateTime.now().millisecondsSinceEpoch, id]);
+    await txn.rawUpdate(
+      'UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?',
+      [delta, DateTime.now().millisecondsSinceEpoch, id],
+    );
   }
 
   Future<FinanceTransaction> _applyRules(FinanceTransaction item) async {
@@ -645,79 +965,194 @@ class AppDatabase {
       if (rule.minAmount != null && result.amount < rule.minAmount!) continue;
       if (rule.maxAmount != null && result.amount > rule.maxAmount!) continue;
       final haystack = (result.note ?? '').toLowerCase();
-      if (rule.containsText?.isNotEmpty == true && !haystack.contains(rule.containsText!.toLowerCase())) continue;
+      if (rule.containsText?.isNotEmpty == true &&
+          !haystack.contains(rule.containsText!.toLowerCase()))
+        continue;
       result = result.copyWith(
         categoryId: rule.categoryId ?? result.categoryId,
         accountId: rule.accountId ?? result.accountId,
-        tags: rule.addTag == null || result.tags.contains(rule.addTag) ? result.tags : [...result.tags, rule.addTag!],
-        includeInAnalytics: rule.includeInAnalytics ?? result.includeInAnalytics,
+        tags: rule.addTag == null || result.tags.contains(rule.addTag)
+            ? result.tags
+            : [...result.tags, rule.addTag!],
+        includeInAnalytics:
+            rule.includeInAnalytics ?? result.includeInAnalytics,
       );
     }
     return result;
   }
 
-  Future<void> replaceSplits(int transactionId, List<TransactionSplit> items, double transactionAmount) async {
+  Future<void> replaceSplits(
+    int transactionId,
+    List<TransactionSplit> items,
+    double transactionAmount,
+  ) async {
     final total = items.fold<double>(0, (sum, item) => sum + item.amount);
-    if (items.isNotEmpty && (total - transactionAmount).abs() > .005) throw StateError('La somma delle divisioni deve coincidere con il totale.');
+    if (items.isNotEmpty && (total - transactionAmount).abs() > .005)
+      throw StateError(
+        'La somma delle divisioni deve coincidere con il totale.',
+      );
     await db.transaction((txn) async {
-      await txn.delete('transaction_splits', where: 'transaction_id = ?', whereArgs: [transactionId]);
+      await txn.delete(
+        'transaction_splits',
+        where: 'transaction_id = ?',
+        whereArgs: [transactionId],
+      );
       for (final item in items) {
-        await txn.insert('transaction_splits', {'transaction_id': transactionId, 'amount': item.amount, 'category_id': item.categoryId, 'note': item.note});
+        await txn.insert('transaction_splits', {
+          'transaction_id': transactionId,
+          'amount': item.amount,
+          'category_id': item.categoryId,
+          'note': item.note,
+        });
       }
     });
   }
 
-  Future<int> addRecurring({required String name, required double amount, required TransactionType type, required int accountId, int? categoryId, required String frequency, required DateTime nextDate, String? note, DateTime? endDate, bool autoCreate = false}) => db.insert('recurring', {
-        'name': name,
-        'amount': amount,
-        'type': type.dbValue,
-        'account_id': accountId,
-        'category_id': categoryId,
-        'frequency': frequency,
-        'next_date': nextDate.millisecondsSinceEpoch,
-        'enabled': 1,
-        'note': note,
-        'end_date': endDate?.millisecondsSinceEpoch,
-        'auto_create': autoCreate ? 1 : 0,
-      });
+  Future<int> addRecurring({
+    required String name,
+    required double amount,
+    required TransactionType type,
+    required int accountId,
+    int? categoryId,
+    required String frequency,
+    required DateTime nextDate,
+    String? note,
+    DateTime? endDate,
+    bool autoCreate = false,
+  }) => db.insert('recurring', {
+    'name': name,
+    'amount': amount,
+    'type': type.dbValue,
+    'account_id': accountId,
+    'category_id': categoryId,
+    'frequency': frequency,
+    'next_date': nextDate.millisecondsSinceEpoch,
+    'enabled': 1,
+    'note': note,
+    'end_date': endDate?.millisecondsSinceEpoch,
+    'auto_create': autoCreate ? 1 : 0,
+  });
 
-  Future<void> updateRecurring(RecurringPayment item) => db.update('recurring', {
-        'name': item.name,
-        'amount': item.amount,
-        'type': item.type.dbValue,
-        'account_id': item.accountId,
-        'category_id': item.categoryId,
-        'frequency': item.frequency,
-        'next_date': item.nextDate.millisecondsSinceEpoch,
-        'enabled': item.enabled ? 1 : 0,
-        'note': item.note,
-        'end_date': item.endDate?.millisecondsSinceEpoch,
-        'auto_create': item.autoCreate ? 1 : 0,
-      }, where: 'id = ?', whereArgs: [item.id]);
-  Future<void> deleteRecurring(int id) => db.delete('recurring', where: 'id = ?', whereArgs: [id]);
+  Future<void> updateRecurring(RecurringPayment item) => db.update(
+    'recurring',
+    {
+      'name': item.name,
+      'amount': item.amount,
+      'type': item.type.dbValue,
+      'account_id': item.accountId,
+      'category_id': item.categoryId,
+      'frequency': item.frequency,
+      'next_date': item.nextDate.millisecondsSinceEpoch,
+      'enabled': item.enabled ? 1 : 0,
+      'note': item.note,
+      'end_date': item.endDate?.millisecondsSinceEpoch,
+      'auto_create': item.autoCreate ? 1 : 0,
+    },
+    where: 'id = ?',
+    whereArgs: [item.id],
+  );
+  Future<void> deleteRecurring(int id) =>
+      db.delete('recurring', where: 'id = ?', whereArgs: [id]);
 
-  Future<int> addBudget({required String name, int? categoryId, required double limit, required BudgetPeriod period, required DateTime startDate, DateTime? endDate}) => db.insert('budgets', {
-        'name': name, 'category_id': categoryId, 'limit_amount': limit, 'period': period.name, 'start_date': startDate.millisecondsSinceEpoch, 'end_date': endDate?.millisecondsSinceEpoch, 'enabled': 1,
-      });
-  Future<void> updateBudget(Budget item) => db.update('budgets', {'name': item.name, 'category_id': item.categoryId, 'limit_amount': item.limit, 'period': item.period.name, 'start_date': item.startDate.millisecondsSinceEpoch, 'end_date': item.endDate?.millisecondsSinceEpoch, 'enabled': item.enabled ? 1 : 0}, where: 'id = ?', whereArgs: [item.id]);
-  Future<void> deleteBudget(int id) => db.delete('budgets', where: 'id = ?', whereArgs: [id]);
+  Future<int> addBudget({
+    required String name,
+    int? categoryId,
+    required double limit,
+    required BudgetPeriod period,
+    required DateTime startDate,
+    DateTime? endDate,
+  }) => db.insert('budgets', {
+    'name': name,
+    'category_id': categoryId,
+    'limit_amount': limit,
+    'period': period.name,
+    'start_date': startDate.millisecondsSinceEpoch,
+    'end_date': endDate?.millisecondsSinceEpoch,
+    'enabled': 1,
+  });
+  Future<void> updateBudget(Budget item) => db.update(
+    'budgets',
+    {
+      'name': item.name,
+      'category_id': item.categoryId,
+      'limit_amount': item.limit,
+      'period': item.period.name,
+      'start_date': item.startDate.millisecondsSinceEpoch,
+      'end_date': item.endDate?.millisecondsSinceEpoch,
+      'enabled': item.enabled ? 1 : 0,
+    },
+    where: 'id = ?',
+    whereArgs: [item.id],
+  );
+  Future<void> deleteBudget(int id) =>
+      db.delete('budgets', where: 'id = ?', whereArgs: [id]);
 
-  Future<int> addGoal({required String name, required String iconKey, required int colorValue, required double targetAmount, DateTime? targetDate, int? linkedAccountId}) => db.insert('goals', {'name': name, 'icon_key': iconKey, 'color': colorValue, 'target_amount': targetAmount, 'current_amount': 0.0, 'target_date': targetDate?.millisecondsSinceEpoch, 'linked_account_id': linkedAccountId, 'archived': 0, 'completed': 0});
-  Future<void> updateGoal(Goal item) => db.update('goals', {'name': item.name, 'icon_key': item.iconKey, 'color': item.colorValue, 'target_amount': item.targetAmount, 'current_amount': item.currentAmount, 'target_date': item.targetDate?.millisecondsSinceEpoch, 'linked_account_id': item.linkedAccountId, 'archived': item.archived ? 1 : 0, 'completed': item.completed ? 1 : 0}, where: 'id = ?', whereArgs: [item.id]);
-  Future<void> deleteGoal(int id) => db.delete('goals', where: 'id = ?', whereArgs: [id]);
+  Future<int> addGoal({
+    required String name,
+    required String iconKey,
+    required int colorValue,
+    required double targetAmount,
+    DateTime? targetDate,
+    int? linkedAccountId,
+  }) => db.insert('goals', {
+    'name': name,
+    'icon_key': iconKey,
+    'color': colorValue,
+    'target_amount': targetAmount,
+    'current_amount': 0.0,
+    'target_date': targetDate?.millisecondsSinceEpoch,
+    'linked_account_id': linkedAccountId,
+    'archived': 0,
+    'completed': 0,
+  });
+  Future<void> updateGoal(Goal item) => db.update(
+    'goals',
+    {
+      'name': item.name,
+      'icon_key': item.iconKey,
+      'color': item.colorValue,
+      'target_amount': item.targetAmount,
+      'current_amount': item.currentAmount,
+      'target_date': item.targetDate?.millisecondsSinceEpoch,
+      'linked_account_id': item.linkedAccountId,
+      'archived': item.archived ? 1 : 0,
+      'completed': item.completed ? 1 : 0,
+    },
+    where: 'id = ?',
+    whereArgs: [item.id],
+  );
+  Future<void> deleteGoal(int id) =>
+      db.delete('goals', where: 'id = ?', whereArgs: [id]);
 
   Future<void> saveDashboardWidgets(List<DashboardWidgetConfig> items) async {
     await db.transaction((txn) async {
       for (final item in items) {
-        await txn.insert('dashboard_widgets', {'type': item.type.name, 'enabled': item.enabled ? 1 : 0, 'order_index': item.orderIndex, 'size': item.size.name}, conflictAlgorithm: ConflictAlgorithm.replace);
+        await txn.insert('dashboard_widgets', {
+          'type': item.type.name,
+          'enabled': item.enabled ? 1 : 0,
+          'order_index': item.orderIndex,
+          'size': item.size.name,
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
       }
     });
   }
 
   Future<int> addRule(AutomationRule rule) => db.insert('automation_rules', {
-        'name': rule.name, 'enabled': rule.enabled ? 1 : 0, 'contains_text': rule.containsText, 'type': rule.type?.dbValue, 'min_amount': rule.minAmount, 'max_amount': rule.maxAmount, 'category_id': rule.categoryId, 'account_id': rule.accountId, 'add_tag': rule.addTag, 'include_in_analytics': rule.includeInAnalytics == null ? null : (rule.includeInAnalytics! ? 1 : 0),
-      });
-  Future<void> deleteRule(int id) => db.delete('automation_rules', where: 'id = ?', whereArgs: [id]);
+    'name': rule.name,
+    'enabled': rule.enabled ? 1 : 0,
+    'contains_text': rule.containsText,
+    'type': rule.type?.dbValue,
+    'min_amount': rule.minAmount,
+    'max_amount': rule.maxAmount,
+    'category_id': rule.categoryId,
+    'account_id': rule.accountId,
+    'add_tag': rule.addTag,
+    'include_in_analytics': rule.includeInAnalytics == null
+        ? null
+        : (rule.includeInAnalytics! ? 1 : 0),
+  });
+  Future<void> deleteRule(int id) =>
+      db.delete('automation_rules', where: 'id = ?', whereArgs: [id]);
 
   Future<void> replaceLearnedPatterns(List<LearnedPattern> patterns) async {
     await db.transaction((txn) async {
@@ -754,19 +1189,30 @@ class AppDatabase {
           values['created_at'] = now;
           await txn.insert('learned_patterns', values);
         } else {
-          await txn.update('learned_patterns', values, where: 'signature = ?', whereArgs: [pattern.signature]);
+          await txn.update(
+            'learned_patterns',
+            values,
+            where: 'signature = ?',
+            whereArgs: [pattern.signature],
+          );
         }
       }
       for (final row in existingRows) {
         final signature = row['signature'] as String;
         if (!signatures.contains(signature)) {
-          await txn.delete('learned_patterns', where: 'signature = ?', whereArgs: [signature]);
+          await txn.delete(
+            'learned_patterns',
+            where: 'signature = ?',
+            whereArgs: [signature],
+          );
         }
       }
     });
   }
 
-  Future<void> replaceDetectedRecurringPatterns(List<DetectedRecurringPattern> patterns) async {
+  Future<void> replaceDetectedRecurringPatterns(
+    List<DetectedRecurringPattern> patterns,
+  ) async {
     await db.transaction((txn) async {
       final oldRows = await txn.query('detected_recurring_patterns');
       final old = <String, Map<String, Object?>>{
@@ -795,19 +1241,32 @@ class AppDatabase {
           values['created_at'] = now;
           await txn.insert('detected_recurring_patterns', values);
         } else {
-          await txn.update('detected_recurring_patterns', values, where: 'signature = ?', whereArgs: [pattern.signature]);
+          await txn.update(
+            'detected_recurring_patterns',
+            values,
+            where: 'signature = ?',
+            whereArgs: [pattern.signature],
+          );
         }
       }
       for (final row in oldRows) {
         final signature = row['signature'] as String;
         if (!signatures.contains(signature)) {
-          await txn.delete('detected_recurring_patterns', where: 'signature = ?', whereArgs: [signature]);
+          await txn.delete(
+            'detected_recurring_patterns',
+            where: 'signature = ?',
+            whereArgs: [signature],
+          );
         }
       }
     });
   }
 
-  Future<void> recordPatternFeedback(int? patternId, String kind, String queryText) async {
+  Future<void> recordPatternFeedback(
+    int? patternId,
+    String kind,
+    String queryText,
+  ) async {
     final now = DateTime.now().millisecondsSinceEpoch;
     await db.transaction((txn) async {
       await txn.insert('pattern_feedback', {
@@ -818,28 +1277,38 @@ class AppDatabase {
       });
       if (patternId != null) {
         if (kind == 'accepted') {
-          await txn.rawUpdate('UPDATE learned_patterns SET accepted_count = accepted_count + 1, updated_at = ? WHERE id = ?', [now, patternId]);
+          await txn.rawUpdate(
+            'UPDATE learned_patterns SET accepted_count = accepted_count + 1, updated_at = ? WHERE id = ?',
+            [now, patternId],
+          );
         } else if (kind == 'rejected' || kind == 'modified') {
-          await txn.rawUpdate('UPDATE learned_patterns SET rejected_count = rejected_count + 1, updated_at = ? WHERE id = ?', [now, patternId]);
+          await txn.rawUpdate(
+            'UPDATE learned_patterns SET rejected_count = rejected_count + 1, updated_at = ? WHERE id = ?',
+            [now, patternId],
+          );
         }
       }
     });
   }
 
-  Future<void> suppressSuggestion(String normalizedText) => db.insert(
-        'suggestion_suppressions',
-        {'normalized_text': normalizedText, 'created_at': DateTime.now().millisecondsSinceEpoch},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+  Future<void> suppressSuggestion(String normalizedText) =>
+      db.insert('suggestion_suppressions', {
+        'normalized_text': normalizedText,
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
 
   Future<void> setPatternEnabled(int id, bool enabled) => db.update(
-        'learned_patterns',
-        {'enabled': enabled ? 1 : 0, 'updated_at': DateTime.now().millisecondsSinceEpoch},
-        where: 'id = ?',
-        whereArgs: [id],
-      );
+    'learned_patterns',
+    {
+      'enabled': enabled ? 1 : 0,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    },
+    where: 'id = ?',
+    whereArgs: [id],
+  );
 
-  Future<void> deletePattern(int id) => db.delete('learned_patterns', where: 'id = ?', whereArgs: [id]);
+  Future<void> deletePattern(int id) =>
+      db.delete('learned_patterns', where: 'id = ?', whereArgs: [id]);
 
   Future<void> clearLearning() async {
     await db.transaction((txn) async {
@@ -851,17 +1320,32 @@ class AppDatabase {
   }
 
   Future<String?> getSetting(String key) async {
-    final rows = await db.query('settings', columns: ['value'], where: 'key = ?', whereArgs: [key], limit: 1);
+    final rows = await db.query(
+      'settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
     return rows.isEmpty ? null : rows.first['value'] as String;
   }
-  Future<void> setSetting(String key, String value) => db.insert('settings', {'key': key, 'value': value}, conflictAlgorithm: ConflictAlgorithm.replace);
+
+  Future<void> setSetting(String key, String value) => db.insert('settings', {
+    'key': key,
+    'value': value,
+  }, conflictAlgorithm: ConflictAlgorithm.replace);
 
   Future<void> snapshotNetWorth(double amount) async {
     final now = DateTime.now();
     final day = DateTime(now.year, now.month, now.day).millisecondsSinceEpoch;
-    await db.insert('net_worth_snapshots', {'date': day, 'amount': amount}, conflictAlgorithm: ConflictAlgorithm.replace);
+    await db.insert('net_worth_snapshots', {
+      'date': day,
+      'amount': amount,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
-  Future<List<Map<String, Object?>>> netWorthSnapshots() => db.query('net_worth_snapshots', orderBy: 'date ASC');
+
+  Future<List<Map<String, Object?>>> netWorthSnapshots() =>
+      db.query('net_worth_snapshots', orderBy: 'date ASC');
 
   Future<void> clearAllUserData() async {
     await db.transaction((txn) async {
@@ -882,7 +1366,8 @@ class AppDatabase {
     });
   }
 
-  Future<String> databaseFilePath() async => join(await getDatabasesPath(), 'dadafinanza.db');
+  Future<String> databaseFilePath() async =>
+      join(await getDatabasesPath(), 'dadafinanza.db');
 
   Future<void> restoreDatabaseFrom(String sourcePath) async {
     await _db?.close();
@@ -893,10 +1378,14 @@ class AppDatabase {
   }
 
   Future<String> exportTransactionsCsv() async {
-    final buffer = StringBuffer('id,type,amount,account_id,to_account_id,category_id,date,note,tags,include_in_analytics\n');
+    final buffer = StringBuffer(
+      'id,type,amount,account_id,to_account_id,category_id,date,note,tags,include_in_analytics\n',
+    );
     for (final t in await transactions()) {
       String q(String? value) => '"${(value ?? '').replaceAll('"', '""')}"';
-      buffer.writeln('${t.id},${t.type.name},${t.amount},${t.accountId},${t.toAccountId ?? ''},${t.categoryId ?? ''},${t.date.toIso8601String()},${q(t.note)},${q(t.tags.join('|'))},${t.includeInAnalytics ? 1 : 0}');
+      buffer.writeln(
+        '${t.id},${t.type.name},${t.amount},${t.accountId},${t.toAccountId ?? ''},${t.categoryId ?? ''},${t.date.toIso8601String()},${q(t.note)},${q(t.tags.join('|'))},${t.includeInAnalytics ? 1 : 0}',
+      );
     }
     return buffer.toString();
   }

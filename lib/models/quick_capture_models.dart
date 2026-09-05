@@ -1,6 +1,13 @@
 import 'models.dart';
 
-enum QuickCaptureSource { manual, preset, widget, voice, smartFinance, deepLink }
+enum QuickCaptureSource {
+  manual,
+  preset,
+  widget,
+  voice,
+  smartFinance,
+  deepLink,
+}
 
 enum VoiceFieldSource { explicit, inferred, smartFinance, fallback }
 
@@ -66,20 +73,19 @@ class TransactionDraft {
     QuickCaptureSource? source,
     bool? startVoice,
     Map<String, VoiceFieldSource>? fieldSources,
-  }) =>
-      TransactionDraft(
-        type: type ?? this.type,
-        amountCents: amountCents ?? this.amountCents,
-        accountId: accountId ?? this.accountId,
-        toAccountId: toAccountId ?? this.toAccountId,
-        categoryId: categoryId ?? this.categoryId,
-        date: date ?? this.date,
-        note: note ?? this.note,
-        tags: tags ?? this.tags,
-        source: source ?? this.source,
-        startVoice: startVoice ?? this.startVoice,
-        fieldSources: fieldSources ?? this.fieldSources,
-      );
+  }) => TransactionDraft(
+    type: type ?? this.type,
+    amountCents: amountCents ?? this.amountCents,
+    accountId: accountId ?? this.accountId,
+    toAccountId: toAccountId ?? this.toAccountId,
+    categoryId: categoryId ?? this.categoryId,
+    date: date ?? this.date,
+    note: note ?? this.note,
+    tags: tags ?? this.tags,
+    source: source ?? this.source,
+    startVoice: startVoice ?? this.startVoice,
+    fieldSources: fieldSources ?? this.fieldSources,
+  );
 }
 
 class VoiceParseResult {
@@ -94,9 +100,10 @@ class VoiceParseResult {
   final List<VoiceParseIssue> issues;
 
   bool get hasBlockingIssue => issues.any(
-        (issue) => issue.type == VoiceIssueType.missingAmount ||
-            issue.type == VoiceIssueType.ambiguousAmount ||
-            issue.type == VoiceIssueType.ambiguousCategory ||
-            issue.type == VoiceIssueType.ambiguousAccount,
-      );
+    (issue) =>
+        issue.type == VoiceIssueType.missingAmount ||
+        issue.type == VoiceIssueType.ambiguousAmount ||
+        issue.type == VoiceIssueType.ambiguousCategory ||
+        issue.type == VoiceIssueType.ambiguousAccount,
+  );
 }

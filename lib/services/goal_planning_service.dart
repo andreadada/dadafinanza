@@ -20,8 +20,9 @@ class GoalPlanningService {
     }).toList();
     if (active.isEmpty) return 0;
 
-    final totalBudgets =
-        active.where((item) => item.categoryId == null).toList();
+    final totalBudgets = active
+        .where((item) => item.categoryId == null)
+        .toList();
     final selected = totalBudgets.isNotEmpty ? totalBudgets : active;
     final allowances = selected
         .map((budget) => _remainingWeeklyAllowance(state, budget, target))
@@ -42,10 +43,7 @@ class GoalPlanningService {
     );
     if (historicalWeekly <= 0) return 0;
 
-    final guardedAllowance = math.min(
-      budgetAllowance,
-      historicalWeekly * 1.5,
-    );
+    final guardedAllowance = math.min(budgetAllowance, historicalWeekly * 1.5);
     return math.max(0, guardedAllowance - historicalWeekly).toDouble();
   }
 
@@ -78,8 +76,7 @@ class GoalPlanningService {
       competingGoals: activeGoals,
       now: target,
     );
-    if (base.status == GoalPlanStatus.insufficientData ||
-        base.remaining <= 0) {
+    if (base.status == GoalPlanStatus.insufficientData || base.remaining <= 0) {
       return base;
     }
 
@@ -88,17 +85,15 @@ class GoalPlanningService {
     final status = goal.targetDate == null
         ? GoalPlanStatus.onTrack
         : realistic >= base.mathematicalWeekly * 1.15
-            ? GoalPlanStatus.ahead
-            : realistic >= base.mathematicalWeekly * .9
-                ? GoalPlanStatus.onTrack
-                : realistic >= base.mathematicalWeekly * .55
-                    ? GoalPlanStatus.slightlyBehind
-                    : GoalPlanStatus.unrealistic;
+        ? GoalPlanStatus.ahead
+        : realistic >= base.mathematicalWeekly * .9
+        ? GoalPlanStatus.onTrack
+        : realistic >= base.mathematicalWeekly * .55
+        ? GoalPlanStatus.slightlyBehind
+        : GoalPlanStatus.unrealistic;
     final estimated = realistic <= 0
         ? null
-        : target.add(
-            Duration(days: ((base.remaining / realistic) * 7).ceil()),
-          );
+        : target.add(Duration(days: ((base.remaining / realistic) * 7).ceil()));
     return GoalPlan(
       goalId: base.goalId,
       remaining: base.remaining,

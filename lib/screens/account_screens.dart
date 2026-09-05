@@ -31,7 +31,9 @@ class AccountsScreen extends StatelessWidget {
         children: [
           Text(
             'PATRIMONIO',
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(letterSpacing: 1.1),
+            style: Theme.of(
+              context,
+            ).textTheme.labelMedium?.copyWith(letterSpacing: 1.1),
           ),
           const SizedBox(height: 6),
           Text(
@@ -43,7 +45,8 @@ class AccountsScreen extends StatelessWidget {
             EmptyState(
               icon: Icons.account_balance_wallet_outlined,
               title: 'Nessun conto',
-              subtitle: 'Crea un conto oppure registra un movimento come Non assegnato.',
+              subtitle:
+                  'Crea un conto oppure registra un movimento come Non assegnato.',
               action: FilledButton.icon(
                 onPressed: () => showAccountEditor(context),
                 icon: const Icon(Icons.add_rounded),
@@ -58,7 +61,9 @@ class AccountsScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     minVerticalPadding: 12,
                     leading: CircleAvatar(
-                      backgroundColor: Color(account.colorValue).withValues(alpha: .14),
+                      backgroundColor: Color(
+                        account.colorValue,
+                      ).withValues(alpha: .14),
                       child: Icon(
                         accountIcon(account.iconKey),
                         color: Color(account.colorValue),
@@ -94,7 +99,8 @@ class AccountsScreen extends StatelessWidget {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => AccountDetailPage(accountId: account.id),
+                        builder: (_) =>
+                            AccountDetailPage(accountId: account.id),
                       ),
                     ),
                   ),
@@ -104,7 +110,10 @@ class AccountsScreen extends StatelessWidget {
             ),
           if (state.archivedAccounts.isNotEmpty) ...[
             const SizedBox(height: 28),
-            SectionTitle('Archiviati', trailing: Text('${state.archivedAccounts.length}')),
+            SectionTitle(
+              'Archiviati',
+              trailing: Text('${state.archivedAccounts.length}'),
+            ),
             ...state.archivedAccounts.map(
               (account) => ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -134,20 +143,24 @@ class _InlineStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13),
-          const SizedBox(width: 2),
-          Text(label, style: Theme.of(context).textTheme.labelSmall),
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(icon, size: 13),
+      const SizedBox(width: 2),
+      Text(label, style: Theme.of(context).textTheme.labelSmall),
+    ],
+  );
 }
 
 class AccountDetailPage extends StatelessWidget {
   const AccountDetailPage({required this.accountId, super.key});
   final int accountId;
 
-  Future<void> _delete(BuildContext context, Account account, AppState state) async {
+  Future<void> _delete(
+    BuildContext context,
+    Account account,
+    AppState state,
+  ) async {
     final movementCount = state.transactionCountForAccount(account.id);
     final recurringCount = state.recurringCountForAccount(account.id);
     final confirmed = await confirmDestructiveAction(
@@ -178,7 +191,10 @@ class AccountDetailPage extends StatelessWidget {
         .take(4)
         .toList();
     final income = state.accountMonthTotal(account.id, TransactionType.income);
-    final expense = state.accountMonthTotal(account.id, TransactionType.expense);
+    final expense = state.accountMonthTotal(
+      account.id,
+      TransactionType.expense,
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(account.name),
@@ -186,23 +202,34 @@ class AccountDetailPage extends StatelessWidget {
           PopupMenuButton<String>(
             tooltip: 'Azioni conto',
             onSelected: (value) async {
-              if (value == 'edit') await showAccountEditor(context, existing: account);
+              if (value == 'edit')
+                await showAccountEditor(context, existing: account);
               if (value == 'lock') {
-                await state.updateAccount(account.copyWith(isLocked: !account.isLocked));
+                await state.updateAccount(
+                  account.copyWith(isLocked: !account.isLocked),
+                );
               }
               if (value == 'archive') {
-                await state.updateAccount(account.copyWith(isArchived: !account.isArchived));
+                await state.updateAccount(
+                  account.copyWith(isArchived: !account.isArchived),
+                );
               }
               if (value == 'total') {
-                await state.updateAccount(account.copyWith(includeInTotal: !account.includeInTotal));
+                await state.updateAccount(
+                  account.copyWith(includeInTotal: !account.includeInTotal),
+                );
               }
               if (value == 'analytics') {
                 await state.updateAccount(
-                  account.copyWith(includeInAnalytics: !account.includeInAnalytics),
+                  account.copyWith(
+                    includeInAnalytics: !account.includeInAnalytics,
+                  ),
                 );
               }
               if (value == 'hide') {
-                await state.updateAccount(account.copyWith(hideBalance: !account.hideBalance));
+                await state.updateAccount(
+                  account.copyWith(hideBalance: !account.hideBalance),
+                );
               }
               if (value == 'delete' && context.mounted) {
                 await _delete(context, account, state);
@@ -212,11 +239,15 @@ class AccountDetailPage extends StatelessWidget {
               const PopupMenuItem(value: 'edit', child: Text('Modifica conto')),
               PopupMenuItem(
                 value: 'lock',
-                child: Text(account.isLocked ? 'Sblocca conto' : 'Blocca conto'),
+                child: Text(
+                  account.isLocked ? 'Sblocca conto' : 'Blocca conto',
+                ),
               ),
               PopupMenuItem(
                 value: 'archive',
-                child: Text(account.isArchived ? 'Ripristina conto' : 'Archivia conto'),
+                child: Text(
+                  account.isArchived ? 'Ripristina conto' : 'Archivia conto',
+                ),
               ),
               PopupMenuItem(
                 value: 'total',
@@ -236,7 +267,9 @@ class AccountDetailPage extends StatelessWidget {
               ),
               PopupMenuItem(
                 value: 'hide',
-                child: Text(account.hideBalance ? 'Mostra saldo' : 'Nascondi saldo'),
+                child: Text(
+                  account.hideBalance ? 'Mostra saldo' : 'Nascondi saldo',
+                ),
               ),
               PopupMenuItem(
                 value: 'delete',
@@ -256,7 +289,9 @@ class AccountDetailPage extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 28,
-                backgroundColor: Color(account.colorValue).withValues(alpha: .14),
+                backgroundColor: Color(
+                  account.colorValue,
+                ).withValues(alpha: .14),
                 child: Icon(
                   accountIcon(account.iconKey),
                   color: Color(account.colorValue),
@@ -268,7 +303,10 @@ class AccountDetailPage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(account.accountType.label, style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      account.accountType.label,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     Text(
                       state.hideBalance || account.hideBalance
                           ? '••••••'
@@ -280,7 +318,9 @@ class AccountDetailPage extends StatelessWidget {
               ),
             ],
           ),
-          if (account.isLocked || account.isArchived || !account.includeInTotal) ...[
+          if (account.isLocked ||
+              account.isArchived ||
+              !account.includeInTotal) ...[
             const SizedBox(height: 14),
             Wrap(
               spacing: 8,
@@ -318,14 +358,14 @@ class AccountDetailPage extends StatelessWidget {
                   onTap: account.isLocked || account.isArchived
                       ? null
                       : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => QuickAddPage(
-                                initialTypeName: 'expense',
-                                initialAccountId: account.id,
-                              ),
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuickAddPage(
+                              initialTypeName: 'expense',
+                              initialAccountId: account.id,
                             ),
                           ),
+                        ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -336,14 +376,14 @@ class AccountDetailPage extends StatelessWidget {
                   onTap: account.isLocked || account.isArchived
                       ? null
                       : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => QuickAddPage(
-                                initialTypeName: 'income',
-                                initialAccountId: account.id,
-                              ),
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuickAddPage(
+                              initialTypeName: 'income',
+                              initialAccountId: account.id,
                             ),
                           ),
+                        ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -354,14 +394,14 @@ class AccountDetailPage extends StatelessWidget {
                   onTap: account.isLocked || account.isArchived
                       ? null
                       : () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => QuickAddPage(
-                                initialTypeName: 'transfer',
-                                initialAccountId: account.id,
-                              ),
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => QuickAddPage(
+                              initialTypeName: 'transfer',
+                              initialAccountId: account.id,
                             ),
                           ),
+                        ),
                 ),
               ),
             ],
@@ -408,7 +448,9 @@ class AccountDetailPage extends StatelessWidget {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.repeat_rounded),
                 title: Text(r.name),
-                subtitle: Text(DateFormat('dd MMM', 'it_IT').format(r.nextDate)),
+                subtitle: Text(
+                  DateFormat('dd MMM', 'it_IT').format(r.nextDate),
+                ),
                 trailing: Text(moneyFor(state, r.amount)),
               ),
             ),
@@ -420,27 +462,36 @@ class AccountDetailPage extends StatelessWidget {
 }
 
 class _QuickAccountAction extends StatelessWidget {
-  const _QuickAccountAction({required this.icon, required this.label, required this.onTap});
+  const _QuickAccountAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) => OutlinedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(label),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(48),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-        ),
-      );
+    onPressed: onTap,
+    icon: Icon(icon, size: 18),
+    label: Text(label),
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size.fromHeight(48),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+    ),
+  );
 }
 
-Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) async {
+Future<Account?> showAccountEditor(
+  BuildContext context, {
+  Account? existing,
+}) async {
   final state = AppScope.of(context);
   final name = TextEditingController(text: existing?.name ?? '');
-  final balance = TextEditingController(text: (existing?.balance ?? 0).toStringAsFixed(2));
+  final balance = TextEditingController(
+    text: (existing?.balance ?? 0).toStringAsFixed(2),
+  );
   final note = TextEditingController(text: existing?.note ?? '');
   var type = existing?.accountType ?? AccountType.checking;
   var iconKey = existing?.iconKey ?? 'wallet';
@@ -448,8 +499,12 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
   var includeInTotal = existing?.includeInTotal ?? true;
   var includeInAnalytics = existing?.includeInAnalytics ?? true;
   var hideBalance = existing?.hideBalance ?? false;
-  var advanced = existing != null &&
-      (!includeInTotal || !includeInAnalytics || hideBalance || note.text.isNotEmpty);
+  var advanced =
+      existing != null &&
+      (!includeInTotal ||
+          !includeInAnalytics ||
+          hideBalance ||
+          note.text.isNotEmpty);
 
   final result = await showModalBottomSheet<Account>(
     context: context,
@@ -498,7 +553,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                   signed: true,
                 ),
                 decoration: InputDecoration(
-                  labelText: existing == null ? 'Saldo iniziale' : 'Saldo / riconciliazione',
+                  labelText: existing == null
+                      ? 'Saldo iniziale'
+                      : 'Saldo / riconciliazione',
                   suffixText: '€',
                 ),
               ),
@@ -553,8 +610,12 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
               const SizedBox(height: 8),
               TextButton.icon(
                 onPressed: () => setSheetState(() => advanced = !advanced),
-                icon: Icon(advanced ? Icons.expand_less_rounded : Icons.tune_rounded),
-                label: Text(advanced ? 'Nascondi altre opzioni' : 'Altre opzioni'),
+                icon: Icon(
+                  advanced ? Icons.expand_less_rounded : Icons.tune_rounded,
+                ),
+                label: Text(
+                  advanced ? 'Nascondi altre opzioni' : 'Altre opzioni',
+                ),
               ),
               AnimatedSize(
                 duration: const Duration(milliseconds: 180),
@@ -564,7 +625,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Includi nel patrimonio'),
-                            subtitle: const Text('Contribuisce al saldo totale mostrato in Home.'),
+                            subtitle: const Text(
+                              'Contribuisce al saldo totale mostrato in Home.',
+                            ),
                             value: includeInTotal,
                             onChanged: (value) =>
                                 setSheetState(() => includeInTotal = value),
@@ -572,7 +635,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                           SwitchListTile(
                             contentPadding: EdgeInsets.zero,
                             title: const Text('Includi nelle statistiche'),
-                            subtitle: const Text('I movimenti del conto entrano nelle analisi.'),
+                            subtitle: const Text(
+                              'I movimenti del conto entrano nelle analisi.',
+                            ),
                             value: includeInAnalytics,
                             onChanged: (value) =>
                                 setSheetState(() => includeInAnalytics = value),
@@ -587,7 +652,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                           TextField(
                             controller: note,
                             maxLines: 2,
-                            decoration: const InputDecoration(labelText: 'Nota opzionale'),
+                            decoration: const InputDecoration(
+                              labelText: 'Nota opzionale',
+                            ),
                           ),
                         ],
                       )
@@ -599,7 +666,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                 child: FilledButton(
                   onPressed: () async {
                     final accountName = name.text.trim();
-                    final parsed = double.tryParse(balance.text.replaceAll(',', '.'));
+                    final parsed = double.tryParse(
+                      balance.text.replaceAll(',', '.'),
+                    );
                     if (accountName.isEmpty || parsed == null) return;
                     if (existing == null) {
                       final created = await state.addAccount(
@@ -611,7 +680,9 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                         includeInTotal: includeInTotal,
                         includeInAnalytics: includeInAnalytics,
                         hideBalance: hideBalance,
-                        note: note.text.trim().isEmpty ? null : note.text.trim(),
+                        note: note.text.trim().isEmpty
+                            ? null
+                            : note.text.trim(),
                       );
                       if (context.mounted) Navigator.pop(context, created);
                     } else {
@@ -624,13 +695,17 @@ Future<Account?> showAccountEditor(BuildContext context, {Account? existing}) as
                         includeInTotal: includeInTotal,
                         includeInAnalytics: includeInAnalytics,
                         hideBalance: hideBalance,
-                        note: note.text.trim().isEmpty ? null : note.text.trim(),
+                        note: note.text.trim().isEmpty
+                            ? null
+                            : note.text.trim(),
                       );
                       await state.updateAccount(edited);
                       if (context.mounted) Navigator.pop(context, edited);
                     }
                   },
-                  child: Text(existing == null ? 'Crea conto' : 'Salva modifiche'),
+                  child: Text(
+                    existing == null ? 'Crea conto' : 'Salva modifiche',
+                  ),
                 ),
               ),
             ],

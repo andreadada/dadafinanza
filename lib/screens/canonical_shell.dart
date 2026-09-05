@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -37,7 +35,9 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
       PlanningScreen(),
     ];
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: index, children: pages)),
+      body: SafeArea(
+        child: IndexedStack(index: index, children: pages),
+      ),
       floatingActionButton: GestureDetector(
         onLongPress: _showQuickMenu,
         child: FloatingActionButton(
@@ -86,7 +86,9 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
         TransactionType.income => 'preferred_income_account',
         TransactionType.transfer => 'preferred_transfer_source',
       };
-      preferredAccount = int.tryParse(await state.database.getSetting(key) ?? '');
+      preferredAccount = int.tryParse(
+        await state.database.getSetting(key) ?? '',
+      );
     }
     if (type == TransactionType.transfer && preferredDestination == null) {
       preferredDestination = int.tryParse(
@@ -113,7 +115,9 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
-    final presets = await QuickPresetService(state.database).all(enabledOnly: true);
+    final presets = await QuickPresetService(
+      state.database,
+    ).all(enabledOnly: true);
     if (!mounted) return;
     final choice = await showModalBottomSheet<Object>(
       context: context,
@@ -125,7 +129,10 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Nuovo movimento', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Nuovo movimento',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -133,21 +140,24 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
                   child: FinanceQuickAction(
                     icon: Icons.arrow_upward_rounded,
                     label: 'Spesa',
-                    onTap: () => Navigator.pop(sheetContext, TransactionType.expense),
+                    onTap: () =>
+                        Navigator.pop(sheetContext, TransactionType.expense),
                   ),
                 ),
                 Expanded(
                   child: FinanceQuickAction(
                     icon: Icons.arrow_downward_rounded,
                     label: 'Entrata',
-                    onTap: () => Navigator.pop(sheetContext, TransactionType.income),
+                    onTap: () =>
+                        Navigator.pop(sheetContext, TransactionType.income),
                   ),
                 ),
                 Expanded(
                   child: FinanceQuickAction(
                     icon: Icons.swap_horiz_rounded,
                     label: 'Trasferisci',
-                    onTap: () => Navigator.pop(sheetContext, TransactionType.transfer),
+                    onTap: () =>
+                        Navigator.pop(sheetContext, TransactionType.transfer),
                   ),
                 ),
               ],
@@ -155,7 +165,9 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
             if (presets.isNotEmpty) ...[
               const SizedBox(height: 20),
               const SectionTitle('Preset'),
-              ...presets.take(6).map(
+              ...presets
+                  .take(6)
+                  .map(
                     (preset) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       minVerticalPadding: 8,
@@ -164,7 +176,8 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
                       subtitle: Text(
                         [
                           preset.type.label,
-                          if (preset.amount != null) moneyFor(state, preset.amount!),
+                          if (preset.amount != null)
+                            moneyFor(state, preset.amount!),
                         ].join(' · '),
                       ),
                       onTap: () => Navigator.pop(sheetContext, preset),
@@ -221,7 +234,9 @@ class CanonicalHomeScreen extends StatelessWidget {
               tooltip: 'Impostazioni',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PersonalSettingsScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const PersonalSettingsScreen(),
+                ),
               ),
               icon: const Icon(Icons.settings_outlined),
             ),
@@ -235,10 +250,15 @@ class CanonicalHomeScreen extends StatelessWidget {
                 _SetupBlock(state: state),
                 const SizedBox(height: 28),
               ],
-              Text('PATRIMONIO', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'PATRIMONIO',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               const SizedBox(height: 6),
               Text(
-                state.hideBalance ? '••••••' : moneyFor(state, state.totalBalance),
+                state.hideBalance
+                    ? '••••••'
+                    : moneyFor(state, state.totalBalance),
                 style: Theme.of(context).textTheme.displaySmall,
               ),
               const SizedBox(height: 20),
@@ -247,7 +267,10 @@ class CanonicalHomeScreen extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: 'Entrate',
-                      value: moneyFor(state, state.monthTotal(TransactionType.income)),
+                      value: moneyFor(
+                        state,
+                        state.monthTotal(TransactionType.income),
+                      ),
                       color: context.financeColors.positive,
                     ),
                   ),
@@ -255,7 +278,10 @@ class CanonicalHomeScreen extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: 'Spese',
-                      value: moneyFor(state, state.monthTotal(TransactionType.expense)),
+                      value: moneyFor(
+                        state,
+                        state.monthTotal(TransactionType.expense),
+                      ),
                       color: context.financeColors.negative,
                     ),
                   ),
@@ -263,7 +289,9 @@ class CanonicalHomeScreen extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: 'Disponibile',
-                      value: state.hideBalance ? '••••' : moneyFor(state, state.safeToSpend),
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, state.safeToSpend),
                     ),
                   ),
                 ],
@@ -307,7 +335,9 @@ class CanonicalHomeScreen extends StatelessWidget {
                 trailing: TextButton(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AccountManagementScreen()),
+                    MaterialPageRoute(
+                      builder: (_) => const AccountManagementScreen(),
+                    ),
                   ),
                   child: const Text('Tutti'),
                 ),
@@ -315,7 +345,9 @@ class CanonicalHomeScreen extends StatelessWidget {
               if (state.activeAccounts.isEmpty)
                 const Text('Nessun conto')
               else
-                ...state.activeAccounts.take(4).map(
+                ...state.activeAccounts
+                    .take(4)
+                    .map(
                       (account) => ListTile(
                         contentPadding: EdgeInsets.zero,
                         minVerticalPadding: 10,
@@ -334,7 +366,8 @@ class CanonicalHomeScreen extends StatelessWidget {
                         onTap: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => SafeAccountDetailScreen(accountId: account.id),
+                            builder: (_) =>
+                                SafeAccountDetailScreen(accountId: account.id),
                           ),
                         ),
                       ),
@@ -371,7 +404,8 @@ class CanonicalHomeScreen extends StatelessWidget {
     final accountId = int.tryParse(await state.database.getSetting(key) ?? '');
     final destination = type == TransactionType.transfer
         ? int.tryParse(
-            await state.database.getSetting('preferred_transfer_destination') ?? '',
+            await state.database.getSetting('preferred_transfer_destination') ??
+                '',
           )
         : null;
     if (!context.mounted) return;
@@ -389,9 +423,12 @@ class CanonicalHomeScreen extends StatelessWidget {
 
   _HomeInsight? _smartInsight(AppState state) {
     if (state.smartGoalSuggestions) {
-      for (final goal in state.goals.where((item) => !item.archived && !item.completed)) {
+      for (final goal in state.goals.where(
+        (item) => !item.archived && !item.completed,
+      )) {
         final plan = state.goalPlan(goal);
-        if (plan.status.name == 'slightlyBehind' || plan.status.name == 'unrealistic') {
+        if (plan.status.name == 'slightlyBehind' ||
+            plan.status.name == 'unrealistic') {
           return _HomeInsight(
             icon: Icons.flag_outlined,
             title: goal.name,
@@ -420,26 +457,35 @@ class _SetupBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Configura DadaFinanza', style: Theme.of(context).textTheme.headlineSmall),
-          const SizedBox(height: 8),
-          const Text('Crea il primo conto oppure registra un movimento e assegnalo più tardi.'),
-          const SizedBox(height: 12),
-          TextButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const AccountManagementScreen()),
-            ),
-            icon: const Icon(Icons.account_balance_wallet_outlined),
-            label: const Text('Gestisci conti'),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Configura DadaFinanza',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Crea il primo conto oppure registra un movimento e assegnalo più tardi.',
+      ),
+      const SizedBox(height: 12),
+      TextButton.icon(
+        onPressed: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const AccountManagementScreen()),
+        ),
+        icon: const Icon(Icons.account_balance_wallet_outlined),
+        label: const Text('Gestisci conti'),
+      ),
+    ],
+  );
 }
 
 class _HomeInsight {
-  const _HomeInsight({required this.icon, required this.title, required this.detail});
+  const _HomeInsight({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
   final IconData icon;
   final String title;
   final String detail;
@@ -451,22 +497,25 @@ class _InsightLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(insight.icon, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(insight.title, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(insight.detail),
-              ],
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(insight.icon, size: 22),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              insight.title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
             ),
-          ),
-        ],
-      );
+            const SizedBox(height: 2),
+            Text(insight.detail),
+          ],
+        ),
+      ),
+    ],
+  );
 }
 
 class _Metric extends StatelessWidget {
@@ -477,20 +526,22 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 3),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
-            ),
-          ),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 3),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          value,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: color),
+        ),
+      ),
+    ],
+  );
 }
 
 class CanonicalDashboardWidget extends StatelessWidget {
@@ -510,17 +561,17 @@ class CanonicalDashboardWidget extends StatelessWidget {
     );
 
     Widget metric(String value, {String? detail, IconData? icon}) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionTitle(type.label),
-            if (icon != null) Icon(icon, size: 22),
-            Text(value, style: Theme.of(context).textTheme.titleLarge),
-            if (detail != null) ...[
-              const SizedBox(height: 4),
-              Text(detail, style: Theme.of(context).textTheme.bodySmall),
-            ],
-          ],
-        );
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionTitle(type.label),
+        if (icon != null) Icon(icon, size: 22),
+        Text(value, style: Theme.of(context).textTheme.titleLarge),
+        if (detail != null) ...[
+          const SizedBox(height: 4),
+          Text(detail, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ],
+    );
 
     switch (type) {
       case DashboardWidgetType.totalBalance:
@@ -532,14 +583,17 @@ class CanonicalDashboardWidget extends StatelessWidget {
       case DashboardWidgetType.monthlyCashFlow:
         return metric(
           moneyFor(state, state.monthlyCashFlow, signed: true),
-          detail: '${moneyFor(state, state.monthTotal(TransactionType.income))} entrate · ${moneyFor(state, expense)} spese',
+          detail:
+              '${moneyFor(state, state.monthTotal(TransactionType.income))} entrate · ${moneyFor(state, expense)} spese',
           icon: Icons.compare_arrows_rounded,
         );
       case DashboardWidgetType.monthlyBudget:
       case DashboardWidgetType.closestBudget:
         final budgets = state.budgets.where((item) => item.enabled).toList()
           ..sort(
-            (a, b) => state.budgetProgressFor(b).compareTo(state.budgetProgressFor(a)),
+            (a, b) => state
+                .budgetProgressFor(b)
+                .compareTo(state.budgetProgressFor(a)),
           );
         if (budgets.isEmpty) {
           return metric('Nessun budget', icon: Icons.pie_chart_outline_rounded);
@@ -549,7 +603,10 @@ class CanonicalDashboardWidget extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SectionTitle('Budget', trailing: Text('${(progress * 100).round()}%')),
+            SectionTitle(
+              'Budget',
+              trailing: Text('${(progress * 100).round()}%'),
+            ),
             Text(budget.name, style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             LinearProgressIndicator(
@@ -559,8 +616,8 @@ class CanonicalDashboardWidget extends StatelessWidget {
               color: progress >= 1
                   ? context.financeColors.negative
                   : progress >= .8
-                      ? context.financeColors.warning
-                      : null,
+                  ? context.financeColors.warning
+                  : null,
             ),
           ],
         );
@@ -578,9 +635,9 @@ class CanonicalDashboardWidget extends StatelessWidget {
             if (state.transactions.isEmpty)
               const Text('Ancora nessun movimento')
             else
-              ...state.transactions.take(config.size == DashboardWidgetSize.large ? 6 : 3).map(
-                    (item) => TransactionListTile(item: item),
-                  ),
+              ...state.transactions
+                  .take(config.size == DashboardWidgetSize.large ? 6 : 3)
+                  .map((item) => TransactionListTile(item: item)),
           ],
         );
       case DashboardWidgetType.todayExpense:
@@ -598,7 +655,9 @@ class CanonicalDashboardWidget extends StatelessWidget {
             ? null
             : (expense - previousExpense) / previousExpense * 100;
         return metric(
-          delta == null ? 'Servono più dati' : '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(0)}%',
+          delta == null
+              ? 'Servono più dati'
+              : '${delta >= 0 ? '+' : ''}${delta.toStringAsFixed(0)}%',
           detail: 'rispetto al mese precedente',
           icon: Icons.compare_rounded,
         );
@@ -622,7 +681,8 @@ class CanonicalDashboardWidget extends StatelessWidget {
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => CategoryDetailScreen(categoryId: entry.key.id),
+                      builder: (_) =>
+                          CategoryDetailScreen(categoryId: entry.key.id),
                     ),
                   ),
                 ),
@@ -631,7 +691,10 @@ class CanonicalDashboardWidget extends StatelessWidget {
         );
       case DashboardWidgetType.upcomingRecurring:
       case DashboardWidgetType.financeCalendar:
-        final items = state.recurring.where((item) => item.enabled).take(4).toList();
+        final items = state.recurring
+            .where((item) => item.enabled)
+            .take(4)
+            .toList();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -641,7 +704,8 @@ class CanonicalDashboardWidget extends StatelessWidget {
             else
               ...items.map(
                 (item) => FlatMetric(
-                  label: '${item.name} · ${DateFormat('dd MMM', 'it_IT').format(item.nextDate)}',
+                  label:
+                      '${item.name} · ${DateFormat('dd MMM', 'it_IT').format(item.nextDate)}',
                   value: moneyFor(state, item.amount),
                   icon: Icons.repeat_rounded,
                 ),
@@ -649,7 +713,9 @@ class CanonicalDashboardWidget extends StatelessWidget {
           ],
         );
       case DashboardWidgetType.goals:
-        final goals = state.goals.where((item) => !item.archived && !item.completed).take(3);
+        final goals = state.goals
+            .where((item) => !item.archived && !item.completed)
+            .take(3);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -660,7 +726,8 @@ class CanonicalDashboardWidget extends StatelessWidget {
               ...goals.map(
                 (goal) => FlatMetric(
                   label: goal.name,
-                  value: '${moneyFor(state, goal.currentAmount)} / ${moneyFor(state, goal.targetAmount)}',
+                  value:
+                      '${moneyFor(state, goal.currentAmount)} / ${moneyFor(state, goal.targetAmount)}',
                   icon: Icons.flag_outlined,
                 ),
               ),
@@ -715,14 +782,18 @@ class CanonicalDashboardWidget extends StatelessWidget {
         );
       case DashboardWidgetType.endMonthForecast:
         return metric(
-          state.hideBalance ? '••••••' : moneyFor(state, state.endOfMonthForecast),
+          state.hideBalance
+              ? '••••••'
+              : moneyFor(state, state.endOfMonthForecast),
           detail: 'scenario atteso · dati locali',
           icon: Icons.query_stats_rounded,
         );
       case DashboardWidgetType.unassignedTransactions:
         return metric(
           '${state.unassignedCount}',
-          detail: state.unassignedCount == 1 ? 'movimento da assegnare' : 'movimenti da assegnare',
+          detail: state.unassignedCount == 1
+              ? 'movimento da assegnare'
+              : 'movimenti da assegnare',
           icon: Icons.help_outline_rounded,
         );
     }
@@ -735,7 +806,8 @@ class CanonicalAnalyticsScreen extends StatefulWidget {
   const CanonicalAnalyticsScreen({super.key});
 
   @override
-  State<CanonicalAnalyticsScreen> createState() => _CanonicalAnalyticsScreenState();
+  State<CanonicalAnalyticsScreen> createState() =>
+      _CanonicalAnalyticsScreenState();
 }
 
 class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
@@ -748,8 +820,11 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
       case _AnalyticsPeriod.week:
         final startWeekday = state.weekStart.clamp(1, 7);
         final offset = (now.weekday - startWeekday) % 7;
-        final start = DateTime(now.year, now.month, now.day)
-            .subtract(Duration(days: offset));
+        final start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: offset));
         return (start, start.add(const Duration(days: 7)));
       case _AnalyticsPeriod.month:
         final day = state.financialMonthStart.clamp(1, 28);
@@ -760,7 +835,11 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
         return (DateTime(now.year), DateTime(now.year + 1));
       case _AnalyticsPeriod.custom:
         final range = custom;
-        if (range == null) return (DateTime(now.year, now.month), DateTime(now.year, now.month + 1));
+        if (range == null)
+          return (
+            DateTime(now.year, now.month),
+            DateTime(now.year, now.month + 1),
+          );
         return (
           DateTime(range.start.year, range.start.month, range.start.day),
           DateTime(range.end.year, range.end.month, range.end.day + 1),
@@ -781,14 +860,21 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
       previousFrom,
       from,
     );
-    final savingsRate = income <= 0 ? null : ((income - expense) / income * 100);
+    final savingsRate = income <= 0
+        ? null
+        : ((income - expense) / income * 100);
     final categories = <MapEntry<Category, double>>[];
     for (final category in state.categoriesFor(TransactionType.expense)) {
       var total = 0.0;
-      for (final item in state.analyticTransactions(from: from, to: to).where((t) => t.type == TransactionType.expense)) {
+      for (final item
+          in state
+              .analyticTransactions(from: from, to: to)
+              .where((t) => t.type == TransactionType.expense)) {
         final splits = state.splitsFor(item.id);
         if (splits.isNotEmpty) {
-          total += splits.where((s) => s.categoryId == category.id).fold<double>(0, (sum, s) => sum + s.amount);
+          total += splits
+              .where((s) => s.categoryId == category.id)
+              .fold<double>(0, (sum, s) => sum + s.amount);
         } else if (item.categoryId == category.id) {
           total += state.effectiveExpense(item);
         }
@@ -796,18 +882,21 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
       if (total > 0) categories.add(MapEntry(category, total));
     }
     categories.sort((a, b) => b.value.compareTo(a.value));
-    final delta = previousExpense == 0 ? null : (expense - previousExpense) / previousExpense * 100;
+    final delta = previousExpense == 0
+        ? null
+        : (expense - previousExpense) / previousExpense * 100;
     final recurringMonthly = state.recurring
         .where((item) => item.enabled && item.type == TransactionType.expense)
         .fold<double>(0, (sum, item) {
-      return sum + switch (item.frequency) {
-        'Settimanale' => item.amount * 52 / 12,
-        'Quindicinale' => item.amount * 26 / 12,
-        'Trimestrale' => item.amount / 3,
-        'Annuale' => item.amount / 12,
-        _ => item.amount,
-      };
-    });
+          return sum +
+              switch (item.frequency) {
+                'Settimanale' => item.amount * 52 / 12,
+                'Quindicinale' => item.amount * 26 / 12,
+                'Trimestrale' => item.amount / 3,
+                'Annuale' => item.amount / 12,
+                _ => item.amount,
+              };
+        });
     return Scaffold(
       appBar: AppBar(title: const Text('Analisi')),
       body: ListView(
@@ -818,10 +907,22 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
             child: SegmentedButton<_AnalyticsPeriod>(
               showSelectedIcon: false,
               segments: const [
-                ButtonSegment(value: _AnalyticsPeriod.week, label: Text('Settimana')),
-                ButtonSegment(value: _AnalyticsPeriod.month, label: Text('Mese')),
-                ButtonSegment(value: _AnalyticsPeriod.year, label: Text('Anno')),
-                ButtonSegment(value: _AnalyticsPeriod.custom, label: Text('Custom')),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.week,
+                  label: Text('Settimana'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.month,
+                  label: Text('Mese'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.year,
+                  label: Text('Anno'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.custom,
+                  label: Text('Custom'),
+                ),
               ],
               selected: {period},
               onSelectionChanged: (value) async {
@@ -835,7 +936,12 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
                   context: context,
                   firstDate: DateTime(2000),
                   lastDate: now.add(const Duration(days: 3650)),
-                  initialDateRange: custom ?? DateTimeRange(start: DateTime(now.year, now.month), end: now),
+                  initialDateRange:
+                      custom ??
+                      DateTimeRange(
+                        start: DateTime(now.year, now.month),
+                        end: now,
+                      ),
                 );
                 if (result != null && mounted) {
                   setState(() {
@@ -854,14 +960,28 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _Metric(label: 'Entrate', value: moneyFor(state, income), color: context.financeColors.positive)),
+              Expanded(
+                child: _Metric(
+                  label: 'Entrate',
+                  value: moneyFor(state, income),
+                  color: context.financeColors.positive,
+                ),
+              ),
               const SizedBox(width: 20),
-              Expanded(child: _Metric(label: 'Spese', value: moneyFor(state, expense), color: context.financeColors.negative)),
+              Expanded(
+                child: _Metric(
+                  label: 'Spese',
+                  value: moneyFor(state, expense),
+                  color: context.financeColors.negative,
+                ),
+              ),
               const SizedBox(width: 20),
               Expanded(
                 child: _Metric(
                   label: 'Risparmio',
-                  value: savingsRate == null ? '—' : '${savingsRate.toStringAsFixed(0)}%',
+                  value: savingsRate == null
+                      ? '—'
+                      : '${savingsRate.toStringAsFixed(0)}%',
                 ),
               ),
             ],
@@ -871,8 +991,8 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
             icon: delta == null
                 ? Icons.horizontal_rule_rounded
                 : delta <= 0
-                    ? Icons.trending_down_rounded
-                    : Icons.trending_up_rounded,
+                ? Icons.trending_down_rounded
+                : Icons.trending_up_rounded,
             text: delta == null
                 ? 'Servono più dati per confrontare il periodo precedente.'
                 : 'Spese ${delta.abs().toStringAsFixed(0)}% ${delta <= 0 ? 'più basse' : 'più alte'} del periodo precedente.',
@@ -880,23 +1000,39 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
           const SizedBox(height: 10),
           _AnalyticsLine(
             icon: Icons.repeat_rounded,
-            text: 'Ricorrenti di spesa ≈ ${moneyFor(state, recurringMonthly)}/mese.',
+            text:
+                'Ricorrenti di spesa ≈ ${moneyFor(state, recurringMonthly)}/mese.',
           ),
           const SizedBox(height: 32),
           const SectionTitle('Dove stai spendendo'),
           if (categories.isEmpty)
             const Text('Nessun dato nel periodo')
           else
-            ...categories.take(8).map(
+            ...categories
+                .take(8)
+                .map(
                   (entry) => ListTile(
                     contentPadding: EdgeInsets.zero,
-                    leading: Icon(categoryIcon(entry.key.iconKey), color: Color(entry.key.colorValue)),
+                    leading: Icon(
+                      categoryIcon(entry.key.iconKey),
+                      color: Color(entry.key.colorValue),
+                    ),
                     title: Text(entry.key.name),
-                    subtitle: Text(expense <= 0 ? '' : '${(entry.value / expense * 100).toStringAsFixed(0)}% delle spese'),
-                    trailing: Text(moneyFor(state, entry.value), style: const TextStyle(fontWeight: FontWeight.w800)),
+                    subtitle: Text(
+                      expense <= 0
+                          ? ''
+                          : '${(entry.value / expense * 100).toStringAsFixed(0)}% delle spese',
+                    ),
+                    trailing: Text(
+                      moneyFor(state, entry.value),
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
                     onTap: () => Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => CategoryDetailScreen(categoryId: entry.key.id)),
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CategoryDetailScreen(categoryId: entry.key.id),
+                      ),
                     ),
                   ),
                 ),
@@ -908,14 +1044,20 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
               value: moneyFor(
                 state,
                 state.accountMonthTotal(account.id, TransactionType.income) -
-                    state.accountMonthTotal(account.id, TransactionType.expense),
+                    state.accountMonthTotal(
+                      account.id,
+                      TransactionType.expense,
+                    ),
                 signed: true,
               ),
               icon: accountIcon(account.iconKey),
               color: Color(account.colorValue),
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => SafeAccountDetailScreen(accountId: account.id)),
+                MaterialPageRoute(
+                  builder: (_) =>
+                      SafeAccountDetailScreen(accountId: account.id),
+                ),
               ),
             ),
           ),
@@ -924,10 +1066,14 @@ class _CanonicalAnalyticsScreenState extends State<CanonicalAnalyticsScreen> {
           if (state.budgets.where((item) => item.enabled).isEmpty)
             const Text('Nessun budget attivo')
           else
-            ...state.budgets.where((item) => item.enabled).take(6).map(
+            ...state.budgets
+                .where((item) => item.enabled)
+                .take(6)
+                .map(
                   (budget) => FlatMetric(
                     label: budget.name,
-                    value: '${(state.budgetProgressFor(budget) * 100).round()}%',
+                    value:
+                        '${(state.budgetProgressFor(budget) * 100).round()}%',
                     icon: Icons.pie_chart_outline_rounded,
                   ),
                 ),
@@ -944,11 +1090,11 @@ class _AnalyticsLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 20),
-          const SizedBox(width: 10),
-          Expanded(child: Text(text)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, size: 20),
+      const SizedBox(width: 10),
+      Expanded(child: Text(text)),
+    ],
+  );
 }

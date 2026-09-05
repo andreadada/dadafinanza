@@ -13,19 +13,18 @@ FinanceTransaction transaction({
   TransactionType type = TransactionType.expense,
   int accountId = 1,
   int? categoryId = 1,
-}) =>
-    FinanceTransaction(
-      id: id,
-      type: type,
-      amount: amount,
-      accountId: accountId,
-      categoryId: type == TransactionType.transfer ? null : categoryId,
-      date: date,
-      note: note,
-      includeInAnalytics: true,
-      createdAt: date,
-      updatedAt: date,
-    );
+}) => FinanceTransaction(
+  id: id,
+  type: type,
+  amount: amount,
+  accountId: accountId,
+  categoryId: type == TransactionType.transfer ? null : categoryId,
+  date: date,
+  note: note,
+  includeInAnalytics: true,
+  createdAt: date,
+  updatedAt: date,
+);
 
 LearnedPattern pattern({
   int id = 1,
@@ -62,16 +61,16 @@ LearnedPattern pattern({
 }
 
 Goal goal({DateTime? targetDate}) => Goal(
-      id: 1,
-      name: 'Console',
-      iconKey: 'savings',
-      colorValue: 0xFF888888,
-      targetAmount: 300,
-      currentAmount: 0,
-      targetDate: targetDate,
-      archived: false,
-      completed: false,
-    );
+  id: 1,
+  name: 'Console',
+  iconKey: 'savings',
+  colorValue: 0xFF888888,
+  targetAmount: 300,
+  currentAmount: 0,
+  targetDate: targetDate,
+  archived: false,
+  completed: false,
+);
 
 void main() {
   group('text normalization', () {
@@ -112,22 +111,25 @@ void main() {
       expect(result, isNull);
     });
 
-    test('coherent repeated merchant produces a high-confidence suggestion', () {
-      final result = SmartFinanceEngine.suggest(
-        note: 'LIDL',
-        type: TransactionType.expense,
-        amount: 30,
-        date: date,
-        patterns: [pattern(samples: 5, date: date)],
-        rules: const [],
-        suppressedTexts: const {},
-        sensitivity: SmartSensitivity.balanced,
-      );
-      expect(result, isNotNull);
-      expect(result!.categoryId, 1);
-      expect(result.shouldSurface, isTrue);
-      expect(result.score, greaterThanOrEqualTo(.74));
-    });
+    test(
+      'coherent repeated merchant produces a high-confidence suggestion',
+      () {
+        final result = SmartFinanceEngine.suggest(
+          note: 'LIDL',
+          type: TransactionType.expense,
+          amount: 30,
+          date: date,
+          patterns: [pattern(samples: 5, date: date)],
+          rules: const [],
+          suppressedTexts: const {},
+          sensitivity: SmartSensitivity.balanced,
+        );
+        expect(result, isNotNull);
+        expect(result!.categoryId, 1);
+        expect(result.shouldSurface, isTrue);
+        expect(result.score, greaterThanOrEqualTo(.74));
+      },
+    );
 
     test('competing categories suppress ambiguous suggestions', () {
       final result = SmartFinanceEngine.suggest(
@@ -203,9 +205,24 @@ void main() {
   group('recurring detection', () {
     test('detects a stable weekly sequence', () {
       final values = [
-        transaction(id: 1, note: 'Spotify', amount: 10.99, date: DateTime(2026, 1, 1)),
-        transaction(id: 2, note: 'Spotify', amount: 10.99, date: DateTime(2026, 1, 8)),
-        transaction(id: 3, note: 'Spotify', amount: 10.99, date: DateTime(2026, 1, 15)),
+        transaction(
+          id: 1,
+          note: 'Spotify',
+          amount: 10.99,
+          date: DateTime(2026, 1, 1),
+        ),
+        transaction(
+          id: 2,
+          note: 'Spotify',
+          amount: 10.99,
+          date: DateTime(2026, 1, 8),
+        ),
+        transaction(
+          id: 3,
+          note: 'Spotify',
+          amount: 10.99,
+          date: DateTime(2026, 1, 15),
+        ),
       ];
       final result = SmartFinanceEngine.detectRecurring(values);
       expect(result, hasLength(1));
@@ -215,9 +232,24 @@ void main() {
 
     test('detects a stable monthly sequence', () {
       final values = [
-        transaction(id: 1, note: 'Palestra', amount: 30, date: DateTime(2026, 1, 3)),
-        transaction(id: 2, note: 'Palestra', amount: 30, date: DateTime(2026, 2, 3)),
-        transaction(id: 3, note: 'Palestra', amount: 30, date: DateTime(2026, 3, 3)),
+        transaction(
+          id: 1,
+          note: 'Palestra',
+          amount: 30,
+          date: DateTime(2026, 1, 3),
+        ),
+        transaction(
+          id: 2,
+          note: 'Palestra',
+          amount: 30,
+          date: DateTime(2026, 2, 3),
+        ),
+        transaction(
+          id: 3,
+          note: 'Palestra',
+          amount: 30,
+          date: DateTime(2026, 3, 3),
+        ),
       ];
       final result = SmartFinanceEngine.detectRecurring(values);
       expect(result, hasLength(1));
@@ -291,43 +323,46 @@ void main() {
       expect(plan.realisticWeekly, 0);
     });
 
-    test('one unusually large income does not create an aggressive saving target', () {
-      final now = DateTime(2026, 9, 4);
-      final start = DateTime(2026, 8, 31);
-      final values = <FinanceTransaction>[];
-      var id = 1;
-      for (var week = 1; week <= 6; week++) {
-        final date = start.subtract(Duration(days: week * 7));
-        values.add(
-          transaction(
-            id: id++,
-            note: 'Entrata regolare',
-            amount: week == 1 ? 5000 : 100,
-            date: date,
-            type: TransactionType.income,
-          ),
+    test(
+      'one unusually large income does not create an aggressive saving target',
+      () {
+        final now = DateTime(2026, 9, 4);
+        final start = DateTime(2026, 8, 31);
+        final values = <FinanceTransaction>[];
+        var id = 1;
+        for (var week = 1; week <= 6; week++) {
+          final date = start.subtract(Duration(days: week * 7));
+          values.add(
+            transaction(
+              id: id++,
+              note: 'Entrata regolare',
+              amount: week == 1 ? 5000 : 100,
+              date: date,
+              type: TransactionType.income,
+            ),
+          );
+          values.add(
+            transaction(
+              id: id++,
+              note: 'Spese settimana',
+              amount: 90,
+              date: date.add(const Duration(days: 1)),
+            ),
+          );
+        }
+        final plan = SmartFinanceEngine.planGoal(
+          goal: goal(targetDate: now.add(const Duration(days: 140))),
+          currentAmount: 0,
+          totalBalance: 5500,
+          transactions: values,
+          recurring: const [],
+          competingGoals: 1,
+          now: now,
         );
-        values.add(
-          transaction(
-            id: id++,
-            note: 'Spese settimana',
-            amount: 90,
-            date: date.add(const Duration(days: 1)),
-          ),
-        );
-      }
-      final plan = SmartFinanceEngine.planGoal(
-        goal: goal(targetDate: now.add(const Duration(days: 140))),
-        currentAmount: 0,
-        totalBalance: 5500,
-        transactions: values,
-        recurring: const [],
-        competingGoals: 1,
-        now: now,
-      );
-      expect(plan.historyWeeks, greaterThanOrEqualTo(5));
-      expect(plan.realisticWeekly, lessThan(20));
-    });
+        expect(plan.historyWeeks, greaterThanOrEqualTo(5));
+        expect(plan.realisticWeekly, lessThan(20));
+      },
+    );
   });
 
   group('budget periods', () {

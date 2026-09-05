@@ -34,7 +34,8 @@ class DataManagementScreen extends StatelessWidget {
           _Action(
             icon: Icons.settings_backup_restore_rounded,
             title: 'Ripristina backup',
-            subtitle: 'Controlla il contenuto prima di sostituire i dati locali.',
+            subtitle:
+                'Controlla il contenuto prima di sostituire i dati locali.',
             onTap: () => _restoreBackup(context, state),
           ),
           const SizedBox(height: 32),
@@ -87,9 +88,9 @@ class DataManagementScreen extends StatelessWidget {
     );
     if (password == _cancelledPassword) return;
     try {
-      final file = await BackupService(state.database).create(
-        password: password?.isEmpty == true ? null : password,
-      );
+      final file = await BackupService(
+        state.database,
+      ).create(password: password?.isEmpty == true ? null : password);
       final output = await FilePicker.saveFile(
         dialogTitle: 'Salva backup DadaFinanza',
         fileName:
@@ -229,9 +230,9 @@ class DataManagementScreen extends StatelessWidget {
         bytes: Uint8List.fromList(utf8.encode(csv)),
       );
       if (context.mounted && output != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('CSV esportato.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('CSV esportato.')));
       }
     } catch (error) {
       if (context.mounted) _error(context, 'Esportazione non riuscita: $error');
@@ -252,9 +253,7 @@ class DataManagementScreen extends StatelessWidget {
       if (!context.mounted) return;
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => CsvImportWizard(preview: preview),
-        ),
+        MaterialPageRoute(builder: (_) => CsvImportWizard(preview: preview)),
       );
     } catch (error) {
       if (context.mounted) _error(context, 'CSV non valido: $error');
@@ -272,9 +271,9 @@ class DataManagementScreen extends StatelessWidget {
     if (!confirmed) return;
     await state.clearAllUserData();
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dati locali cancellati.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Dati locali cancellati.')));
     }
   }
 
@@ -373,10 +372,11 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
           _PreviewLine('Possibili duplicati', '${widget.preview.duplicates}'),
           if (widget.preview.rows.isNotEmpty) ...[
             const SizedBox(height: 12),
-            ...widget.preview.rows.take(3).map(
+            ...widget.preview.rows
+                .take(3)
+                .map(
                   (row) => FlatMetric(
-                    label:
-                        '${row.account} · ${row.category ?? row.type.label}',
+                    label: '${row.account} · ${row.category ?? row.type.label}',
                     value: moneyFor(state, row.amount),
                     icon: row.duplicate
                         ? Icons.content_copy_rounded
@@ -488,35 +488,33 @@ class _MappingTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(name),
-        subtitle: Text(
-          switch (value) {
-            CsvMissingAction.create => 'Crea nuovo',
-            CsvMissingAction.unassigned =>
-              account ? 'Usa Non assegnato' : 'Senza categoria',
-            CsvMissingAction.ignore => 'Ignora riferimento',
-          },
+    contentPadding: EdgeInsets.zero,
+    title: Text(name),
+    subtitle: Text(switch (value) {
+      CsvMissingAction.create => 'Crea nuovo',
+      CsvMissingAction.unassigned =>
+        account ? 'Usa Non assegnato' : 'Senza categoria',
+      CsvMissingAction.ignore => 'Ignora riferimento',
+    }),
+    trailing: PopupMenuButton<CsvMissingAction>(
+      onSelected: onChanged,
+      itemBuilder: (_) => [
+        const PopupMenuItem(
+          value: CsvMissingAction.create,
+          child: Text('Crea nuovo'),
         ),
-        trailing: PopupMenuButton<CsvMissingAction>(
-          onSelected: onChanged,
-          itemBuilder: (_) => [
-            const PopupMenuItem(
-              value: CsvMissingAction.create,
-              child: Text('Crea nuovo'),
-            ),
-            if (account)
-              const PopupMenuItem(
-                value: CsvMissingAction.unassigned,
-                child: Text('Usa Non assegnato'),
-              ),
-            const PopupMenuItem(
-              value: CsvMissingAction.ignore,
-              child: Text('Ignora'),
-            ),
-          ],
+        if (account)
+          const PopupMenuItem(
+            value: CsvMissingAction.unassigned,
+            child: Text('Usa Non assegnato'),
+          ),
+        const PopupMenuItem(
+          value: CsvMissingAction.ignore,
+          child: Text('Ignora'),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _PreviewLine extends StatelessWidget {
@@ -526,14 +524,14 @@ class _PreviewLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(
-          children: [
-            Expanded(child: Text(label)),
-            Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
-          ],
-        ),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 5),
+    child: Row(
+      children: [
+        Expanded(child: Text(label)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+      ],
+    ),
+  );
 }
 
 class _Action extends StatelessWidget {
@@ -550,12 +548,12 @@ class _Action extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 12,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 12,
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 }

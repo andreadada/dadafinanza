@@ -100,7 +100,9 @@ class SmartFinanceEngine {
         }
       }
       final dominantTags = tagCounts.entries
-          .where((entry) => entry.value >= math.max(2, (items.length * .6).ceil()))
+          .where(
+            (entry) => entry.value >= math.max(2, (items.length * .6).ceil()),
+          )
           .map((entry) => entry.key)
           .take(3)
           .toList();
@@ -114,9 +116,9 @@ class SmartFinanceEngine {
       final dominantBucket = buckets.entries.isEmpty
           ? -1
           : (buckets.entries.toList()
-                ..sort((a, b) => b.value.compareTo(a.value)))
-              .first
-              .key;
+                  ..sort((a, b) => b.value.compareTo(a.value)))
+                .first
+                .key;
       result.add(
         LearnedPattern(
           id: old?.id ?? 0,
@@ -161,8 +163,10 @@ class SmartFinanceEngine {
 
     for (final rule in rules.where((item) => item.enabled)) {
       if (rule.type != null && rule.type != type) continue;
-      if (amount != null && rule.minAmount != null && amount < rule.minAmount!) continue;
-      if (amount != null && rule.maxAmount != null && amount > rule.maxAmount!) continue;
+      if (amount != null && rule.minAmount != null && amount < rule.minAmount!)
+        continue;
+      if (amount != null && rule.maxAmount != null && amount > rule.maxAmount!)
+        continue;
       if (rule.containsText?.isNotEmpty == true) {
         if (normalized.isEmpty ||
             !normalizeText(note).contains(normalizeText(rule.containsText))) {
@@ -201,16 +205,21 @@ class SmartFinanceEngine {
     };
 
     final matching = patterns
-        .where((pattern) =>
-            pattern.enabled &&
-            pattern.type == type &&
-            pattern.sampleCount >= minSamples &&
-            (!useDescription || textSimilarity(normalized, pattern.normalizedText) >= .45))
+        .where(
+          (pattern) =>
+              pattern.enabled &&
+              pattern.type == type &&
+              pattern.sampleCount >= minSamples &&
+              (!useDescription ||
+                  textSimilarity(normalized, pattern.normalizedText) >= .45),
+        )
         .toList();
     if (matching.isEmpty) return null;
 
-    final totalMatchingSamples =
-        matching.fold<int>(0, (sum, item) => sum + item.sampleCount);
+    final totalMatchingSamples = matching.fold<int>(
+      0,
+      (sum, item) => sum + item.sampleCount,
+    );
     LearnedPattern? best;
     var bestScore = 0.0;
     var secondScore = 0.0;
@@ -225,15 +234,17 @@ class SmartFinanceEngine {
           : pattern.sampleCount / totalMatchingSamples;
       var amountScore = 0.0;
       if (useAmount && amount != null && pattern.amountMedian > 0) {
-        final relative = (amount - pattern.amountMedian).abs() /
+        final relative =
+            (amount - pattern.amountMedian).abs() /
             math.max(1, pattern.amountMedian);
         amountScore = (1 - relative).clamp(0.0, 1.0);
       }
       var weekdayScore = 0.0;
       var timeScore = 0.0;
       if (useTime) {
-        weekdayScore =
-            (pattern.weekdayMask & (1 << (date.weekday - 1))) != 0 ? 1 : 0;
+        weekdayScore = (pattern.weekdayMask & (1 << (date.weekday - 1))) != 0
+            ? 1
+            : 0;
         timeScore = pattern.hourBucket == hourBucket(date) ? 1 : 0;
       }
       final feedbackTotal = pattern.acceptedCount + pattern.rejectedCount;
@@ -243,7 +254,8 @@ class SmartFinanceEngine {
       final rejectionPenalty = feedbackTotal == 0
           ? 0.0
           : pattern.rejectedCount / feedbackTotal;
-      var score = similarity * .5 +
+      var score =
+          similarity * .5 +
           frequency * .12 +
           dominance * .18 +
           amountScore * .08 +
@@ -268,7 +280,9 @@ class SmartFinanceEngine {
     final confidence = bestScore >= .9 && margin >= .15
         ? SuggestionConfidence.veryHigh
         : SuggestionConfidence.high;
-    final amountHint = useAmount && best.sampleCount >= 4 &&
+    final amountHint =
+        useAmount &&
+            best.sampleCount >= 4 &&
             (best.amountMax - best.amountMin) /
                     math.max(1, best.amountMedian) <=
                 .12
@@ -337,12 +351,13 @@ class SmartFinanceEngine {
           math.max(1, amountMedian);
       final intervalSpread =
           intervals.map((value) => (value - interval).abs()).reduce(math.max) /
-              math.max(1, interval);
-      final confidence = (1 -
-              amountSpread * .45 -
-              intervalSpread * .55 +
-              math.min(.12, (items.length - 3) * .03))
-          .clamp(0.0, 1.0);
+          math.max(1, interval);
+      final confidence =
+          (1 -
+                  amountSpread * .45 -
+                  intervalSpread * .55 +
+                  math.min(.12, (items.length - 3) * .03))
+              .clamp(0.0, 1.0);
       if (confidence < .65) continue;
       final sample = items.last;
       output.add(
@@ -374,18 +389,23 @@ class SmartFinanceEngine {
     int weeks = 12,
   }) {
     final target = now ?? DateTime.now();
-    final startOfThisWeek = DateTime(target.year, target.month, target.day)
-        .subtract(Duration(days: target.weekday - DateTime.monday));
+    final startOfThisWeek = DateTime(
+      target.year,
+      target.month,
+      target.day,
+    ).subtract(Duration(days: target.weekday - DateTime.monday));
     final result = <double>[];
     for (var index = weeks; index > 0; index--) {
       final from = startOfThisWeek.subtract(Duration(days: index * 7));
       final to = from.add(const Duration(days: 7));
       final total = transactions
-          .where((item) =>
-              item.type == type &&
-              item.refundOfTransactionId == null &&
-              !item.date.isBefore(from) &&
-              item.date.isBefore(to))
+          .where(
+            (item) =>
+                item.type == type &&
+                item.refundOfTransactionId == null &&
+                !item.date.isBefore(from) &&
+                item.date.isBefore(to),
+          )
           .fold<double>(0, (sum, item) => sum + item.amount);
       result.add(total);
     }
@@ -409,8 +429,10 @@ class SmartFinanceEngine {
       var guard = 0;
       while (!date.isAfter(end) && guard < 64) {
         if (!date.isBefore(target)) {
-          if (item.type == TransactionType.income) confirmedIncome += item.amount;
-          if (item.type == TransactionType.expense) confirmedExpense += item.amount;
+          if (item.type == TransactionType.income)
+            confirmedIncome += item.amount;
+          if (item.type == TransactionType.expense)
+            confirmedExpense += item.amount;
         }
         date = _advance(date, item.frequency);
         guard++;
@@ -424,8 +446,9 @@ class SmartFinanceEngine {
         .toSet();
     var predictedIncome = 0.0;
     var predictedExpense = 0.0;
-    for (final item in detectedRecurring
-        .where((item) => item.enabled && item.confidence >= .72)) {
+    for (final item in detectedRecurring.where(
+      (item) => item.enabled && item.confidence >= .72,
+    )) {
       if (explicitNames.any(
         (name) => textSimilarity(name, item.normalizedText) >= .8,
       )) {
@@ -447,17 +470,23 @@ class SmartFinanceEngine {
       }
     }
 
-    final expenseWeeks =
-        weeklyTotals(transactions, TransactionType.expense, now: target);
+    final expenseWeeks = weeklyTotals(
+      transactions,
+      TransactionType.expense,
+      now: target,
+    );
     final nonZeroWeeks = expenseWeeks.where((value) => value > 0).toList();
     final historyWeeks = nonZeroWeeks.length;
     final weeklyMedianExpense = median(nonZeroWeeks);
     final recurringWeeklyEquivalent =
         (confirmedExpense + predictedExpense) / math.max(1, days) * 7;
-    final variableWeekly =
-        math.max(0, weeklyMedianExpense - recurringWeeklyEquivalent);
+    final variableWeekly = math.max(
+      0,
+      weeklyMedianExpense - recurringWeeklyEquivalent,
+    );
     final estimatedExpense = variableWeekly * (days / 7.0);
-    final ending = startingBalance +
+    final ending =
+        startingBalance +
         confirmedIncome -
         confirmedExpense +
         predictedIncome -
@@ -486,43 +515,51 @@ class SmartFinanceEngine {
     DateTime? now,
   }) {
     final target = now ?? DateTime.now();
-    final remaining =
-        math.max(0, goal.targetAmount - currentAmount).toDouble();
-    final expenseWeeks =
-        weeklyTotals(transactions, TransactionType.expense, now: target);
-    final incomeWeeks =
-        weeklyTotals(transactions, TransactionType.income, now: target);
+    final remaining = math.max(0, goal.targetAmount - currentAmount).toDouble();
+    final expenseWeeks = weeklyTotals(
+      transactions,
+      TransactionType.expense,
+      now: target,
+    );
+    final incomeWeeks = weeklyTotals(
+      transactions,
+      TransactionType.income,
+      now: target,
+    );
     final completedWeeks = <double>[];
-    for (var index = 0;
-        index < math.min(expenseWeeks.length, incomeWeeks.length);
-        index++) {
+    for (
+      var index = 0;
+      index < math.min(expenseWeeks.length, incomeWeeks.length);
+      index++
+    ) {
       if (expenseWeeks[index] > 0 || incomeWeeks[index] > 0) {
         completedWeeks.add(incomeWeeks[index] - expenseWeeks[index]);
       }
     }
     final historyWeeks = completedWeeks.length;
-    final medianExpense =
-        median(expenseWeeks.where((value) => value > 0));
+    final medianExpense = median(expenseWeeks.where((value) => value > 0));
     final medianSurplus = median(completedWeeks);
-    final safetyBuffer =
-        math.max(totalBalance * .15, medianExpense * 2).toDouble();
+    final safetyBuffer = math
+        .max(totalBalance * .15, medianExpense * 2)
+        .toDouble();
     final liquidReserve = math.max(0, totalBalance - safetyBuffer).toDouble();
-    final recurringNetWeekly =
-        recurring.where((item) => item.enabled).fold<double>(0, (sum, item) {
-      final sign = item.type == TransactionType.income
-          ? 1.0
-          : item.type == TransactionType.expense
+    final recurringNetWeekly = recurring
+        .where((item) => item.enabled)
+        .fold<double>(0, (sum, item) {
+          final sign = item.type == TransactionType.income
+              ? 1.0
+              : item.type == TransactionType.expense
               ? -1.0
               : 0.0;
-      final factor = switch (item.frequency) {
-        'Settimanale' => 1.0,
-        'Quindicinale' => .5,
-        'Trimestrale' => 1 / 13,
-        'Annuale' => 1 / 52,
-        _ => 1 / 4.345,
-      };
-      return sum + item.amount * sign * factor;
-    });
+          final factor = switch (item.frequency) {
+            'Settimanale' => 1.0,
+            'Quindicinale' => .5,
+            'Trimestrale' => 1 / 13,
+            'Annuale' => 1 / 52,
+            _ => 1 / 4.345,
+          };
+          return sum + item.amount * sign * factor;
+        });
     final stableWeeklyCapacity = math.max(
       0,
       medianSurplus * .55 + math.max(0, recurringNetWeekly) * .25,
@@ -531,22 +568,19 @@ class SmartFinanceEngine {
     final realisticWeekly = historyWeeks < 3
         ? 0.0
         : math
-            .max(
-              0,
-              math.min(
-                stableWeeklyCapacity / share,
-                liquidReserve / math.max(8, share * 4),
-              ),
-            )
-            .toDouble();
+              .max(
+                0,
+                math.min(
+                  stableWeeklyCapacity / share,
+                  liquidReserve / math.max(8, share * 4),
+                ),
+              )
+              .toDouble();
 
     var mathematicalWeekly = 0.0;
     var weeksLeft = 0.0;
     if (goal.targetDate != null && goal.targetDate!.isAfter(target)) {
-      weeksLeft = math.max(
-        1,
-        goal.targetDate!.difference(target).inDays / 7.0,
-      );
+      weeksLeft = math.max(1, goal.targetDate!.difference(target).inDays / 7.0);
       mathematicalWeekly = remaining / weeksLeft;
     }
 
@@ -560,16 +594,16 @@ class SmartFinanceEngine {
     final status = historyWeeks < 3
         ? GoalPlanStatus.insufficientData
         : remaining <= 0
-            ? GoalPlanStatus.ahead
-            : goal.targetDate == null
-                ? GoalPlanStatus.onTrack
-                : realisticWeekly >= mathematicalWeekly * 1.15
-                    ? GoalPlanStatus.ahead
-                    : realisticWeekly >= mathematicalWeekly * .9
-                        ? GoalPlanStatus.onTrack
-                        : realisticWeekly >= mathematicalWeekly * .55
-                            ? GoalPlanStatus.slightlyBehind
-                            : GoalPlanStatus.unrealistic;
+        ? GoalPlanStatus.ahead
+        : goal.targetDate == null
+        ? GoalPlanStatus.onTrack
+        : realisticWeekly >= mathematicalWeekly * 1.15
+        ? GoalPlanStatus.ahead
+        : realisticWeekly >= mathematicalWeekly * .9
+        ? GoalPlanStatus.onTrack
+        : realisticWeekly >= mathematicalWeekly * .55
+        ? GoalPlanStatus.slightlyBehind
+        : GoalPlanStatus.unrealistic;
 
     return GoalPlan(
       goalId: goal.id,

@@ -107,20 +107,17 @@ AppState suggestionState({required int samples}) {
 }
 
 Finder descriptionField() => find.byWidgetPredicate(
-      (widget) =>
-          widget is TextField &&
-          widget.decoration?.labelText == 'Descrizione opzionale',
-    );
+  (widget) =>
+      widget is TextField &&
+      widget.decoration?.labelText == 'Descrizione opzionale',
+);
 
 Future<void> pumpQuickAdd(WidgetTester tester, AppState state) async {
   await initializeDateFormatting('it_IT');
   await tester.pumpWidget(
     AppScope(
       notifier: state,
-      child: MaterialApp(
-        theme: AppTheme.light(),
-        home: const QuickAddPage(),
-      ),
+      child: MaterialApp(theme: AppTheme.light(), home: const QuickAddPage()),
     ),
   );
   await tester.pump();

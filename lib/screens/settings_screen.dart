@@ -99,10 +99,8 @@ class SettingsScreen extends StatelessWidget {
               'Disattivato evita di gonfiare entrate e spese.',
             ),
             value: state.showTransfersInAnalytics,
-            onChanged: (value) => state.setSetting(
-              'show_transfers_analytics',
-              value ? '1' : '0',
-            ),
+            onChanged: (value) =>
+                state.setSetting('show_transfers_analytics', value ? '1' : '0'),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -239,14 +237,14 @@ class _SettingsLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 12,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 12,
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 }
 
 class SmartSuggestionsSettingsScreen extends StatelessWidget {
@@ -287,19 +285,21 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
             value: state.smartUseDescription,
             onChanged: state.smartSuggestionsEnabled
                 ? (value) => state.setSetting(
-                      'smart_use_description',
-                      value ? '1' : '0',
-                    )
+                    'smart_use_description',
+                    value ? '1' : '0',
+                  )
                 : null,
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Usa importo'),
-            subtitle: const Text('Rafforza pattern con fasce di importo simili.'),
+            subtitle: const Text(
+              'Rafforza pattern con fasce di importo simili.',
+            ),
             value: state.smartUseAmount,
             onChanged: state.smartSuggestionsEnabled
                 ? (value) =>
-                    state.setSetting('smart_use_amount', value ? '1' : '0')
+                      state.setSetting('smart_use_amount', value ? '1' : '0')
                 : null,
           ),
           SwitchListTile(
@@ -311,7 +311,7 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
             value: state.smartUseTime,
             onChanged: state.smartSuggestionsEnabled
                 ? (value) =>
-                    state.setSetting('smart_use_time', value ? '1' : '0')
+                      state.setSetting('smart_use_time', value ? '1' : '0')
                 : null,
           ),
           SwitchListTile(
@@ -323,9 +323,9 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
             value: state.smartDetectRecurring,
             onChanged: state.smartSuggestionsEnabled
                 ? (value) => state.setSetting(
-                      'smart_detect_recurring',
-                      value ? '1' : '0',
-                    )
+                    'smart_detect_recurring',
+                    value ? '1' : '0',
+                  )
                 : null,
           ),
           SwitchListTile(
@@ -337,9 +337,9 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
             value: state.smartGoalSuggestions,
             onChanged: state.smartSuggestionsEnabled
                 ? (value) => state.setSetting(
-                      'smart_goal_suggestions',
-                      value ? '1' : '0',
-                    )
+                    'smart_goal_suggestions',
+                    value ? '1' : '0',
+                  )
                 : null,
           ),
           const SizedBox(height: 24),
@@ -352,7 +352,8 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
           _SettingsLink(
             icon: Icons.manage_search_rounded,
             title: 'Gestisci apprendimento',
-            subtitle: '${state.learnedPatterns.length} pattern · ${state.detectedRecurringPatterns.length} ricorrenze rilevate',
+            subtitle:
+                '${state.learnedPatterns.length} pattern · ${state.detectedRecurringPatterns.length} ricorrenze rilevate',
             onTap: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -367,10 +368,10 @@ class SmartSuggestionsSettingsScreen extends StatelessWidget {
 }
 
 String _sensitivityLabel(SmartSensitivity value) => switch (value) {
-      SmartSensitivity.conservative => 'Conservativa',
-      SmartSensitivity.balanced => 'Bilanciata',
-      SmartSensitivity.proactive => 'Proattiva',
-    };
+  SmartSensitivity.conservative => 'Conservativa',
+  SmartSensitivity.balanced => 'Bilanciata',
+  SmartSensitivity.proactive => 'Proattiva',
+};
 
 Future<void> _pickSensitivity(BuildContext context, AppState state) async {
   final result = await showModalBottomSheet<SmartSensitivity>(
@@ -390,16 +391,14 @@ Future<void> _pickSensitivity(BuildContext context, AppState state) async {
               value: item,
               groupValue: state.smartSensitivity,
               title: Text(_sensitivityLabel(item)),
-              subtitle: Text(
-                switch (item) {
-                  SmartSensitivity.conservative =>
-                    'Richiede più esempi e una confidenza più alta.',
-                  SmartSensitivity.balanced =>
-                    'Equilibrio tra utilità e prudenza. Consigliata.',
-                  SmartSensitivity.proactive =>
-                    'Mostra prima i pattern, mantenendo sempre la conferma.',
-                },
-              ),
+              subtitle: Text(switch (item) {
+                SmartSensitivity.conservative =>
+                  'Richiede più esempi e una confidenza più alta.',
+                SmartSensitivity.balanced =>
+                  'Equilibrio tra utilità e prudenza. Consigliata.',
+                SmartSensitivity.proactive =>
+                  'Mostra prima i pattern, mantenendo sempre la conferma.',
+              }),
               onChanged: (value) => Navigator.pop(context, value),
             ),
           ),
@@ -495,7 +494,10 @@ class LearningManagementScreen extends StatelessWidget {
                       tooltip: 'Azioni pattern',
                       onSelected: (value) async {
                         if (value == 'toggle') {
-                          await state.setPatternEnabled(pattern, !pattern.enabled);
+                          await state.setPatternEnabled(
+                            pattern,
+                            !pattern.enabled,
+                          );
                         } else if (value == 'rule') {
                           await state.convertPatternToRule(pattern);
                           if (context.mounted) {
@@ -541,10 +543,10 @@ class LearningManagementScreen extends StatelessWidget {
 }
 
 String _themeLabel(AppThemePreference value) => switch (value) {
-      AppThemePreference.system => 'Automatico',
-      AppThemePreference.light => 'Chiaro',
-      AppThemePreference.dark => 'Scuro',
-    };
+  AppThemePreference.system => 'Automatico',
+  AppThemePreference.light => 'Chiaro',
+  AppThemePreference.dark => 'Scuro',
+};
 
 Future<void> _pickTheme(BuildContext context, AppState state) async {
   final result = await showModalBottomSheet<AppThemePreference>(
@@ -643,15 +645,17 @@ Future<void> _pickFinancialMonthStart(
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Giorno $value', style: Theme.of(context).textTheme.titleLarge),
+            Text(
+              'Giorno $value',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
             Slider(
               min: 1,
               max: 28,
               divisions: 27,
               value: value.toDouble(),
               label: '$value',
-              onChanged: (next) =>
-                  setDialogState(() => value = next.round()),
+              onChanged: (next) => setDialogState(() => value = next.round()),
             ),
           ],
         ),
@@ -685,9 +689,9 @@ Future<void> _exportCsv(BuildContext context, AppState state) async {
       bytes: Uint8List.fromList(utf8.encode(csv)),
     );
     if (context.mounted && output != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('CSV esportato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('CSV esportato.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -707,9 +711,9 @@ Future<void> _importCsv(BuildContext context, AppState state) async {
     if (file == null) return;
     final count = await state.importCsv(utf8.decode(await file.readAsBytes()));
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$count movimenti importati.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$count movimenti importati.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -732,15 +736,15 @@ Future<void> _backup(BuildContext context, AppState state) async {
       bytes: bytes,
     );
     if (context.mounted && output != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup salvato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Backup salvato.')));
     }
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Backup non riuscito: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Backup non riuscito: $error')));
     }
   }
 }
@@ -765,9 +769,9 @@ Future<void> _restore(BuildContext context, AppState state) async {
     await source.writeAsBytes(await picked.readAsBytes(), flush: true);
     await state.restoreDatabaseFrom(source.path);
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Backup ripristinato.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Backup ripristinato.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -789,9 +793,9 @@ Future<void> _clearAll(BuildContext context, AppState state) async {
   if (!confirmed) return;
   await state.clearAllUserData();
   if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dati cancellati.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Dati cancellati.')));
   }
 }
 
@@ -803,8 +807,7 @@ class DashboardCustomizerScreen extends StatefulWidget {
       _DashboardCustomizerScreenState();
 }
 
-class _DashboardCustomizerScreenState
-    extends State<DashboardCustomizerScreen> {
+class _DashboardCustomizerScreenState extends State<DashboardCustomizerScreen> {
   List<DashboardWidgetConfig>? items;
 
   void _load(AppState state) {
@@ -909,10 +912,10 @@ class _DashboardCustomizerScreenState
 }
 
 String _sizeLabel(DashboardWidgetSize size) => switch (size) {
-      DashboardWidgetSize.small => 'Compatto',
-      DashboardWidgetSize.medium => 'Medio',
-      DashboardWidgetSize.large => 'Grande',
-    };
+  DashboardWidgetSize.small => 'Compatto',
+  DashboardWidgetSize.medium => 'Medio',
+  DashboardWidgetSize.large => 'Grande',
+};
 
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
@@ -983,46 +986,45 @@ class _CategorySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(title, trailing: Text('${items.length}')),
-          if (items.isEmpty)
-            const Text('Nessuna categoria')
-          else
-            ...items.map(
-              (item) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: CircleAvatar(
-                  backgroundColor:
-                      Color(item.colorValue).withValues(alpha: .13),
-                  child: Icon(
-                    categoryIcon(item.iconKey),
-                    color: Color(item.colorValue),
-                  ),
-                ),
-                title: Text(item.name),
-                trailing: PopupMenuButton<String>(
-                  onSelected: (value) {
-                    if (value == 'edit') onEdit(item);
-                    if (value == 'delete') onDelete(item);
-                  },
-                  itemBuilder: (context) => [
-                    const PopupMenuItem(value: 'edit', child: Text('Modifica')),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Text(
-                        'Elimina',
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SectionTitle(title, trailing: Text('${items.length}')),
+      if (items.isEmpty)
+        const Text('Nessuna categoria')
+      else
+        ...items.map(
+          (item) => ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              backgroundColor: Color(item.colorValue).withValues(alpha: .13),
+              child: Icon(
+                categoryIcon(item.iconKey),
+                color: Color(item.colorValue),
               ),
             ),
-        ],
-      );
+            title: Text(item.name),
+            trailing: PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') onEdit(item);
+                if (value == 'delete') onDelete(item);
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                PopupMenuItem(
+                  value: 'delete',
+                  child: Text(
+                    'Elimina',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+    ],
+  );
 }
 
 Future<void> _editCategory(
@@ -1248,7 +1250,10 @@ Future<void> _addRule(BuildContext context, AppState state) async {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Nuova regola', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Nuova regola',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               TextField(
                 controller: name,
                 autofocus: true,
@@ -1286,27 +1291,33 @@ Future<void> _addRule(BuildContext context, AppState state) async {
                   Expanded(
                     child: TextField(
                       controller: min,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          const InputDecoration(labelText: 'Importo min.'),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Importo min.',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: TextField(
                       controller: max,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      decoration:
-                          const InputDecoration(labelText: 'Importo max.'),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: const InputDecoration(
+                        labelText: 'Importo max.',
+                      ),
                     ),
                   ),
                 ],
               ),
               DropdownButtonFormField<int?>(
                 initialValue: categoryId,
-                decoration: const InputDecoration(labelText: 'Assegna categoria'),
+                decoration: const InputDecoration(
+                  labelText: 'Assegna categoria',
+                ),
                 items: [
                   const DropdownMenuItem<int?>(
                     value: null,
@@ -1349,8 +1360,9 @@ Future<void> _addRule(BuildContext context, AppState state) async {
               ),
               TextField(
                 controller: tag,
-                decoration:
-                    const InputDecoration(labelText: 'Aggiungi tag opzionale'),
+                decoration: const InputDecoration(
+                  labelText: 'Aggiungi tag opzionale',
+                ),
               ),
               DropdownButtonFormField<bool?>(
                 initialValue: analytics,
@@ -1360,14 +1372,8 @@ Future<void> _addRule(BuildContext context, AppState state) async {
                     value: null,
                     child: Text('Non cambiare'),
                   ),
-                  DropdownMenuItem<bool?>(
-                    value: true,
-                    child: Text('Includi'),
-                  ),
-                  DropdownMenuItem<bool?>(
-                    value: false,
-                    child: Text('Escludi'),
-                  ),
+                  DropdownMenuItem<bool?>(value: true, child: Text('Includi')),
+                  DropdownMenuItem<bool?>(value: false, child: Text('Escludi')),
                 ],
                 onChanged: (value) => analytics = value,
               ),
@@ -1401,11 +1407,13 @@ Future<void> _addRule(BuildContext context, AppState state) async {
                         type: type,
                         minAmount: minValue,
                         maxAmount: maxValue,
-                        categoryId:
-                            type == TransactionType.transfer ? null : categoryId,
+                        categoryId: type == TransactionType.transfer
+                            ? null
+                            : categoryId,
                         accountId: accountId,
-                        addTag:
-                            tag.text.trim().isEmpty ? null : tag.text.trim(),
+                        addTag: tag.text.trim().isEmpty
+                            ? null
+                            : tag.text.trim(),
                         includeInAnalytics: analytics,
                       ),
                     );

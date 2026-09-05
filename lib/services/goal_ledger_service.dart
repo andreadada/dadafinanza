@@ -48,9 +48,11 @@ class GoalLedgerService {
       limit: 1,
     );
     if (rows.isEmpty) throw StateError('Obiettivo non trovato.');
-    final currentCents = (rows.first['current_amount_cents'] as num?)?.toInt() ??
+    final currentCents =
+        (rows.first['current_amount_cents'] as num?)?.toInt() ??
         Money.toCents((rows.first['current_amount'] as num).toDouble());
-    final targetCents = (rows.first['target_amount_cents'] as num?)?.toInt() ??
+    final targetCents =
+        (rows.first['target_amount_cents'] as num?)?.toInt() ??
         Money.toCents((rows.first['target_amount'] as num).toDouble());
     final requested = Money.toCents(delta);
     final applied = requested > 0
@@ -103,20 +105,17 @@ class GoalLedgerService {
           'Il trasferimento deve arrivare al conto collegato all’obiettivo.',
         );
       }
-      final cents = (item['amount_cents'] as num?)?.toInt() ??
+      final cents =
+          (item['amount_cents'] as num?)?.toInt() ??
           Money.toCents((item['amount'] as num).toDouble());
-      await txn.insert(
-        'goal_entries',
-        {
-          'goal_id': goalId,
-          'transaction_id': transactionId,
-          'amount': Money.fromCents(cents),
-          'amount_cents': cents,
-          'kind': 'transfer',
-          'created_at': DateTime.now().millisecondsSinceEpoch,
-        },
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await txn.insert('goal_entries', {
+        'goal_id': goalId,
+        'transaction_id': transactionId,
+        'amount': Money.fromCents(cents),
+        'amount_cents': cents,
+        'kind': 'transfer',
+        'created_at': DateTime.now().millisecondsSinceEpoch,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
   }
 }

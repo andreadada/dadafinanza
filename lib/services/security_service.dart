@@ -16,11 +16,9 @@ enum AppLockTimeout {
 }
 
 class SecurityService {
-  SecurityService({
-    FlutterSecureStorage? storage,
-    LocalAuthentication? auth,
-  })  : storage = storage ?? const FlutterSecureStorage(),
-        auth = auth ?? LocalAuthentication();
+  SecurityService({FlutterSecureStorage? storage, LocalAuthentication? auth})
+    : storage = storage ?? const FlutterSecureStorage(),
+      auth = auth ?? LocalAuthentication();
 
   static const _privacyChannel = MethodChannel('dadafinanza/privacy');
   static const _modeKey = 'security.lock_mode';
@@ -68,10 +66,9 @@ class SecurityService {
 
   Future<void> applySecureRecentApps(bool enabled) async {
     try {
-      await _privacyChannel.invokeMethod<void>(
-        'setSecure',
-        <String, Object?>{'enabled': enabled},
-      );
+      await _privacyChannel.invokeMethod<void>('setSecure', <String, Object?>{
+        'enabled': enabled,
+      });
     } on MissingPluginException {
       // Non-Android platforms simply ignore this Android-specific protection.
     }
@@ -90,7 +87,8 @@ class SecurityService {
   Future<bool> authenticateBiometric() async {
     try {
       return await auth.authenticate(
-        localizedReason: 'Sblocca DadaFinanza per vedere i tuoi dati finanziari',
+        localizedReason:
+            'Sblocca DadaFinanza per vedere i tuoi dati finanziari',
         biometricOnly: true,
         sensitiveTransaction: true,
         persistAcrossBackgrounding: true,

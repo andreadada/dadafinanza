@@ -34,7 +34,9 @@ class _DadaAppShellState extends State<DadaAppShell> {
       PlanningScreen(),
     ];
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: index, children: pages)),
+      body: SafeArea(
+        child: IndexedStack(index: index, children: pages),
+      ),
       floatingActionButton: GestureDetector(
         onLongPress: _showQuickMenu,
         child: FloatingActionButton(
@@ -106,8 +108,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
       source: voice
           ? QuickCaptureSource.voice
           : preset == null
-              ? QuickCaptureSource.manual
-              : QuickCaptureSource.preset,
+          ? QuickCaptureSource.manual
+          : QuickCaptureSource.preset,
       startVoice: voice,
     );
     await Navigator.push(
@@ -118,7 +120,9 @@ class _DadaAppShellState extends State<DadaAppShell> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
-    final presets = await QuickPresetService(state.database).all(enabledOnly: true);
+    final presets = await QuickPresetService(
+      state.database,
+    ).all(enabledOnly: true);
     if (!mounted) return;
     final choice = await showModalBottomSheet<Object>(
       context: context,
@@ -142,30 +146,24 @@ class _DadaAppShellState extends State<DadaAppShell> {
                     child: FinanceQuickAction(
                       icon: Icons.arrow_upward_rounded,
                       label: 'Spesa',
-                      onTap: () => Navigator.pop(
-                        sheetContext,
-                        TransactionType.expense,
-                      ),
+                      onTap: () =>
+                          Navigator.pop(sheetContext, TransactionType.expense),
                     ),
                   ),
                   Expanded(
                     child: FinanceQuickAction(
                       icon: Icons.arrow_downward_rounded,
                       label: 'Entrata',
-                      onTap: () => Navigator.pop(
-                        sheetContext,
-                        TransactionType.income,
-                      ),
+                      onTap: () =>
+                          Navigator.pop(sheetContext, TransactionType.income),
                     ),
                   ),
                   Expanded(
                     child: FinanceQuickAction(
                       icon: Icons.swap_horiz_rounded,
                       label: 'Trasferisci',
-                      onTap: () => Navigator.pop(
-                        sheetContext,
-                        TransactionType.transfer,
-                      ),
+                      onTap: () =>
+                          Navigator.pop(sheetContext, TransactionType.transfer),
                     ),
                   ),
                 ],
@@ -179,7 +177,9 @@ class _DadaAppShellState extends State<DadaAppShell> {
               if (presets.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const SectionTitle('Preset'),
-                ...presets.take(6).map(
+                ...presets
+                    .take(6)
+                    .map(
                       (preset) => ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: const Icon(Icons.bookmark_outline_rounded),

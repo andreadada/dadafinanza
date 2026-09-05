@@ -53,7 +53,9 @@ class _LocalPrivacyScreenState extends State<LocalPrivacyScreen> {
   Future<void> _setMode(AppLockMode value) async {
     if (value == AppLockMode.biometric) {
       if (!biometricAvailable) {
-        _message('Biometria non disponibile o non configurata sul dispositivo.');
+        _message(
+          'Biometria non disponibile o non configurata sul dispositivo.',
+        );
         return;
       }
       final ok = await security.authenticateBiometric();
@@ -71,7 +73,8 @@ class _LocalPrivacyScreenState extends State<LocalPrivacyScreen> {
   Future<bool> _createPin() async {
     pin.clear();
     pinConfirm.clear();
-    final saved = await showModalBottomSheet<bool>(
+    final saved =
+        await showModalBottomSheet<bool>(
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
@@ -243,15 +246,15 @@ class _ModeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 10,
-        enabled: onTap != null,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: Icon(
-          selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-        ),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    enabled: onTap != null,
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: Icon(
+      selected ? Icons.check_circle_rounded : Icons.circle_outlined,
+    ),
+    onTap: onTap,
+  );
 }

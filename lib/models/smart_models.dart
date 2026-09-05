@@ -6,7 +6,13 @@ enum SuggestionConfidence { low, medium, high, veryHigh }
 
 enum SuggestionSource { manualRule, learnedPattern, recurringPattern }
 
-enum GoalPlanStatus { ahead, onTrack, slightlyBehind, unrealistic, insufficientData }
+enum GoalPlanStatus {
+  ahead,
+  onTrack,
+  slightlyBehind,
+  unrealistic,
+  insufficientData,
+}
 
 class LearnedPattern {
   const LearnedPattern({
@@ -52,29 +58,29 @@ class LearnedPattern {
   final bool enabled;
 
   factory LearnedPattern.fromMap(Map<String, Object?> map) => LearnedPattern(
-        id: map['id'] as int,
-        signature: map['signature'] as String,
-        normalizedText: map['normalized_text'] as String,
-        type: TransactionTypeX.fromDb(map['type'] as String),
-        categoryId: map['category_id'] as int?,
-        accountId: map['account_id'] as int?,
-        toAccountId: map['to_account_id'] as int?,
-        tags: ((map['tags'] as String?) ?? '')
-            .split('|')
-            .where((item) => item.isNotEmpty)
-            .toList(),
-        sampleCount: map['sample_count'] as int? ?? 0,
-        acceptedCount: map['accepted_count'] as int? ?? 0,
-        rejectedCount: map['rejected_count'] as int? ?? 0,
-        amountMedian: (map['amount_median'] as num? ?? 0).toDouble(),
-        amountMin: (map['amount_min'] as num? ?? 0).toDouble(),
-        amountMax: (map['amount_max'] as num? ?? 0).toDouble(),
-        weekdayMask: map['weekday_mask'] as int? ?? 0,
-        hourBucket: map['hour_bucket'] as int? ?? -1,
-        firstSeen: DateTime.fromMillisecondsSinceEpoch(map['first_seen'] as int),
-        lastSeen: DateTime.fromMillisecondsSinceEpoch(map['last_seen'] as int),
-        enabled: (map['enabled'] as int? ?? 1) == 1,
-      );
+    id: map['id'] as int,
+    signature: map['signature'] as String,
+    normalizedText: map['normalized_text'] as String,
+    type: TransactionTypeX.fromDb(map['type'] as String),
+    categoryId: map['category_id'] as int?,
+    accountId: map['account_id'] as int?,
+    toAccountId: map['to_account_id'] as int?,
+    tags: ((map['tags'] as String?) ?? '')
+        .split('|')
+        .where((item) => item.isNotEmpty)
+        .toList(),
+    sampleCount: map['sample_count'] as int? ?? 0,
+    acceptedCount: map['accepted_count'] as int? ?? 0,
+    rejectedCount: map['rejected_count'] as int? ?? 0,
+    amountMedian: (map['amount_median'] as num? ?? 0).toDouble(),
+    amountMin: (map['amount_min'] as num? ?? 0).toDouble(),
+    amountMax: (map['amount_max'] as num? ?? 0).toDouble(),
+    weekdayMask: map['weekday_mask'] as int? ?? 0,
+    hourBucket: map['hour_bucket'] as int? ?? -1,
+    firstSeen: DateTime.fromMillisecondsSinceEpoch(map['first_seen'] as int),
+    lastSeen: DateTime.fromMillisecondsSinceEpoch(map['last_seen'] as int),
+    enabled: (map['enabled'] as int? ?? 1) == 1,
+  );
 }
 
 class DetectedRecurringPattern {
@@ -121,7 +127,9 @@ class DetectedRecurringPattern {
         confidence: (map['confidence'] as num).toDouble(),
         sampleCount: map['sample_count'] as int,
         lastSeen: DateTime.fromMillisecondsSinceEpoch(map['last_seen'] as int),
-        nextExpected: DateTime.fromMillisecondsSinceEpoch(map['next_expected'] as int),
+        nextExpected: DateTime.fromMillisecondsSinceEpoch(
+          map['next_expected'] as int,
+        ),
         enabled: (map['enabled'] as int? ?? 1) == 1,
       );
 }

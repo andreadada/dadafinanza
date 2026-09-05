@@ -135,10 +135,7 @@ class SafeAccountDetailScreen extends StatelessWidget {
         )
         .toList();
     final recent = transactions.take(8).toList();
-    final income = state.accountMonthTotal(
-      account.id,
-      TransactionType.income,
-    );
+    final income = state.accountMonthTotal(account.id, TransactionType.income);
     final expense = state.accountMonthTotal(
       account.id,
       TransactionType.expense,
@@ -232,10 +229,10 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     onTap: account.isLocked
                         ? null
                         : () => _openQuick(
-                              context,
-                              account,
-                              TransactionType.expense,
-                            ),
+                            context,
+                            account,
+                            TransactionType.expense,
+                          ),
                   ),
                 ),
                 Expanded(
@@ -246,10 +243,10 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     onTap: account.isLocked
                         ? null
                         : () => _openQuick(
-                              context,
-                              account,
-                              TransactionType.income,
-                            ),
+                            context,
+                            account,
+                            TransactionType.income,
+                          ),
                   ),
                 ),
                 Expanded(
@@ -260,10 +257,10 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     onTap: account.isLocked
                         ? null
                         : () => _openQuick(
-                              context,
-                              account,
-                              TransactionType.transfer,
-                            ),
+                            context,
+                            account,
+                            TransactionType.transfer,
+                          ),
                   ),
                 ),
               ],
@@ -304,11 +301,7 @@ class SafeAccountDetailScreen extends StatelessWidget {
     );
   }
 
-  void _openQuick(
-    BuildContext context,
-    Account account,
-    TransactionType type,
-  ) {
+  void _openQuick(BuildContext context, Account account, TransactionType type) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -383,7 +376,8 @@ class SafeAccountDetailScreen extends StatelessWidget {
     controller.dispose();
     if (actual == null || !context.mounted) return;
     final difference = actual - account.balance;
-    final confirmed = await showDialog<bool>(
+    final confirmed =
+        await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: const Text('Conferma riconciliazione'),
@@ -515,7 +509,9 @@ class SafeAccountDetailScreen extends StatelessWidget {
                 ),
                 TextField(
                   controller: note,
-                  decoration: const InputDecoration(labelText: 'Nota opzionale'),
+                  decoration: const InputDecoration(
+                    labelText: 'Nota opzionale',
+                  ),
                 ),
                 const SizedBox(height: 16),
                 SwitchListTile(
@@ -554,8 +550,9 @@ class SafeAccountDetailScreen extends StatelessWidget {
                       await state.updateAccount(
                         account.copyWith(
                           name: name.text.trim(),
-                          note:
-                              note.text.trim().isEmpty ? null : note.text.trim(),
+                          note: note.text.trim().isEmpty
+                              ? null
+                              : note.text.trim(),
                           includeInTotal: includeInTotal,
                           includeInAnalytics: includeInAnalytics,
                           hideBalance: hideBalance,

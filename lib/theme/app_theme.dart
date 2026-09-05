@@ -20,13 +20,12 @@ class FinanceColors extends ThemeExtension<FinanceColors> {
     Color? negative,
     Color? warning,
     Color? neutral,
-  }) =>
-      FinanceColors(
-        positive: positive ?? this.positive,
-        negative: negative ?? this.negative,
-        warning: warning ?? this.warning,
-        neutral: neutral ?? this.neutral,
-      );
+  }) => FinanceColors(
+    positive: positive ?? this.positive,
+    negative: negative ?? this.negative,
+    warning: warning ?? this.warning,
+    neutral: neutral ?? this.neutral,
+  );
 
   @override
   FinanceColors lerp(covariant FinanceColors? other, double t) {
@@ -54,23 +53,27 @@ class AppTheme {
     final raised = dark ? const Color(0xFF17171A) : const Color(0xFFF0F0F2);
     final hairline = dark ? const Color(0xFF2A2A2E) : const Color(0xFFE4E4E7);
     final onSurface = dark ? const Color(0xFFF7F7F8) : const Color(0xFF18181B);
-    final secondaryText = dark ? const Color(0xFFA7A7B0) : const Color(0xFF65656F);
+    final secondaryText = dark
+        ? const Color(0xFFA7A7B0)
+        : const Color(0xFF65656F);
 
-    final scheme = ColorScheme.fromSeed(
-      seedColor: dark ? const Color(0xFFF5F5F5) : const Color(0xFF27272A),
-      brightness: brightness,
-      surface: background,
-      error: dark ? const Color(0xFFFF7474) : const Color(0xFFB42318),
-    ).copyWith(
-      primary: dark ? const Color(0xFFF5F5F5) : const Color(0xFF27272A),
-      onPrimary: dark ? const Color(0xFF09090B) : Colors.white,
-      surface: background,
-      surfaceContainer: raised,
-      surfaceContainerHighest:
-          dark ? const Color(0xFF222226) : const Color(0xFFE8E8EB),
-      onSurface: onSurface,
-      outlineVariant: hairline,
-    );
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: dark ? const Color(0xFFF5F5F5) : const Color(0xFF27272A),
+          brightness: brightness,
+          surface: background,
+          error: dark ? const Color(0xFFFF7474) : const Color(0xFFB42318),
+        ).copyWith(
+          primary: dark ? const Color(0xFFF5F5F5) : const Color(0xFF27272A),
+          onPrimary: dark ? const Color(0xFF09090B) : Colors.white,
+          surface: background,
+          surfaceContainer: raised,
+          surfaceContainerHighest: dark
+              ? const Color(0xFF222226)
+              : const Color(0xFFE8E8EB),
+          onSurface: onSurface,
+          outlineVariant: hairline,
+        );
 
     final underline = UnderlineInputBorder(
       borderSide: BorderSide(color: hairline),
@@ -145,7 +148,9 @@ class AppTheme {
         indicatorColor: scheme.primary.withValues(alpha: .09),
         labelTextStyle: WidgetStateProperty.resolveWith(
           (states) => TextStyle(
-            color: states.contains(WidgetState.selected) ? onSurface : secondaryText,
+            color: states.contains(WidgetState.selected)
+                ? onSurface
+                : secondaryText,
             fontSize: 11,
             fontWeight: states.contains(WidgetState.selected)
                 ? FontWeight.w700
@@ -171,7 +176,9 @@ class AppTheme {
         style: FilledButton.styleFrom(
           minimumSize: const Size(48, 52),
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           textStyle: const TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -180,7 +187,9 @@ class AppTheme {
           minimumSize: const Size(48, 52),
           side: BorderSide.none,
           backgroundColor: scheme.primary.withValues(alpha: .06),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
@@ -222,13 +231,14 @@ class AppTheme {
         circularTrackColor: scheme.primary.withValues(alpha: .09),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {TargetPlatform.android: PredictiveBackPageTransitionsBuilder()},
+        builders: {
+          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
+        },
       ),
     );
   }
 }
 
 extension FinanceThemeContext on BuildContext {
-  FinanceColors get financeColors =>
-      Theme.of(this).extension<FinanceColors>()!;
+  FinanceColors get financeColors => Theme.of(this).extension<FinanceColors>()!;
 }

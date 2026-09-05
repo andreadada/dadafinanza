@@ -75,10 +75,7 @@ class PersonalSettingsScreen extends StatelessWidget {
             subtitle: state.smartSuggestionsEnabled
                 ? '${state.learnedPatterns.length} pattern appresi'
                 : 'Disattivate',
-            onTap: () => _open(
-              context,
-              const SmartSuggestionsSettingsScreen(),
-            ),
+            onTap: () => _open(context, const SmartSuggestionsSettingsScreen()),
           ),
           _Link(
             icon: Icons.bookmark_add_outlined,
@@ -132,30 +129,24 @@ class PersonalSettingsScreen extends StatelessWidget {
               'Registra velocemente e assegna il conto in seguito.',
             ),
             value: state.allowUnassigned,
-            onChanged: (value) => state.setSetting(
-              'allow_unassigned',
-              value ? '1' : '0',
-            ),
+            onChanged: (value) =>
+                state.setSetting('allow_unassigned', value ? '1' : '0'),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_horiz_rounded),
             title: const Text('Trasferimenti nelle statistiche'),
             value: state.showTransfersInAnalytics,
-            onChanged: (value) => state.setSetting(
-              'show_transfers_analytics',
-              value ? '1' : '0',
-            ),
+            onChanged: (value) =>
+                state.setSetting('show_transfers_analytics', value ? '1' : '0'),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.vibration_rounded),
             title: const Text('Feedback aptico'),
             value: state.haptics,
-            onChanged: (value) => state.setSetting(
-              'haptics',
-              value ? '1' : '0',
-            ),
+            onChanged: (value) =>
+                state.setSetting('haptics', value ? '1' : '0'),
           ),
         ],
       ),
@@ -188,13 +179,11 @@ class PersonalSettingsScreen extends StatelessWidget {
                       ? Icons.check_circle_rounded
                       : Icons.circle_outlined,
                 ),
-                title: Text(
-                  switch (value) {
-                    AppThemePreference.system => 'Sistema',
-                    AppThemePreference.light => 'Chiaro',
-                    AppThemePreference.dark => 'Scuro',
-                  },
-                ),
+                title: Text(switch (value) {
+                  AppThemePreference.system => 'Sistema',
+                  AppThemePreference.light => 'Chiaro',
+                  AppThemePreference.dark => 'Scuro',
+                }),
                 onTap: () => Navigator.pop(sheetContext, value),
               ),
             ),
@@ -221,12 +210,12 @@ class _Link extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 12,
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 12,
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 }

@@ -23,7 +23,9 @@ class RuleService {
 
   RuleMatchPreview preview(AppState state, AutomationRule rule) =>
       RuleMatchPreview(
-        matches: state.transactions.where((item) => matches(rule, item)).toList(),
+        matches: state.transactions
+            .where((item) => matches(rule, item))
+            .toList(),
       );
 
   Future<void> update(AppState state, AutomationRule rule) async {
@@ -70,10 +72,7 @@ class RuleService {
     await state.load();
   }
 
-  Future<int> applyToHistory(
-    AppState state,
-    AutomationRule rule,
-  ) async {
+  Future<int> applyToHistory(AppState state, AutomationRule rule) async {
     final matched = preview(state, rule).matches;
     var changed = 0;
     for (final old in matched) {
@@ -83,8 +82,7 @@ class RuleService {
         tags: rule.addTag == null || old.tags.contains(rule.addTag)
             ? old.tags
             : [...old.tags, rule.addTag!],
-        includeInAnalytics:
-            rule.includeInAnalytics ?? old.includeInAnalytics,
+        includeInAnalytics: rule.includeInAnalytics ?? old.includeInAnalytics,
         updatedAt: DateTime.now(),
       );
       if (next.categoryId == old.categoryId &&

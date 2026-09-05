@@ -7,8 +7,7 @@ class WidgetService {
       'com.dadafinanza.app.DadaFinanceWidgetProvider';
   static const balanceProvider =
       'com.dadafinanza.app.DadaBalanceWidgetProvider';
-  static const quickProvider =
-      'com.dadafinanza.app.DadaQuickAddWidgetProvider';
+  static const quickProvider = 'com.dadafinanza.app.DadaQuickAddWidgetProvider';
   static const amountsProvider =
       'com.dadafinanza.app.DadaQuickAmountsWidgetProvider';
 

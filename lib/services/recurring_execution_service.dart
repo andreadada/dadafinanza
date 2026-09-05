@@ -118,13 +118,30 @@ class RecurringExecutionService {
     );
   }
 
-  static DateTime advance(DateTime date, String frequency) => switch (frequency) {
+  static DateTime advance(DateTime date, String frequency) =>
+      switch (frequency) {
         'Settimanale' => date.add(const Duration(days: 7)),
         'Quindicinale' => date.add(const Duration(days: 14)),
-        'Trimestrale' =>
-          DateTime(date.year, date.month + 3, date.day, date.hour, date.minute),
-        'Annuale' =>
-          DateTime(date.year + 1, date.month, date.day, date.hour, date.minute),
-        _ => DateTime(date.year, date.month + 1, date.day, date.hour, date.minute),
+        'Trimestrale' => DateTime(
+          date.year,
+          date.month + 3,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
+        'Annuale' => DateTime(
+          date.year + 1,
+          date.month,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
+        _ => DateTime(
+          date.year,
+          date.month + 1,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
       };
 }

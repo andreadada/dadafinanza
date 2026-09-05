@@ -11,7 +11,7 @@ import 'services/widget_service.dart';
 
 class AppState extends ChangeNotifier {
   AppState(this.database, {WidgetService? widgetService})
-      : widgetService = widgetService ?? WidgetService();
+    : widgetService = widgetService ?? WidgetService();
 
   final AppDatabase database;
   final WidgetService widgetService;
@@ -84,9 +84,14 @@ class AppState extends ChangeNotifier {
     final now = DateTime.now();
     var changed = false;
     for (final item in [...recurring]) {
-      if (!item.enabled || !item.autoCreate || item.nextDate.isAfter(now)) continue;
+      if (!item.enabled || !item.autoCreate || item.nextDate.isAfter(now))
+        continue;
       final account = accountById(item.accountId);
-      if (account == null || account.isLocked || account.isArchived || account.isSystem) continue;
+      if (account == null ||
+          account.isLocked ||
+          account.isArchived ||
+          account.isSystem)
+        continue;
       var next = item.nextDate;
       var safety = 0;
       while (!next.isAfter(now) && safety < 24) {
@@ -126,12 +131,31 @@ class AppState extends ChangeNotifier {
     if (changed) await _reloadAll();
   }
 
-  DateTime _advanceRecurring(DateTime date, String frequency) => switch (frequency) {
+  DateTime _advanceRecurring(DateTime date, String frequency) =>
+      switch (frequency) {
         'Settimanale' => date.add(const Duration(days: 7)),
         'Quindicinale' => date.add(const Duration(days: 14)),
-        'Trimestrale' => DateTime(date.year, date.month + 3, date.day, date.hour, date.minute),
-        'Annuale' => DateTime(date.year + 1, date.month, date.day, date.hour, date.minute),
-        _ => DateTime(date.year, date.month + 1, date.day, date.hour, date.minute),
+        'Trimestrale' => DateTime(
+          date.year,
+          date.month + 3,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
+        'Annuale' => DateTime(
+          date.year + 1,
+          date.month,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
+        _ => DateTime(
+          date.year,
+          date.month + 1,
+          date.day,
+          date.hour,
+          date.minute,
+        ),
       };
 
   List<Account> get userAccounts =>
@@ -142,7 +166,8 @@ class AppState extends ChangeNotifier {
   List<Account> get archivedAccounts => accounts
       .where((a) => !a.isSystem && a.isArchived)
       .toList(growable: false);
-  Account? get unassignedAccount => accounts.where((a) => a.isSystem).firstOrNull;
+  Account? get unassignedAccount =>
+      accounts.where((a) => a.isSystem).firstOrNull;
   int get unassignedCount => unassignedAccount == null
       ? 0
       : transactions.where((t) => t.accountId == unassignedAccount!.id).length;
@@ -164,19 +189,27 @@ class AppState extends ChangeNotifier {
   List<Category> categoriesFor(TransactionType type) =>
       categories.where((c) => c.type == type).toList(growable: false);
 
-  Iterable<FinanceTransaction> analyticTransactions({DateTime? from, DateTime? to}) =>
-      transactions.where((t) {
-        if (!t.includeInAnalytics) return false;
-        final account = accountById(t.accountId);
-        if (account != null && !account.isSystem && !account.includeInAnalytics) return false;
-        if (t.type == TransactionType.transfer && !showTransfersInAnalytics) return false;
-        if (from != null && t.date.isBefore(from)) return false;
-        if (to != null && !t.date.isBefore(to)) return false;
-        return true;
-      });
+  Iterable<FinanceTransaction> analyticTransactions({
+    DateTime? from,
+    DateTime? to,
+  }) => transactions.where((t) {
+    if (!t.includeInAnalytics) return false;
+    final account = accountById(t.accountId);
+    if (account != null && !account.isSystem && !account.includeInAnalytics)
+      return false;
+    if (t.type == TransactionType.transfer && !showTransfersInAnalytics)
+      return false;
+    if (from != null && t.date.isBefore(from)) return false;
+    if (to != null && !t.date.isBefore(to)) return false;
+    return true;
+  });
 
   double refundsFor(int transactionId) => transactions
-      .where((t) => t.refundOfTransactionId == transactionId && t.type == TransactionType.income)
+      .where(
+        (t) =>
+            t.refundOfTransactionId == transactionId &&
+            t.type == TransactionType.income,
+      )
       .fold(0, (sum, item) => sum + item.amount);
 
   double effectiveExpense(FinanceTransaction t) =>
@@ -186,7 +219,8 @@ class AppState extends ChangeNotifier {
     var total = 0.0;
     for (final t in analyticTransactions(from: from, to: to)) {
       if (t.type != type) continue;
-      if (type == TransactionType.income && t.refundOfTransactionId != null) continue;
+      if (type == TransactionType.income && t.refundOfTransactionId != null)
+        continue;
       total += type == TransactionType.expense ? effectiveExpense(t) : t.amount;
     }
     return total;
@@ -199,14 +233,24 @@ class AppState extends ChangeNotifier {
     return periodTotal(type, from, to);
   }
 
-  double accountMonthTotal(int accountId, TransactionType type, {DateTime? month}) {
+  double accountMonthTotal(
+    int accountId,
+    TransactionType type, {
+    DateTime? month,
+  }) {
     final target = month ?? DateTime.now();
     final from = DateTime(target.year, target.month);
     final to = DateTime(target.year, target.month + 1);
     return analyticTransactions(from: from, to: to)
         .where((t) => t.accountId == accountId && t.type == type)
-        .fold(0.0, (sum, t) =>
-            sum + (type == TransactionType.expense ? effectiveExpense(t) : t.amount));
+        .fold(
+          0.0,
+          (sum, t) =>
+              sum +
+              (type == TransactionType.expense
+                  ? effectiveExpense(t)
+                  : t.amount),
+        );
   }
 
   double monthCategoryTotal(int categoryId, {DateTime? month}) {
@@ -214,8 +258,10 @@ class AppState extends ChangeNotifier {
     final from = DateTime(target.year, target.month);
     final to = DateTime(target.year, target.month + 1);
     var total = 0.0;
-    for (final t in analyticTransactions(from: from, to: to)
-        .where((t) => t.type == TransactionType.expense)) {
+    for (final t in analyticTransactions(
+      from: from,
+      to: to,
+    ).where((t) => t.type == TransactionType.expense)) {
       final itemSplits = splitsFor(t.id);
       if (itemSplits.isNotEmpty) {
         total += itemSplits
@@ -229,11 +275,12 @@ class AppState extends ChangeNotifier {
   }
 
   List<MapEntry<Category, double>> topExpenseCategories({int limit = 5}) {
-    final items = categoriesFor(TransactionType.expense)
-        .map((c) => MapEntry(c, monthCategoryTotal(c.id)))
-        .where((e) => e.value > 0)
-        .toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
+    final items =
+        categoriesFor(TransactionType.expense)
+            .map((c) => MapEntry(c, monthCategoryTotal(c.id)))
+            .where((e) => e.value > 0)
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     return items.take(limit).toList();
   }
 
@@ -268,12 +315,17 @@ class AppState extends ChangeNotifier {
       weeklyExpenses.where((value) => value > 0),
     );
     final safetyBuffer = math.max(totalBalance * .12, medianWeek).toDouble();
-    return math.max(0, math.min(totalBalance, forecast.endingBalance - safetyBuffer)).toDouble();
+    return math
+        .max(0, math.min(totalBalance, forecast.endingBalance - safetyBuffer))
+        .toDouble();
   }
 
   double get endOfMonthForecast {
     final now = DateTime.now();
-    final days = math.max(1, DateTime(now.year, now.month + 1).difference(now).inDays);
+    final days = math.max(
+      1,
+      DateTime(now.year, now.month + 1).difference(now).inDays,
+    );
     return forecastForDays(days).endingBalance;
   }
 
@@ -288,8 +340,11 @@ class AppState extends ChangeNotifier {
 
   double get weekExpense {
     final now = DateTime.now();
-    final start = DateTime(now.year, now.month, now.day)
-        .subtract(Duration(days: now.weekday - 1));
+    final start = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(Duration(days: now.weekday - 1));
     return periodTotal(
       TransactionType.expense,
       start,
@@ -512,7 +567,8 @@ class AppState extends ChangeNotifier {
       categoryId: categoryId,
       limit: limit,
       period: period,
-      startDate: startDate ?? DateTime(DateTime.now().year, DateTime.now().month),
+      startDate:
+          startDate ?? DateTime(DateTime.now().year, DateTime.now().month),
       endDate: endDate,
     );
     budgets = await database.budgets();
@@ -572,8 +628,10 @@ class AppState extends ChangeNotifier {
   double budgetSpent(Budget budget, {DateTime? now}) {
     final (from, to) = budgetRange(budget, now: now);
     var total = 0.0;
-    for (final transaction in analyticTransactions(from: from, to: to)
-        .where((item) => item.type == TransactionType.expense)) {
+    for (final transaction in analyticTransactions(
+      from: from,
+      to: to,
+    ).where((item) => item.type == TransactionType.expense)) {
       final itemSplits = splitsFor(transaction.id);
       if (budget.categoryId == null) {
         total += effectiveExpense(transaction);
@@ -630,7 +688,9 @@ class AppState extends ChangeNotifier {
   }
 
   GoalPlan goalPlan(Goal goal, {DateTime? now}) {
-    final activeGoals = goals.where((item) => !item.archived && !item.completed).length;
+    final activeGoals = goals
+        .where((item) => !item.archived && !item.completed)
+        .length;
     return SmartFinanceEngine.planGoal(
       goal: goal,
       currentAmount: goal.currentAmount,
@@ -644,10 +704,11 @@ class AppState extends ChangeNotifier {
 
   Account? suggestedGoalTransferSource(Goal goal) {
     if (goal.linkedAccountId == null) return null;
-    final candidates = activeAccounts
-        .where((item) => !item.isLocked && item.id != goal.linkedAccountId)
-        .toList()
-      ..sort((a, b) => b.balance.compareTo(a.balance));
+    final candidates =
+        activeAccounts
+            .where((item) => !item.isLocked && item.id != goal.linkedAccountId)
+            .toList()
+          ..sort((a, b) => b.balance.compareTo(a.balance));
     return candidates.firstOrNull;
   }
 
@@ -721,7 +782,10 @@ class AppState extends ChangeNotifier {
     );
   }
 
-  Future<void> acceptSuggestion(SmartSuggestion suggestion, String query) async {
+  Future<void> acceptSuggestion(
+    SmartSuggestion suggestion,
+    String query,
+  ) async {
     await database.recordPatternFeedback(
       suggestion.patternId,
       'accepted',
@@ -745,7 +809,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> suppressSuggestion(SmartSuggestion suggestion, String query) async {
+  Future<void> suppressSuggestion(
+    SmartSuggestion suggestion,
+    String query,
+  ) async {
     final normalized = SmartFinanceEngine.normalizeText(query);
     if (normalized.isEmpty) return;
     await database.recordPatternFeedback(
@@ -780,7 +847,9 @@ class AppState extends ChangeNotifier {
         enabled: true,
         containsText: pattern.normalizedText,
         type: pattern.type,
-        categoryId: pattern.type == TransactionType.transfer ? null : category?.id,
+        categoryId: pattern.type == TransactionType.transfer
+            ? null
+            : category?.id,
         accountId: pattern.accountId,
         addTag: pattern.tags.firstOrNull,
       ),
@@ -831,14 +900,17 @@ class AppState extends ChangeNotifier {
         (await database.getSetting('allow_unassigned') ?? '1') == '1';
     showTransfersInAnalytics =
         (await database.getSetting('show_transfers_analytics') ?? '0') == '1';
-    confirmDelete =
-        (await database.getSetting('confirm_delete') ?? '1') == '1';
+    confirmDelete = (await database.getSetting('confirm_delete') ?? '1') == '1';
     showCents = (await database.getSetting('show_cents') ?? '1') == '1';
     haptics = (await database.getSetting('haptics') ?? '1') == '1';
     currency = await database.getSetting('currency') ?? 'EUR';
-    weekStart = int.tryParse(await database.getSetting('week_start') ?? '1') ?? 1;
+    weekStart =
+        int.tryParse(await database.getSetting('week_start') ?? '1') ?? 1;
     financialMonthStart =
-        int.tryParse(await database.getSetting('financial_month_start') ?? '1') ?? 1;
+        int.tryParse(
+          await database.getSetting('financial_month_start') ?? '1',
+        ) ??
+        1;
     final theme = await database.getSetting('theme_mode') ?? 'system';
     themePreference = AppThemePreference.values.firstWhere(
       (e) => e.name == theme,
@@ -850,8 +922,7 @@ class AppState extends ChangeNotifier {
         (await database.getSetting('smart_use_description') ?? '1') == '1';
     smartUseAmount =
         (await database.getSetting('smart_use_amount') ?? '1') == '1';
-    smartUseTime =
-        (await database.getSetting('smart_use_time') ?? '1') == '1';
+    smartUseTime = (await database.getSetting('smart_use_time') ?? '1') == '1';
     smartDetectRecurring =
         (await database.getSetting('smart_detect_recurring') ?? '1') == '1';
     smartGoalSuggestions =
@@ -900,7 +971,8 @@ class AppState extends ChangeNotifier {
       final amount = double.tryParse(fields[2]);
       final originalAccountId = int.tryParse(fields[3]);
       final account = accountById(originalAccountId);
-      final accountId = account == null || account.isArchived || account.isLocked
+      final accountId =
+          account == null || account.isArchived || account.isLocked
           ? fallback
           : account.id;
       final toIdRaw = int.tryParse(fields[4]);
@@ -920,7 +992,9 @@ class AppState extends ChangeNotifier {
         amount: amount,
         accountId: accountId,
         toAccountId: type == TransactionType.transfer ? toAccount!.id : null,
-        categoryId: type == TransactionType.transfer || categoryById(categoryRaw) == null
+        categoryId:
+            type == TransactionType.transfer ||
+                categoryById(categoryRaw) == null
             ? null
             : categoryRaw,
         date: date,
@@ -977,9 +1051,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> syncWidget() => widgetService.sync(
-        balance: totalBalance,
-        expenseCategories: categoriesFor(TransactionType.expense),
-      );
+    balance: totalBalance,
+    expenseCategories: categoriesFor(TransactionType.expense),
+  );
 }
 
 extension FirstOrNullX<T> on Iterable<T> {

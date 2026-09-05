@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/security_service.dart';
 
 class AppLockGate extends StatefulWidget {
-  const AppLockGate({
-    required this.security,
-    required this.child,
-    super.key,
-  });
+  const AppLockGate({required this.security, required this.child, super.key});
 
   final SecurityService security;
   final Widget child;
@@ -16,8 +12,7 @@ class AppLockGate extends StatefulWidget {
   State<AppLockGate> createState() => _AppLockGateState();
 }
 
-class _AppLockGateState extends State<AppLockGate>
-    with WidgetsBindingObserver {
+class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   final pinController = TextEditingController();
   bool loading = true;
   bool locked = false;
@@ -167,16 +162,16 @@ class _AppLockGateState extends State<AppLockGate>
                       child: FilledButton.icon(
                         onPressed: authenticating ? null : _biometric,
                         icon: const Icon(Icons.fingerprint_rounded),
-                        label: Text(
-                          authenticating ? 'Verifica…' : 'Sblocca',
-                        ),
+                        label: Text(authenticating ? 'Verifica…' : 'Sblocca'),
                       ),
                     ),
                   if (error != null) ...[
                     const SizedBox(height: 12),
                     Text(
                       error!,
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ],
                 ],

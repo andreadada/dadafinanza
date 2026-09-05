@@ -50,68 +50,76 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
       body: presets == null
           ? const Center(child: CircularProgressIndicator())
           : presets.isEmpty
-              ? EmptyState(
-                  icon: Icons.bookmark_add_outlined,
-                  title: 'Nessun preset',
-                  subtitle: 'Crea scorciatoie per i movimenti che inserisci spesso.',
-                  action: FilledButton.icon(
-                    onPressed: () async {
-                      await _edit(context, state);
+          ? EmptyState(
+              icon: Icons.bookmark_add_outlined,
+              title: 'Nessun preset',
+              subtitle:
+                  'Crea scorciatoie per i movimenti che inserisci spesso.',
+              action: FilledButton.icon(
+                onPressed: () async {
+                  await _edit(context, state);
+                  await _load();
+                },
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Crea preset'),
+              ),
+            )
+          : ReorderableListView.builder(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+              itemCount: presets.length,
+              onReorderItem: (oldIndex, newIndex) async {
+                if (newIndex > oldIndex) newIndex--;
+                final moved = presets.removeAt(oldIndex);
+                presets.insert(newIndex, moved);
+                setState(() {});
+                await QuickPresetService(state.database).reorder(presets);
+              },
+              itemBuilder: (context, index) {
+                final preset = presets[index];
+                return ListTile(
+                  key: ValueKey(preset.id),
+                  contentPadding: EdgeInsets.zero,
+                  minVerticalPadding: 12,
+                  leading: const Icon(Icons.drag_handle_rounded),
+                  title: Text(
+                    preset.name,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(_summary(state, preset)),
+                  trailing: PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'edit') {
+                        await _edit(context, state, existing: preset);
+                      } else if (value == 'delete') {
+                        await QuickPresetService(
+                          state.database,
+                        ).delete(preset.id);
+                      }
                       await _load();
                     },
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Crea preset'),
-                  ),
-                )
-              : ReorderableListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                  itemCount: presets.length,
-                  onReorderItem: (oldIndex, newIndex) async {
-                    if (newIndex > oldIndex) newIndex--;
-                    final moved = presets.removeAt(oldIndex);
-                    presets.insert(newIndex, moved);
-                    setState(() {});
-                    await QuickPresetService(state.database).reorder(presets);
-                  },
-                  itemBuilder: (context, index) {
-                    final preset = presets[index];
-                    return ListTile(
-                      key: ValueKey(preset.id),
-                      contentPadding: EdgeInsets.zero,
-                      minVerticalPadding: 12,
-                      leading: const Icon(Icons.drag_handle_rounded),
-                      title: Text(
-                        preset.name,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
+                    itemBuilder: (_) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Text('Modifica'),
                       ),
-                      subtitle: Text(_summary(state, preset)),
-                      trailing: PopupMenuButton<String>(
-                        onSelected: (value) async {
-                          if (value == 'edit') {
-                            await _edit(context, state, existing: preset);
-                          } else if (value == 'delete') {
-                            await QuickPresetService(state.database).delete(preset.id);
-                          }
-                          await _load();
-                        },
-                        itemBuilder: (_) => [
-                          const PopupMenuItem(value: 'edit', child: Text('Modifica')),
-                          PopupMenuItem(
-                            value: 'delete',
-                            child: Text(
-                              'Elimina',
-                              style: TextStyle(color: Theme.of(context).colorScheme.error),
-                            ),
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Text(
+                          'Elimina',
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
                           ),
-                        ],
+                        ),
                       ),
-                      onTap: () async {
-                        await _edit(context, state, existing: preset);
-                        await _load();
-                      },
-                    );
+                    ],
+                  ),
+                  onTap: () async {
+                    await _edit(context, state, existing: preset);
+                    await _load();
                   },
-                ),
+                );
+              },
+            ),
     );
   }
 
@@ -135,7 +143,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
   }) async {
     final name = TextEditingController(text: existing?.name ?? '');
     final amount = TextEditingController(
-      text: existing?.amount == null ? '' : existing!.amount!.toStringAsFixed(2),
+      text: existing?.amount == null
+          ? ''
+          : existing!.amount!.toStringAsFixed(2),
     );
     final note = TextEditingController(text: existing?.note ?? '');
     var type = existing?.type ?? TransactionType.expense;
@@ -192,7 +202,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                 ),
                 DropdownButtonFormField<int?>(
                   initialValue: accountId,
-                  decoration: const InputDecoration(labelText: 'Conto preferito'),
+                  decoration: const InputDecoration(
+                    labelText: 'Conto preferito',
+                  ),
                   items: [
                     const DropdownMenuItem<int?>(
                       value: null,
@@ -212,14 +224,18 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                 if (type == TransactionType.transfer)
                   DropdownButtonFormField<int?>(
                     initialValue: toAccountId,
-                    decoration: const InputDecoration(labelText: 'Destinazione'),
+                    decoration: const InputDecoration(
+                      labelText: 'Destinazione',
+                    ),
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
                         child: Text('Scegli nel Quick Add'),
                       ),
                       ...state.activeAccounts
-                          .where((item) => !item.isLocked && item.id != accountId)
+                          .where(
+                            (item) => !item.isLocked && item.id != accountId,
+                          )
                           .map(
                             (item) => DropdownMenuItem<int?>(
                               value: item.id,
@@ -238,7 +254,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                         value: null,
                         child: Text('Scegli nel Quick Add'),
                       ),
-                      ...state.categoriesFor(type).map(
+                      ...state
+                          .categoriesFor(type)
+                          .map(
                             (item) => DropdownMenuItem<int?>(
                               value: item.id,
                               child: Text(item.name),
@@ -249,7 +267,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                   ),
                 TextField(
                   controller: amount,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'Importo opzionale',
                     suffixText: '€',
@@ -257,7 +277,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                 ),
                 TextField(
                   controller: note,
-                  decoration: const InputDecoration(labelText: 'Nota opzionale'),
+                  decoration: const InputDecoration(
+                    labelText: 'Nota opzionale',
+                  ),
                 ),
                 const SizedBox(height: 20),
                 SizedBox(

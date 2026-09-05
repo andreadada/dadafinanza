@@ -31,8 +31,7 @@ abstract final class Money {
     Map<String, Object?> map,
     String centsKey,
     String legacyKey,
-  ) =>
-      fromCents(centsFromMap(map, centsKey, legacyKey));
+  ) => fromCents(centsFromMap(map, centsKey, legacyKey));
 
   /// Parses a compact arithmetic expression used by Quick Add.
   /// Supports +, -, *, / and decimal comma/dot without evaluating code.
@@ -41,10 +40,9 @@ abstract final class Money {
     if (input.isEmpty || !RegExp(r'^[0-9.+\-*/]+$').hasMatch(input)) {
       return null;
     }
-    final tokens = RegExp(r'(\d+(?:\.\d+)?|[+\-*/])')
-        .allMatches(input)
-        .map((match) => match.group(0)!)
-        .toList();
+    final tokens = RegExp(
+      r'(\d+(?:\.\d+)?|[+\-*/])',
+    ).allMatches(input).map((match) => match.group(0)!).toList();
     if (tokens.join() != input || tokens.isEmpty) return null;
 
     final values = <double>[];
@@ -75,8 +73,7 @@ abstract final class Money {
         values.add(number);
       } else {
         if (number != null) return null;
-        while (ops.isNotEmpty &&
-            precedence(ops.last) >= precedence(token)) {
+        while (ops.isNotEmpty && precedence(ops.last) >= precedence(token)) {
           if (!apply()) return null;
         }
         ops.add(token);

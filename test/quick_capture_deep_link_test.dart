@@ -8,23 +8,26 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   const service = QuickCaptureDeepLinkService();
 
-  test('parses expense amount category account and note without saving', () async {
-    final state = _state();
-    final draft = await service.fromUri(
-      state,
-      Uri.parse(
-        'dadafinanza://quick-add?type=expense&amount=1.80&category=Uscite&account=Revolut&note=Caffe',
-      ),
-    );
-    expect(draft, isNotNull);
-    expect(draft!.type, TransactionType.expense);
-    expect(draft.amountCents, 180);
-    expect(draft.categoryId, 10);
-    expect(draft.accountId, 1);
-    expect(draft.note, 'Caffe');
-    expect(draft.source, QuickCaptureSource.deepLink);
-    expect(state.transactions, isEmpty);
-  });
+  test(
+    'parses expense amount category account and note without saving',
+    () async {
+      final state = _state();
+      final draft = await service.fromUri(
+        state,
+        Uri.parse(
+          'dadafinanza://quick-add?type=expense&amount=1.80&category=Uscite&account=Revolut&note=Caffe',
+        ),
+      );
+      expect(draft, isNotNull);
+      expect(draft!.type, TransactionType.expense);
+      expect(draft.amountCents, 180);
+      expect(draft.categoryId, 10);
+      expect(draft.accountId, 1);
+      expect(draft.note, 'Caffe');
+      expect(draft.source, QuickCaptureSource.deepLink);
+      expect(state.transactions, isEmpty);
+    },
+  );
 
   test('voice deep link only marks the draft for listening', () async {
     final state = _state();
@@ -78,7 +81,10 @@ void main() {
 
   test('unrelated URI is ignored', () async {
     expect(
-      await service.fromUri(_state(), Uri.parse('https://example.com/quick-add')),
+      await service.fromUri(
+        _state(),
+        Uri.parse('https://example.com/quick-add'),
+      ),
       isNull,
     );
   });
@@ -87,10 +93,7 @@ void main() {
 AppState _state() {
   final state = AppState(AppDatabase());
   final now = DateTime(2026, 9, 5);
-  state.accounts = [
-    _account(1, 'Revolut', now),
-    _account(2, 'Risparmio', now),
-  ];
+  state.accounts = [_account(1, 'Revolut', now), _account(2, 'Risparmio', now)];
   state.categories = const [
     Category(
       id: 10,
@@ -106,18 +109,18 @@ AppState _state() {
 }
 
 Account _account(int id, String name, DateTime now) => Account(
-      id: id,
-      name: name,
-      balance: 0,
-      colorValue: 0xff111111,
-      iconKey: 'wallet',
-      accountType: AccountType.checking,
-      includeInTotal: true,
-      includeInAnalytics: true,
-      isLocked: false,
-      isArchived: false,
-      hideBalance: false,
-      isSystem: false,
-      createdAt: now,
-      updatedAt: now,
-    );
+  id: id,
+  name: name,
+  balance: 0,
+  colorValue: 0xff111111,
+  iconKey: 'wallet',
+  accountType: AccountType.checking,
+  includeInTotal: true,
+  includeInAnalytics: true,
+  isLocked: false,
+  isArchived: false,
+  hideBalance: false,
+  isSystem: false,
+  createdAt: now,
+  updatedAt: now,
+);

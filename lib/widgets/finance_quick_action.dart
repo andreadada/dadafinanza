@@ -50,9 +50,9 @@ class FinanceQuickAction extends StatelessWidget {
                       softWrap: false,
                       overflow: TextOverflow.visible,
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: resolvedColor,
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: resolvedColor,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],

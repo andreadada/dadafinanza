@@ -9,7 +9,7 @@ import '../models/models.dart';
 
 class NotificationService {
   NotificationService({FlutterLocalNotificationsPlugin? plugin})
-      : plugin = plugin ?? FlutterLocalNotificationsPlugin();
+    : plugin = plugin ?? FlutterLocalNotificationsPlugin();
 
   final FlutterLocalNotificationsPlugin plugin;
   bool _initialized = false;
@@ -27,8 +27,10 @@ class NotificationService {
   Future<bool> requestPermission() async {
     await initialize();
     if (!Platform.isAndroid) return true;
-    final android = plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     return await android?.requestNotificationsPermission() ?? true;
   }
 
@@ -128,8 +130,8 @@ class NotificationService {
       final level = progress >= 1
           ? 100
           : progress >= .8
-              ? 80
-              : 0;
+          ? 80
+          : 0;
       final key = 'notification_budget_${budget.id}_level';
       final previous =
           int.tryParse(await state.database.getSetting(key) ?? '') ?? 0;
@@ -189,8 +191,9 @@ class NotificationService {
   }
 
   Future<void> _notifyLowForecast(AppState state) async {
-    final thresholdRaw =
-        await state.database.getSetting('notifications_low_balance_threshold');
+    final thresholdRaw = await state.database.getSetting(
+      'notifications_low_balance_threshold',
+    );
     final threshold = double.tryParse(thresholdRaw ?? '') ?? 0;
     if (threshold <= 0 || state.endOfMonthForecast >= threshold) return;
     final month = '${DateTime.now().year}-${DateTime.now().month}';

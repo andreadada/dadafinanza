@@ -109,10 +109,12 @@ class FinanceSchemaService {
       final now = DateTime.now().millisecondsSinceEpoch;
       for (final goal in goals) {
         final goalId = goal['id'] as int;
-        final cents = (goal['current_amount_cents'] as num?)?.toInt() ??
+        final cents =
+            (goal['current_amount_cents'] as num?)?.toInt() ??
             (((goal['current_amount'] as num?) ?? 0) * 100).round();
         if (cents <= 0) continue;
-        final count = Sqflite.firstIntValue(
+        final count =
+            Sqflite.firstIntValue(
               await txn.rawQuery(
                 'SELECT COUNT(*) FROM goal_entries WHERE goal_id = ?',
                 [goalId],
@@ -130,11 +132,10 @@ class FinanceSchemaService {
           });
         }
       }
-      await txn.insert(
-        'settings',
-        {'key': 'goal_ledger_migrated', 'value': '1'},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      await txn.insert('settings', {
+        'key': 'goal_ledger_migrated',
+        'value': '1',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     }
   }
 

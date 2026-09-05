@@ -99,7 +99,9 @@ class CategoryManagementScreen extends StatelessWidget {
                   PopupMenuItem(
                     value: 'favorite',
                     child: Text(
-                      item.isFavorite ? 'Rimuovi preferita' : 'Aggiungi preferita',
+                      item.isFavorite
+                          ? 'Rimuovi preferita'
+                          : 'Aggiungi preferita',
                     ),
                   ),
                   if (items.length > 1)
@@ -111,7 +113,9 @@ class CategoryManagementScreen extends StatelessWidget {
                     value: 'delete',
                     child: Text(
                       'Elimina',
-                      style: TextStyle(color: Theme.of(context).colorScheme.error),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
                     ),
                   ),
                 ],
@@ -144,7 +148,10 @@ class CategoryManagementScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Quick slot', style: Theme.of(sheetContext).textTheme.titleLarge),
+              Text(
+                'Quick slot',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
               const SizedBox(height: 4),
               const Text('Scegli e ordina fino a quattro categorie.'),
               const SizedBox(height: 12),
@@ -186,7 +193,8 @@ class CategoryManagementScreen extends StatelessWidget {
                         (item) => ActionChip(
                           avatar: Icon(categoryIcon(item.iconKey), size: 18),
                           label: Text(item.name),
-                          onPressed: () => setSheetState(() => selected.add(item)),
+                          onPressed: () =>
+                              setSheetState(() => selected.add(item)),
                         ),
                       )
                       .toList(),
@@ -226,14 +234,22 @@ class CategoryManagementScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Unisci “${source.name}”', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Unisci “${source.name}”',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
-            const Text('Movimenti, split, budget, regole e apprendimento verranno spostati nella categoria scelta.'),
+            const Text(
+              'Movimenti, split, budget, regole e apprendimento verranno spostati nella categoria scelta.',
+            ),
             const SizedBox(height: 12),
             ...candidates.map(
               (item) => ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: Icon(categoryIcon(item.iconKey), color: Color(item.colorValue)),
+                leading: Icon(
+                  categoryIcon(item.iconKey),
+                  color: Color(item.colorValue),
+                ),
                 title: Text(item.name),
                 onTap: () => Navigator.pop(sheetContext, item),
               ),
@@ -246,7 +262,8 @@ class CategoryManagementScreen extends StatelessWidget {
     final confirmed = await confirmDestructiveAction(
       context,
       title: 'Unire le categorie?',
-      message: '“${source.name}” confluirà in “${target.name}”. L’operazione aggiorna i collegamenti in modo transazionale.',
+      message:
+          '“${source.name}” confluirà in “${target.name}”. L’operazione aggiorna i collegamenti in modo transazionale.',
       confirmLabel: 'Unisci',
     );
     if (confirmed) {
@@ -267,7 +284,8 @@ class CategoryManagementScreen extends StatelessWidget {
     final confirmed = await confirmDestructiveAction(
       context,
       title: 'Eliminare “${category.name}”?',
-      message: '$count riferimenti perderanno questa categoria. Se vuoi conservare la classificazione, usa “Unisci in…”.',
+      message:
+          '$count riferimenti perderanno questa categoria. Se vuoi conservare la classificazione, usa “Unisci in…”.',
     );
     if (confirmed) await state.deleteCategory(category);
   }
@@ -288,23 +306,29 @@ class CategoryDetailScreen extends StatelessWidget {
         .where(
           (item) =>
               item.categoryId == category.id ||
-              state.splitsFor(item.id).any((split) => split.categoryId == category.id),
+              state
+                  .splitsFor(item.id)
+                  .any((split) => split.categoryId == category.id),
         )
         .take(8)
         .toList();
-    final budgets = state.budgets.where((item) => item.categoryId == category.id).toList();
-    final rules = state.rules.where((item) => item.categoryId == category.id).toList();
+    final budgets = state.budgets
+        .where((item) => item.categoryId == category.id)
+        .toList();
+    final rules = state.rules
+        .where((item) => item.categoryId == category.id)
+        .toList();
     final total = category.type == TransactionType.expense
         ? state.monthCategoryTotal(category.id)
         : state.transactions
-            .where(
-              (item) =>
-                  item.type == TransactionType.income &&
-                  item.categoryId == category.id &&
-                  item.date.year == DateTime.now().year &&
-                  item.date.month == DateTime.now().month,
-            )
-            .fold<double>(0, (sum, item) => sum + item.amount);
+              .where(
+                (item) =>
+                    item.type == TransactionType.income &&
+                    item.categoryId == category.id &&
+                    item.date.year == DateTime.now().year &&
+                    item.date.month == DateTime.now().month,
+              )
+              .fold<double>(0, (sum, item) => sum + item.amount);
     return Scaffold(
       appBar: AppBar(title: Text(category.name)),
       body: ListView(
@@ -312,7 +336,11 @@ class CategoryDetailScreen extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(categoryIcon(category.iconKey), color: Color(category.colorValue), size: 32),
+              Icon(
+                categoryIcon(category.iconKey),
+                color: Color(category.colorValue),
+                size: 32,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: FlatMetric(
@@ -326,10 +354,21 @@ class CategoryDetailScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 28),
-          SectionTitle('Collegamenti', trailing: Text('${budgets.length + rules.length}')),
-          FlatMetric(label: 'Budget', value: '${budgets.length}', icon: Icons.pie_chart_outline_rounded),
+          SectionTitle(
+            'Collegamenti',
+            trailing: Text('${budgets.length + rules.length}'),
+          ),
+          FlatMetric(
+            label: 'Budget',
+            value: '${budgets.length}',
+            icon: Icons.pie_chart_outline_rounded,
+          ),
           const Divider(height: 1),
-          FlatMetric(label: 'Regole', value: '${rules.length}', icon: Icons.auto_fix_high_outlined),
+          FlatMetric(
+            label: 'Regole',
+            value: '${rules.length}',
+            icon: Icons.auto_fix_high_outlined,
+          ),
           const SizedBox(height: 28),
           const SectionTitle('Movimenti recenti'),
           if (recent.isEmpty)

@@ -71,11 +71,12 @@ class CsvService {
     final transactions = accountId == null
         ? state.transactions
         : state.transactions
-            .where(
-              (item) =>
-                  item.accountId == accountId || item.toAccountId == accountId,
-            )
-            .toList();
+              .where(
+                (item) =>
+                    item.accountId == accountId ||
+                    item.toAccountId == accountId,
+              )
+              .toList();
     for (final item in transactions) {
       final account = state.accountById(item.accountId);
       final destination = state.accountById(item.toAccountId);
@@ -127,7 +128,9 @@ class CsvService {
     final categoryNames = <String>{
       for (final category in state.categories) _key(category.name),
     };
-    final existing = state.transactions.map((item) => _stableKey(state, item)).toSet();
+    final existing = state.transactions
+        .map((item) => _stableKey(state, item))
+        .toSet();
     final rows = <CsvRowPreview>[];
     final missingAccounts = <String>{};
     final missingCategories = <String>{};
@@ -136,7 +139,9 @@ class CsvService {
       try {
         String value(String key) {
           final index = indexes[key];
-          return index == null || index >= record.length ? '' : record[index].trim();
+          return index == null || index >= record.length
+              ? ''
+              : record[index].trim();
         }
 
         final typeRaw = value('type').toLowerCase();
@@ -145,7 +150,9 @@ class CsvService {
           continue;
         }
         final type = TransactionTypeX.fromDb(typeRaw);
-        final parsedAmount = double.tryParse(value('amount').replaceAll(',', '.'));
+        final parsedAmount = double.tryParse(
+          value('amount').replaceAll(',', '.'),
+        );
         final date = DateTime.tryParse(value('date'));
         final account = value('account');
         if (parsedAmount == null ||
@@ -155,7 +162,9 @@ class CsvService {
           invalid++;
           continue;
         }
-        final destination = value('to_account').isEmpty ? null : value('to_account');
+        final destination = value('to_account').isEmpty
+            ? null
+            : value('to_account');
         final category = value('category').isEmpty ? null : value('category');
         final note = value('description').isEmpty ? null : value('description');
         final tags = value('tags')
@@ -194,7 +203,8 @@ class CsvService {
             note: note,
             tags: tags,
             includeInAnalytics: include,
-            duplicate: existing.contains(sourceKey) || existing.contains(fallbackKey),
+            duplicate:
+                existing.contains(sourceKey) || existing.contains(fallbackKey),
           ),
         );
       } on FormatException {
@@ -218,19 +228,22 @@ class CsvService {
     var imported = 0;
     await db.transaction((txn) async {
       final accounts = <String, int>{
-        for (final account in state.userAccounts) _key(account.name): account.id,
+        for (final account in state.userAccounts)
+          _key(account.name): account.id,
       };
       final categories = <String, int>{
-        for (final category in state.categories) _key(category.name): category.id,
+        for (final category in state.categories)
+          _key(category.name): category.id,
       };
-      final unassigned = state.unassignedAccount?.id ??
+      final unassigned =
+          state.unassignedAccount?.id ??
           (await txn.query(
-            'accounts',
-            columns: ['id'],
-            where: 'is_system = 1',
-            limit: 1,
-          ))
-              .first['id'] as int;
+                'accounts',
+                columns: ['id'],
+                where: 'is_system = 1',
+                limit: 1,
+              )).first['id']
+              as int;
 
       Future<int?> resolveAccount(String name) async {
         if (_key(name) == _key('Non assegnato')) return unassigned;
@@ -299,7 +312,9 @@ class CsvService {
           'amount': Money.fromCents(cents),
           'amount_cents': cents,
           'account_id': source,
-          'to_account_id': row.type == TransactionType.transfer ? destination : null,
+          'to_account_id': row.type == TransactionType.transfer
+              ? destination
+              : null,
           'category_id': row.type == TransactionType.transfer ? null : category,
           'date': row.date.millisecondsSinceEpoch,
           'note': row.note,
@@ -337,13 +352,13 @@ class CsvService {
   }
 
   String _stableKey(AppState state, FinanceTransaction item) => _portableKey(
-        type: item.type,
-        amount: item.amount,
-        date: item.date,
-        account: state.accountById(item.accountId)?.name ?? 'Non assegnato',
-        destination: state.accountById(item.toAccountId)?.name,
-        note: item.note,
-      );
+    type: item.type,
+    amount: item.amount,
+    date: item.date,
+    account: state.accountById(item.accountId)?.name ?? 'Non assegnato',
+    destination: state.accountById(item.toAccountId)?.name,
+    note: item.note,
+  );
 
   String _portableKey({
     required TransactionType type,
@@ -352,15 +367,14 @@ class CsvService {
     required String account,
     String? destination,
     String? note,
-  }) =>
-      [
-        type.name,
-        Money.toCents(amount),
-        date.toUtc().toIso8601String(),
-        _key(account),
-        _key(destination ?? ''),
-        SmartFinanceEngine.normalizeText(note),
-      ].join('|');
+  }) => [
+    type.name,
+    Money.toCents(amount),
+    date.toUtc().toIso8601String(),
+    _key(account),
+    _key(destination ?? ''),
+    SmartFinanceEngine.normalizeText(note),
+  ].join('|');
 
   String _quote(String? value) =>
       '"${(value ?? '').replaceAll('"', '""').replaceAll('\r', ' ').replaceAll('\n', ' ')}"';
@@ -389,7 +403,9 @@ class CsvService {
         continue;
       }
       if ((char == '\n' || char == '\r') && !quoted) {
-        if (char == '\r' && index + 1 < content.length && content[index + 1] == '\n') {
+        if (char == '\r' &&
+            index + 1 < content.length &&
+            content[index + 1] == '\n') {
           index++;
         }
         row.add(field.toString());

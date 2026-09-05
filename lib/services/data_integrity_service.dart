@@ -47,8 +47,9 @@ class DataIntegrityService {
       );
     }
 
-    final transactionType =
-        delta > 0 ? TransactionType.income : TransactionType.expense;
+    final transactionType = delta > 0
+        ? TransactionType.income
+        : TransactionType.expense;
     final amountCents = delta.abs();
     final now = DateTime.now().millisecondsSinceEpoch;
     late int transactionId;
@@ -106,8 +107,10 @@ class DataIntegrityService {
               item.refundOfTransactionId == expense.id,
         )
         .fold<int>(0, (sum, item) => sum + Money.toCents(item.amount));
-    final remaining =
-        (Money.toCents(expense.amount) - refundedCents).clamp(0, 1 << 62);
+    final remaining = (Money.toCents(expense.amount) - refundedCents).clamp(
+      0,
+      1 << 62,
+    );
     return Money.fromCents(remaining.toInt());
   }
 
@@ -122,11 +125,7 @@ class DataIntegrityService {
     }
     final requested = Money.toCents(refundAmount);
     final remaining = Money.toCents(
-      refundableRemaining(
-        state,
-        expense,
-        editingRefundId: editingRefundId,
-      ),
+      refundableRemaining(state, expense, editingRefundId: editingRefundId),
     );
     if (requested <= 0) {
       throw StateError('Il rimborso deve essere maggiore di zero.');
@@ -152,7 +151,9 @@ class DataIntegrityService {
       (sum, split) => sum + Money.toCents(split.amount),
     );
     if (total != Money.toCents(transaction.amount)) {
-      throw StateError('La somma delle divisioni deve coincidere con il totale.');
+      throw StateError(
+        'La somma delle divisioni deve coincidere con il totale.',
+      );
     }
     for (final split in splits) {
       final category = state.categoryById(split.categoryId);
@@ -170,7 +171,10 @@ class DataIntegrityService {
     await state.updateAccount(account.copyWith(isArchived: true));
   }
 
-  static Future<void> deleteEmptyAccount(AppState state, Account account) async {
+  static Future<void> deleteEmptyAccount(
+    AppState state,
+    Account account,
+  ) async {
     if (account.isSystem) {
       throw StateError('Il conto di sistema non è eliminabile.');
     }

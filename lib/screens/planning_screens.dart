@@ -93,14 +93,14 @@ class _PlanningLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 12,
-        leading: Icon(icon),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 12,
+    leading: Icon(icon),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: onTap,
+  );
 }
 
 class _ForecastSummary extends StatelessWidget {
@@ -114,7 +114,9 @@ class _ForecastSummary extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          state.hideBalance ? '••••••' : moneyFor(state, forecast.endingBalance),
+          state.hideBalance
+              ? '••••••'
+              : moneyFor(state, forecast.endingBalance),
           style: Theme.of(context).textTheme.headlineLarge,
         ),
         const SizedBox(height: 4),
@@ -162,8 +164,8 @@ class _ForecastLine extends StatelessWidget {
               color: value > 0
                   ? context.financeColors.positive
                   : value < 0
-                      ? context.financeColors.negative
-                      : null,
+                  ? context.financeColors.negative
+                  : null,
             ),
           ),
         ],
@@ -225,8 +227,8 @@ class BudgetsScreen extends StatelessWidget {
               final statusColor = progress >= 1
                   ? context.financeColors.negative
                   : progress >= .8
-                      ? context.financeColors.warning
-                      : null;
+                  ? context.financeColors.warning
+                  : null;
               return Column(
                 children: [
                   ListTile(
@@ -236,7 +238,9 @@ class BudgetsScreen extends StatelessWidget {
                       category == null
                           ? Icons.account_balance_wallet_outlined
                           : categoryIcon(category.iconKey),
-                      color: category == null ? null : Color(category.colorValue),
+                      color: category == null
+                          ? null
+                          : Color(category.colorValue),
                     ),
                     title: Text(
                       budget.name,
@@ -295,7 +299,10 @@ class BudgetsScreen extends StatelessWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Modifica'),
+                        ),
                         const PopupMenuItem(
                           value: 'duplicate',
                           child: Text('Duplica'),
@@ -328,12 +335,12 @@ class BudgetsScreen extends StatelessWidget {
 }
 
 String _budgetPeriodLabel(BudgetPeriod period) => switch (period) {
-      BudgetPeriod.daily => 'Giornaliero',
-      BudgetPeriod.weekly => 'Settimanale',
-      BudgetPeriod.monthly => 'Mensile',
-      BudgetPeriod.yearly => 'Annuale',
-      BudgetPeriod.custom => 'Personalizzato',
-    };
+  BudgetPeriod.daily => 'Giornaliero',
+  BudgetPeriod.weekly => 'Settimanale',
+  BudgetPeriod.monthly => 'Mensile',
+  BudgetPeriod.yearly => 'Annuale',
+  BudgetPeriod.custom => 'Personalizzato',
+};
 
 Future<void> showBudgetEditor(BuildContext context, {Budget? existing}) async {
   final state = AppScope.of(context);
@@ -376,8 +383,9 @@ Future<void> showBudgetEditor(BuildContext context, {Budget? existing}) async {
               ),
               TextField(
                 controller: limit,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Limite',
                   suffixText: '€',
@@ -406,7 +414,9 @@ Future<void> showBudgetEditor(BuildContext context, {Budget? existing}) async {
                     value: null,
                     child: Text('Tutte le spese'),
                   ),
-                  ...state.categoriesFor(TransactionType.expense).map(
+                  ...state
+                      .categoriesFor(TransactionType.expense)
+                      .map(
                         (item) => DropdownMenuItem<int?>(
                           value: item.id,
                           child: Text(item.name),
@@ -465,8 +475,9 @@ Future<void> showBudgetEditor(BuildContext context, {Budget? existing}) async {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    final parsed =
-                        double.tryParse(limit.text.replaceAll(',', '.'));
+                    final parsed = double.tryParse(
+                      limit.text.replaceAll(',', '.'),
+                    );
                     if (name.text.trim().isEmpty ||
                         parsed == null ||
                         parsed <= 0 ||
@@ -492,14 +503,17 @@ Future<void> showBudgetEditor(BuildContext context, {Budget? existing}) async {
                           startDate: startDate,
                           enabled: enabled,
                           categoryId: categoryId,
-                          endDate:
-                              period == BudgetPeriod.custom ? endDate : null,
+                          endDate: period == BudgetPeriod.custom
+                              ? endDate
+                              : null,
                         ),
                       );
                     }
                     if (context.mounted) Navigator.pop(context);
                   },
-                  child: Text(existing == null ? 'Crea budget' : 'Salva modifiche'),
+                  child: Text(
+                    existing == null ? 'Crea budget' : 'Salva modifiche',
+                  ),
                 ),
               ),
             ],
@@ -543,8 +557,9 @@ class GoalsScreen extends StatelessWidget {
               TextField(
                 controller: controller,
                 autofocus: true,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Importo',
                   suffixText: '€',
@@ -559,8 +574,9 @@ class GoalsScreen extends StatelessWidget {
             ),
             FilledButton(
               onPressed: () {
-                final parsed =
-                    double.tryParse(controller.text.replaceAll(',', '.'));
+                final parsed = double.tryParse(
+                  controller.text.replaceAll(',', '.'),
+                );
                 if (parsed != null && parsed > 0) {
                   Navigator.pop(context, parsed * direction);
                 }
@@ -611,7 +627,9 @@ class GoalsScreen extends StatelessWidget {
                   ? 0.0
                   : goal.currentAmount / goal.targetAmount;
               final plan = GoalPlanningService.plan(state, goal);
-              final budgetReserve = GoalPlanningService.weeklyBudgetReserve(state);
+              final budgetReserve = GoalPlanningService.weeklyBudgetReserve(
+                state,
+              );
               final source = state.suggestedGoalTransferSource(goal);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -620,8 +638,9 @@ class GoalsScreen extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     minVerticalPadding: 12,
                     leading: CircleAvatar(
-                      backgroundColor:
-                          Color(goal.colorValue).withValues(alpha: .12),
+                      backgroundColor: Color(
+                        goal.colorValue,
+                      ).withValues(alpha: .12),
                       child: Icon(
                         categoryIcon(goal.iconKey),
                         color: Color(goal.colorValue),
@@ -667,7 +686,10 @@ class GoalsScreen extends StatelessWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Modifica'),
+                        ),
                         const PopupMenuItem(
                           value: 'progress',
                           child: Text('Aggiorna progresso'),
@@ -809,8 +831,9 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
               ),
               TextField(
                 controller: target,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
                 decoration: const InputDecoration(
                   labelText: 'Importo obiettivo',
                   suffixText: '€',
@@ -896,8 +919,7 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
                     ? const Icon(Icons.chevron_right_rounded)
                     : IconButton(
                         tooltip: 'Rimuovi data',
-                        onPressed: () =>
-                            setSheetState(() => targetDate = null),
+                        onPressed: () => setSheetState(() => targetDate = null),
                         icon: const Icon(Icons.close_rounded),
                       ),
                 onTap: () async {
@@ -905,7 +927,8 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
                     context: context,
                     firstDate: DateTime.now(),
                     lastDate: DateTime(2100),
-                    initialDate: targetDate ??
+                    initialDate:
+                        targetDate ??
                         DateTime.now().add(const Duration(days: 180)),
                   );
                   if (picked != null) setSheetState(() => targetDate = picked);
@@ -916,9 +939,12 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: () async {
-                    final parsed =
-                        double.tryParse(target.text.replaceAll(',', '.'));
-                    if (name.text.trim().isEmpty || parsed == null || parsed <= 0) {
+                    final parsed = double.tryParse(
+                      target.text.replaceAll(',', '.'),
+                    );
+                    if (name.text.trim().isEmpty ||
+                        parsed == null ||
+                        parsed <= 0) {
                       return;
                     }
                     if (existing == null) {
@@ -931,8 +957,9 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
                         linkedAccountId: linkedAccountId,
                       );
                     } else {
-                      final current =
-                          math.min(existing.currentAmount, parsed).toDouble();
+                      final current = math
+                          .min(existing.currentAmount, parsed)
+                          .toDouble();
                       await state.updateGoal(
                         Goal(
                           id: existing.id,
@@ -968,10 +995,7 @@ Future<void> showGoalEditor(BuildContext context, {Goal? existing}) async {
 class RecurringScreen extends StatelessWidget {
   const RecurringScreen({super.key});
 
-  bool _alreadyExplicit(
-    AppState state,
-    DetectedRecurringPattern detected,
-  ) =>
+  bool _alreadyExplicit(AppState state, DetectedRecurringPattern detected) =>
       state.recurring.any(
         (item) =>
             item.enabled &&
@@ -1008,7 +1032,9 @@ class RecurringScreen extends StatelessWidget {
         children: [
           if (detected.isNotEmpty) ...[
             const SectionTitle('Rilevate dalle tue abitudini'),
-            ...detected.take(5).map(
+            ...detected
+                .take(5)
+                .map(
                   (item) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.auto_awesome_outlined),
@@ -1017,10 +1043,8 @@ class RecurringScreen extends StatelessWidget {
                       '${item.frequency} · ${moneyFor(state, item.amountMedian)} · ${(item.confidence * 100).round()}% confidenza',
                     ),
                     trailing: TextButton(
-                      onPressed: () => showRecurringEditor(
-                        context,
-                        detected: item,
-                      ),
+                      onPressed: () =>
+                          showRecurringEditor(context, detected: item),
                       child: const Text('Configura'),
                     ),
                   ),
@@ -1046,7 +1070,8 @@ class RecurringScreen extends StatelessWidget {
           else
             ...state.recurring.map((item) {
               final account = state.accountById(item.accountId);
-              final invalid = account == null ||
+              final invalid =
+                  account == null ||
                   account.isLocked ||
                   account.isArchived ||
                   account.isSystem;
@@ -1111,7 +1136,10 @@ class RecurringScreen extends StatelessWidget {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'edit', child: Text('Modifica')),
+                        const PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Modifica'),
+                        ),
                         PopupMenuItem(
                           value: 'toggle',
                           child: Text(item.enabled ? 'Disattiva' : 'Attiva'),
@@ -1148,15 +1176,17 @@ Future<void> showRecurringEditor(
   DetectedRecurringPattern? detected,
 }) async {
   final state = AppScope.of(context);
-  final usableAccounts =
-      state.activeAccounts.where((item) => !item.isLocked).toList();
+  final usableAccounts = state.activeAccounts
+      .where((item) => !item.isLocked)
+      .toList();
   if (usableAccounts.isEmpty) return;
 
   final name = TextEditingController(
     text: existing?.name ?? detected?.normalizedText ?? '',
   );
   final amount = TextEditingController(
-    text: existing?.amount.toStringAsFixed(2) ??
+    text:
+        existing?.amount.toStringAsFixed(2) ??
         detected?.amountMedian.toStringAsFixed(2) ??
         '',
   );
@@ -1165,15 +1195,15 @@ Future<void> showRecurringEditor(
   );
   var type = existing?.type ?? detected?.type ?? TransactionType.expense;
   if (type == TransactionType.transfer) type = TransactionType.expense;
-  int accountId = existing?.accountId ??
-      detected?.accountId ??
-      usableAccounts.first.id;
+  int accountId =
+      existing?.accountId ?? detected?.accountId ?? usableAccounts.first.id;
   if (usableAccounts.every((item) => item.id != accountId)) {
     accountId = usableAccounts.first.id;
   }
   int? categoryId = existing?.categoryId ?? detected?.categoryId;
   var frequency = existing?.frequency ?? detected?.frequency ?? 'Mensile';
-  var nextDate = existing?.nextDate ??
+  var nextDate =
+      existing?.nextDate ??
       detected?.nextExpected ??
       DateTime.now().add(const Duration(days: 30));
   DateTime? endDate = existing?.endDate;
@@ -1223,8 +1253,9 @@ Future<void> showRecurringEditor(
                 ),
                 TextField(
                   controller: amount,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
                   decoration: const InputDecoration(
                     labelText: 'Importo',
                     suffixText: '€',
@@ -1284,20 +1315,21 @@ Future<void> showRecurringEditor(
                 DropdownButtonFormField<String>(
                   initialValue: frequency,
                   decoration: const InputDecoration(labelText: 'Frequenza'),
-                  items: const [
-                    'Settimanale',
-                    'Quindicinale',
-                    'Mensile',
-                    'Trimestrale',
-                    'Annuale',
-                  ]
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(value),
-                        ),
-                      )
-                      .toList(),
+                  items:
+                      const [
+                            'Settimanale',
+                            'Quindicinale',
+                            'Mensile',
+                            'Trimestrale',
+                            'Annuale',
+                          ]
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
+                          .toList(),
                   onChanged: (value) {
                     if (value != null) frequency = value;
                   },
@@ -1310,7 +1342,9 @@ Future<void> showRecurringEditor(
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: context,
-                      firstDate: DateTime.now().subtract(const Duration(days: 3650)),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 3650),
+                      ),
                       lastDate: DateTime(2100),
                       initialDate: nextDate,
                     );
@@ -1328,8 +1362,7 @@ Future<void> showRecurringEditor(
                     'Attivalo solo per importi sufficientemente stabili.',
                   ),
                   value: autoCreate,
-                  onChanged: (value) =>
-                      setSheetState(() => autoCreate = value),
+                  onChanged: (value) => setSheetState(() => autoCreate = value),
                 ),
                 if (existing != null)
                   SwitchListTile(
@@ -1369,9 +1402,12 @@ Future<void> showRecurringEditor(
                   width: double.infinity,
                   child: FilledButton(
                     onPressed: () async {
-                      final parsed =
-                          double.tryParse(amount.text.replaceAll(',', '.'));
-                      if (name.text.trim().isEmpty || parsed == null || parsed <= 0) {
+                      final parsed = double.tryParse(
+                        amount.text.replaceAll(',', '.'),
+                      );
+                      if (name.text.trim().isEmpty ||
+                          parsed == null ||
+                          parsed <= 0) {
                         return;
                       }
                       if (existing == null) {
@@ -1383,7 +1419,9 @@ Future<void> showRecurringEditor(
                           categoryId: categoryId,
                           frequency: frequency,
                           nextDate: nextDate,
-                          note: note.text.trim().isEmpty ? null : note.text.trim(),
+                          note: note.text.trim().isEmpty
+                              ? null
+                              : note.text.trim(),
                           endDate: endDate,
                           autoCreate: autoCreate,
                         );
@@ -1400,7 +1438,9 @@ Future<void> showRecurringEditor(
                             nextDate: nextDate,
                             enabled: enabled,
                             autoCreate: autoCreate,
-                            note: note.text.trim().isEmpty ? null : note.text.trim(),
+                            note: note.text.trim().isEmpty
+                                ? null
+                                : note.text.trim(),
                             endDate: endDate,
                           ),
                         );
@@ -1473,7 +1513,7 @@ class _FinanceCalendarScreenState extends State<FinanceCalendarScreen> {
     events.sort((a, b) => a.date.compareTo(b.date));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Previsioni')), 
+      appBar: AppBar(title: const Text('Previsioni')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
@@ -1485,7 +1525,8 @@ class _FinanceCalendarScreenState extends State<FinanceCalendarScreen> {
               ButtonSegment(value: 90, label: Text('90 giorni')),
             ],
             selected: {horizon},
-            onSelectionChanged: (value) => setState(() => horizon = value.first),
+            onSelectionChanged: (value) =>
+                setState(() => horizon = value.first),
           ),
           const SizedBox(height: 24),
           _ForecastSummary(forecast: forecast),
@@ -1512,7 +1553,11 @@ class _FinanceCalendarScreenState extends State<FinanceCalendarScreen> {
                   '${event.source} · ${DateFormat('EEE d MMM', 'it_IT').format(event.date)}',
                 ),
                 trailing: Text(
-                  '${event.type == TransactionType.expense ? '−' : event.type == TransactionType.income ? '+' : ''}${moneyFor(state, event.amount)}',
+                  '${event.type == TransactionType.expense
+                      ? '−'
+                      : event.type == TransactionType.income
+                      ? '+'
+                      : ''}${moneyFor(state, event.amount)}',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     color: transactionColor(context, event.type),

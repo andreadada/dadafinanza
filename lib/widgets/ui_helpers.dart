@@ -42,142 +42,667 @@ class IconOption {
 }
 
 const categoryIconOptions = <IconOption>[
-  IconOption('category', Icons.category_rounded, 'Generica', group: 'Quotidiano'),
+  IconOption(
+    'category',
+    Icons.category_rounded,
+    'Generica',
+    group: 'Quotidiano',
+  ),
   IconOption('home', Icons.home_rounded, 'Casa', group: 'Quotidiano'),
   IconOption('cart', Icons.shopping_cart_rounded, 'Spesa', group: 'Quotidiano'),
-  IconOption('grocery', Icons.local_grocery_store_rounded, 'Supermercato', group: 'Quotidiano'),
-  IconOption('restaurant', Icons.restaurant_rounded, 'Ristorante', group: 'Quotidiano'),
-  IconOption('coffee', Icons.local_cafe_rounded, 'Bar e caffè', group: 'Quotidiano'),
+  IconOption(
+    'grocery',
+    Icons.local_grocery_store_rounded,
+    'Supermercato',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'restaurant',
+    Icons.restaurant_rounded,
+    'Ristorante',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'coffee',
+    Icons.local_cafe_rounded,
+    'Bar e caffè',
+    group: 'Quotidiano',
+  ),
   IconOption('bar', Icons.local_bar_rounded, 'Bar', group: 'Quotidiano'),
-  IconOption('fastfood', Icons.fastfood_rounded, 'Fast food', group: 'Quotidiano'),
-  IconOption('bakery', Icons.bakery_dining_rounded, 'Panetteria', group: 'Quotidiano'),
-  IconOption('laundry', Icons.local_laundry_service_rounded, 'Lavanderia', group: 'Quotidiano'),
-  IconOption('cleaning', Icons.cleaning_services_rounded, 'Pulizie', group: 'Quotidiano'),
-  IconOption('furniture', Icons.chair_rounded, 'Arredamento', group: 'Quotidiano'),
+  IconOption(
+    'fastfood',
+    Icons.fastfood_rounded,
+    'Fast food',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'bakery',
+    Icons.bakery_dining_rounded,
+    'Panetteria',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'laundry',
+    Icons.local_laundry_service_rounded,
+    'Lavanderia',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'cleaning',
+    Icons.cleaning_services_rounded,
+    'Pulizie',
+    group: 'Quotidiano',
+  ),
+  IconOption(
+    'furniture',
+    Icons.chair_rounded,
+    'Arredamento',
+    group: 'Quotidiano',
+  ),
   IconOption('bed', Icons.bed_rounded, 'Camera', group: 'Quotidiano'),
   IconOption('kitchen', Icons.kitchen_rounded, 'Cucina', group: 'Quotidiano'),
   IconOption('garden', Icons.yard_rounded, 'Giardino', group: 'Quotidiano'),
 
-  IconOption('car', Icons.directions_car_rounded, 'Auto', group: 'Trasporti e viaggi'),
-  IconOption('fuel', Icons.local_gas_station_rounded, 'Benzina', group: 'Trasporti e viaggi'),
-  IconOption('bus', Icons.directions_bus_rounded, 'Autobus', group: 'Trasporti e viaggi'),
-  IconOption('train', Icons.train_rounded, 'Treno', group: 'Trasporti e viaggi'),
-  IconOption('subway', Icons.subway_rounded, 'Metro', group: 'Trasporti e viaggi'),
-  IconOption('taxi', Icons.local_taxi_rounded, 'Taxi', group: 'Trasporti e viaggi'),
-  IconOption('bike', Icons.directions_bike_rounded, 'Bici', group: 'Trasporti e viaggi'),
-  IconOption('motorbike', Icons.two_wheeler_rounded, 'Moto', group: 'Trasporti e viaggi'),
-  IconOption('flight', Icons.flight_rounded, 'Volo', group: 'Trasporti e viaggi'),
-  IconOption('travel', Icons.luggage_rounded, 'Viaggio', group: 'Trasporti e viaggi'),
-  IconOption('hotel', Icons.hotel_rounded, 'Hotel', group: 'Trasporti e viaggi'),
-  IconOption('map', Icons.map_rounded, 'Escursione', group: 'Trasporti e viaggi'),
-  IconOption('boat', Icons.sailing_rounded, 'Barca', group: 'Trasporti e viaggi'),
-  IconOption('parking', Icons.local_parking_rounded, 'Parcheggio', group: 'Trasporti e viaggi'),
-  IconOption('toll', Icons.toll_rounded, 'Pedaggio', group: 'Trasporti e viaggi'),
+  IconOption(
+    'car',
+    Icons.directions_car_rounded,
+    'Auto',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'fuel',
+    Icons.local_gas_station_rounded,
+    'Benzina',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'bus',
+    Icons.directions_bus_rounded,
+    'Autobus',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'train',
+    Icons.train_rounded,
+    'Treno',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'subway',
+    Icons.subway_rounded,
+    'Metro',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'taxi',
+    Icons.local_taxi_rounded,
+    'Taxi',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'bike',
+    Icons.directions_bike_rounded,
+    'Bici',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'motorbike',
+    Icons.two_wheeler_rounded,
+    'Moto',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'flight',
+    Icons.flight_rounded,
+    'Volo',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'travel',
+    Icons.luggage_rounded,
+    'Viaggio',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'hotel',
+    Icons.hotel_rounded,
+    'Hotel',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'map',
+    Icons.map_rounded,
+    'Escursione',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'boat',
+    Icons.sailing_rounded,
+    'Barca',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'parking',
+    Icons.local_parking_rounded,
+    'Parcheggio',
+    group: 'Trasporti e viaggi',
+  ),
+  IconOption(
+    'toll',
+    Icons.toll_rounded,
+    'Pedaggio',
+    group: 'Trasporti e viaggi',
+  ),
 
-  IconOption('health', Icons.favorite_rounded, 'Salute', group: 'Salute e persona'),
-  IconOption('pharmacy', Icons.local_pharmacy_rounded, 'Farmacia', group: 'Salute e persona'),
-  IconOption('medical', Icons.medical_services_rounded, 'Medico', group: 'Salute e persona'),
-  IconOption('safety', Icons.health_and_safety_rounded, 'Prevenzione', group: 'Salute e persona'),
-  IconOption('fitness', Icons.fitness_center_rounded, 'Palestra', group: 'Salute e persona'),
-  IconOption('sport', Icons.sports_soccer_rounded, 'Calcio', group: 'Salute e persona'),
-  IconOption('running', Icons.directions_run_rounded, 'Corsa', group: 'Salute e persona'),
+  IconOption(
+    'health',
+    Icons.favorite_rounded,
+    'Salute',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'pharmacy',
+    Icons.local_pharmacy_rounded,
+    'Farmacia',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'medical',
+    Icons.medical_services_rounded,
+    'Medico',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'safety',
+    Icons.health_and_safety_rounded,
+    'Prevenzione',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'fitness',
+    Icons.fitness_center_rounded,
+    'Palestra',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'sport',
+    Icons.sports_soccer_rounded,
+    'Calcio',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'running',
+    Icons.directions_run_rounded,
+    'Corsa',
+    group: 'Salute e persona',
+  ),
   IconOption('spa', Icons.spa_rounded, 'Benessere', group: 'Salute e persona'),
-  IconOption('mindfulness', Icons.self_improvement_rounded, 'Relax', group: 'Salute e persona'),
-  IconOption('hair', Icons.content_cut_rounded, 'Parrucchiere', group: 'Salute e persona'),
-  IconOption('beauty', Icons.face_retouching_natural_rounded, 'Cura personale', group: 'Salute e persona'),
+  IconOption(
+    'mindfulness',
+    Icons.self_improvement_rounded,
+    'Relax',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'hair',
+    Icons.content_cut_rounded,
+    'Parrucchiere',
+    group: 'Salute e persona',
+  ),
+  IconOption(
+    'beauty',
+    Icons.face_retouching_natural_rounded,
+    'Cura personale',
+    group: 'Salute e persona',
+  ),
 
-  IconOption('shopping', Icons.shopping_bag_rounded, 'Shopping', group: 'Shopping e tempo libero'),
-  IconOption('clothes', Icons.checkroom_rounded, 'Vestiti', group: 'Shopping e tempo libero'),
-  IconOption('tech', Icons.devices_rounded, 'Tecnologia', group: 'Shopping e tempo libero'),
-  IconOption('gaming', Icons.sports_esports_rounded, 'Videogiochi', group: 'Shopping e tempo libero'),
-  IconOption('movie', Icons.movie_rounded, 'Cinema', group: 'Shopping e tempo libero'),
-  IconOption('streaming', Icons.ondemand_video_rounded, 'Streaming', group: 'Shopping e tempo libero'),
-  IconOption('music', Icons.music_note_rounded, 'Musica', group: 'Shopping e tempo libero'),
-  IconOption('books', Icons.menu_book_rounded, 'Libri', group: 'Shopping e tempo libero'),
-  IconOption('photo', Icons.photo_camera_rounded, 'Fotografia', group: 'Shopping e tempo libero'),
-  IconOption('art', Icons.palette_rounded, 'Arte', group: 'Shopping e tempo libero'),
-  IconOption('party', Icons.celebration_rounded, 'Festa', group: 'Shopping e tempo libero'),
-  IconOption('ticket', Icons.confirmation_number_rounded, 'Biglietti', group: 'Shopping e tempo libero'),
-  IconOption('toys', Icons.toys_rounded, 'Giochi', group: 'Shopping e tempo libero'),
+  IconOption(
+    'shopping',
+    Icons.shopping_bag_rounded,
+    'Shopping',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'clothes',
+    Icons.checkroom_rounded,
+    'Vestiti',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'tech',
+    Icons.devices_rounded,
+    'Tecnologia',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'gaming',
+    Icons.sports_esports_rounded,
+    'Videogiochi',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'movie',
+    Icons.movie_rounded,
+    'Cinema',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'streaming',
+    Icons.ondemand_video_rounded,
+    'Streaming',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'music',
+    Icons.music_note_rounded,
+    'Musica',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'books',
+    Icons.menu_book_rounded,
+    'Libri',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'photo',
+    Icons.photo_camera_rounded,
+    'Fotografia',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'art',
+    Icons.palette_rounded,
+    'Arte',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'party',
+    Icons.celebration_rounded,
+    'Festa',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'ticket',
+    Icons.confirmation_number_rounded,
+    'Biglietti',
+    group: 'Shopping e tempo libero',
+  ),
+  IconOption(
+    'toys',
+    Icons.toys_rounded,
+    'Giochi',
+    group: 'Shopping e tempo libero',
+  ),
 
-  IconOption('school', Icons.school_rounded, 'Scuola', group: 'Lavoro e formazione'),
-  IconOption('university', Icons.account_balance_rounded, 'Università', group: 'Lavoro e formazione'),
-  IconOption('work', Icons.work_rounded, 'Lavoro', group: 'Lavoro e formazione'),
-  IconOption('freelance', Icons.laptop_mac_rounded, 'Freelance', group: 'Lavoro e formazione'),
-  IconOption('business', Icons.business_center_rounded, 'Business', group: 'Lavoro e formazione'),
-  IconOption('course', Icons.co_present_rounded, 'Corso', group: 'Lavoro e formazione'),
-  IconOption('stationery', Icons.edit_note_rounded, 'Cancelleria', group: 'Lavoro e formazione'),
-  IconOption('print', Icons.print_rounded, 'Stampa', group: 'Lavoro e formazione'),
+  IconOption(
+    'school',
+    Icons.school_rounded,
+    'Scuola',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'university',
+    Icons.account_balance_rounded,
+    'Università',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'work',
+    Icons.work_rounded,
+    'Lavoro',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'freelance',
+    Icons.laptop_mac_rounded,
+    'Freelance',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'business',
+    Icons.business_center_rounded,
+    'Business',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'course',
+    Icons.co_present_rounded,
+    'Corso',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'stationery',
+    Icons.edit_note_rounded,
+    'Cancelleria',
+    group: 'Lavoro e formazione',
+  ),
+  IconOption(
+    'print',
+    Icons.print_rounded,
+    'Stampa',
+    group: 'Lavoro e formazione',
+  ),
 
-  IconOption('gift', Icons.card_giftcard_rounded, 'Regalo', group: 'Famiglia e social'),
+  IconOption(
+    'gift',
+    Icons.card_giftcard_rounded,
+    'Regalo',
+    group: 'Famiglia e social',
+  ),
   IconOption('pets', Icons.pets_rounded, 'Animali', group: 'Famiglia e social'),
-  IconOption('family', Icons.groups_rounded, 'Famiglia', group: 'Famiglia e social'),
-  IconOption('child', Icons.child_care_rounded, 'Bambini', group: 'Famiglia e social'),
-  IconOption('birthday', Icons.cake_rounded, 'Compleanno', group: 'Famiglia e social'),
-  IconOption('charity', Icons.volunteer_activism_rounded, 'Donazione', group: 'Famiglia e social'),
-  IconOption('friends', Icons.people_alt_rounded, 'Amici', group: 'Famiglia e social'),
-  IconOption('wedding', Icons.favorite_border_rounded, 'Cerimonia', group: 'Famiglia e social'),
+  IconOption(
+    'family',
+    Icons.groups_rounded,
+    'Famiglia',
+    group: 'Famiglia e social',
+  ),
+  IconOption(
+    'child',
+    Icons.child_care_rounded,
+    'Bambini',
+    group: 'Famiglia e social',
+  ),
+  IconOption(
+    'birthday',
+    Icons.cake_rounded,
+    'Compleanno',
+    group: 'Famiglia e social',
+  ),
+  IconOption(
+    'charity',
+    Icons.volunteer_activism_rounded,
+    'Donazione',
+    group: 'Famiglia e social',
+  ),
+  IconOption(
+    'friends',
+    Icons.people_alt_rounded,
+    'Amici',
+    group: 'Famiglia e social',
+  ),
+  IconOption(
+    'wedding',
+    Icons.favorite_border_rounded,
+    'Cerimonia',
+    group: 'Famiglia e social',
+  ),
 
-  IconOption('bills', Icons.receipt_long_rounded, 'Bollette', group: 'Utenze e casa'),
-  IconOption('phone', Icons.phone_android_rounded, 'Telefono', group: 'Utenze e casa'),
-  IconOption('internet', Icons.wifi_rounded, 'Internet', group: 'Utenze e casa'),
-  IconOption('electricity', Icons.electric_bolt_rounded, 'Elettricità', group: 'Utenze e casa'),
-  IconOption('water', Icons.water_drop_rounded, 'Acqua', group: 'Utenze e casa'),
-  IconOption('gas', Icons.local_fire_department_rounded, 'Gas', group: 'Utenze e casa'),
-  IconOption('insurance', Icons.shield_rounded, 'Assicurazione', group: 'Utenze e casa'),
-  IconOption('tax', Icons.request_quote_rounded, 'Tasse', group: 'Utenze e casa'),
-  IconOption('repair', Icons.home_repair_service_rounded, 'Riparazioni', group: 'Utenze e casa'),
-  IconOption('construction', Icons.construction_rounded, 'Lavori casa', group: 'Utenze e casa'),
-  IconOption('security', Icons.security_rounded, 'Sicurezza', group: 'Utenze e casa'),
+  IconOption(
+    'bills',
+    Icons.receipt_long_rounded,
+    'Bollette',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'phone',
+    Icons.phone_android_rounded,
+    'Telefono',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'internet',
+    Icons.wifi_rounded,
+    'Internet',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'electricity',
+    Icons.electric_bolt_rounded,
+    'Elettricità',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'water',
+    Icons.water_drop_rounded,
+    'Acqua',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'gas',
+    Icons.local_fire_department_rounded,
+    'Gas',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'insurance',
+    Icons.shield_rounded,
+    'Assicurazione',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'tax',
+    Icons.request_quote_rounded,
+    'Tasse',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'repair',
+    Icons.home_repair_service_rounded,
+    'Riparazioni',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'construction',
+    Icons.construction_rounded,
+    'Lavori casa',
+    group: 'Utenze e casa',
+  ),
+  IconOption(
+    'security',
+    Icons.security_rounded,
+    'Sicurezza',
+    group: 'Utenze e casa',
+  ),
 
-  IconOption('salary', Icons.payments_rounded, 'Stipendio', group: 'Finanza e entrate'),
-  IconOption('investment', Icons.trending_up_rounded, 'Investimento', group: 'Finanza e entrate'),
-  IconOption('interest', Icons.percent_rounded, 'Interessi', group: 'Finanza e entrate'),
-  IconOption('refund', Icons.replay_rounded, 'Rimborso', group: 'Finanza e entrate'),
+  IconOption(
+    'salary',
+    Icons.payments_rounded,
+    'Stipendio',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'investment',
+    Icons.trending_up_rounded,
+    'Investimento',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'interest',
+    Icons.percent_rounded,
+    'Interessi',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'refund',
+    Icons.replay_rounded,
+    'Rimborso',
+    group: 'Finanza e entrate',
+  ),
   IconOption('sale', Icons.sell_rounded, 'Vendita', group: 'Finanza e entrate'),
-  IconOption('saving', Icons.savings_rounded, 'Risparmio', group: 'Finanza e entrate'),
-  IconOption('exchange', Icons.currency_exchange_rounded, 'Cambio valuta', group: 'Finanza e entrate'),
-  IconOption('cash', Icons.attach_money_rounded, 'Denaro', group: 'Finanza e entrate'),
-  IconOption('wallet', Icons.account_balance_wallet_rounded, 'Portafoglio', group: 'Finanza e entrate'),
-  IconOption('invoice', Icons.receipt_rounded, 'Fattura', group: 'Finanza e entrate'),
-  IconOption('bonus', Icons.redeem_rounded, 'Bonus', group: 'Finanza e entrate'),
+  IconOption(
+    'saving',
+    Icons.savings_rounded,
+    'Risparmio',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'exchange',
+    Icons.currency_exchange_rounded,
+    'Cambio valuta',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'cash',
+    Icons.attach_money_rounded,
+    'Denaro',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'wallet',
+    Icons.account_balance_wallet_rounded,
+    'Portafoglio',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'invoice',
+    Icons.receipt_rounded,
+    'Fattura',
+    group: 'Finanza e entrate',
+  ),
+  IconOption(
+    'bonus',
+    Icons.redeem_rounded,
+    'Bonus',
+    group: 'Finanza e entrate',
+  ),
 
   IconOption('event', Icons.event_rounded, 'Evento', group: 'Altro'),
-  IconOption('subscription', Icons.autorenew_rounded, 'Abbonamento', group: 'Altro'),
+  IconOption(
+    'subscription',
+    Icons.autorenew_rounded,
+    'Abbonamento',
+    group: 'Altro',
+  ),
   IconOption('cloud', Icons.cloud_outlined, 'Servizi cloud', group: 'Altro'),
   IconOption('more', Icons.more_horiz_rounded, 'Altro', group: 'Altro'),
   IconOption('other', Icons.more_horiz_rounded, 'Generico', group: 'Altro'),
 ];
 
 const accountIconOptions = <IconOption>[
-  IconOption('wallet', Icons.account_balance_wallet_rounded, 'Portafoglio', group: 'Uso quotidiano'),
-  IconOption('cash', Icons.payments_rounded, 'Contanti', group: 'Uso quotidiano'),
-  IconOption('coins', Icons.monetization_on_rounded, 'Monete', group: 'Uso quotidiano'),
-  IconOption('pocket', Icons.wallet_rounded, 'Portamonete', group: 'Uso quotidiano'),
+  IconOption(
+    'wallet',
+    Icons.account_balance_wallet_rounded,
+    'Portafoglio',
+    group: 'Uso quotidiano',
+  ),
+  IconOption(
+    'cash',
+    Icons.payments_rounded,
+    'Contanti',
+    group: 'Uso quotidiano',
+  ),
+  IconOption(
+    'coins',
+    Icons.monetization_on_rounded,
+    'Monete',
+    group: 'Uso quotidiano',
+  ),
+  IconOption(
+    'pocket',
+    Icons.wallet_rounded,
+    'Portamonete',
+    group: 'Uso quotidiano',
+  ),
 
-  IconOption('bank', Icons.account_balance_rounded, 'Banca', group: 'Banche e carte'),
-  IconOption('card', Icons.credit_card_rounded, 'Carta', group: 'Banche e carte'),
-  IconOption('prepaid', Icons.payment_rounded, 'Prepagata', group: 'Banche e carte'),
-  IconOption('checking', Icons.account_balance_wallet_outlined, 'Conto corrente', group: 'Banche e carte'),
-  IconOption('online_bank', Icons.language_rounded, 'Banca online', group: 'Banche e carte'),
+  IconOption(
+    'bank',
+    Icons.account_balance_rounded,
+    'Banca',
+    group: 'Banche e carte',
+  ),
+  IconOption(
+    'card',
+    Icons.credit_card_rounded,
+    'Carta',
+    group: 'Banche e carte',
+  ),
+  IconOption(
+    'prepaid',
+    Icons.payment_rounded,
+    'Prepagata',
+    group: 'Banche e carte',
+  ),
+  IconOption(
+    'checking',
+    Icons.account_balance_wallet_outlined,
+    'Conto corrente',
+    group: 'Banche e carte',
+  ),
+  IconOption(
+    'online_bank',
+    Icons.language_rounded,
+    'Banca online',
+    group: 'Banche e carte',
+  ),
 
-  IconOption('savings', Icons.savings_rounded, 'Risparmio', group: 'Risparmio e investimenti'),
-  IconOption('safe', Icons.lock_rounded, 'Cassaforte', group: 'Risparmio e investimenti'),
-  IconOption('investment', Icons.show_chart_rounded, 'Investimenti', group: 'Risparmio e investimenti'),
-  IconOption('portfolio', Icons.pie_chart_rounded, 'Portafoglio investimenti', group: 'Risparmio e investimenti'),
-  IconOption('crypto', Icons.currency_bitcoin_rounded, 'Asset digitale', group: 'Risparmio e investimenti'),
-  IconOption('goal', Icons.flag_rounded, 'Obiettivo', group: 'Risparmio e investimenti'),
+  IconOption(
+    'savings',
+    Icons.savings_rounded,
+    'Risparmio',
+    group: 'Risparmio e investimenti',
+  ),
+  IconOption(
+    'safe',
+    Icons.lock_rounded,
+    'Cassaforte',
+    group: 'Risparmio e investimenti',
+  ),
+  IconOption(
+    'investment',
+    Icons.show_chart_rounded,
+    'Investimenti',
+    group: 'Risparmio e investimenti',
+  ),
+  IconOption(
+    'portfolio',
+    Icons.pie_chart_rounded,
+    'Portafoglio investimenti',
+    group: 'Risparmio e investimenti',
+  ),
+  IconOption(
+    'crypto',
+    Icons.currency_bitcoin_rounded,
+    'Asset digitale',
+    group: 'Risparmio e investimenti',
+  ),
+  IconOption(
+    'goal',
+    Icons.flag_rounded,
+    'Obiettivo',
+    group: 'Risparmio e investimenti',
+  ),
 
   IconOption('home', Icons.home_work_rounded, 'Casa', group: 'Scopo'),
-  IconOption('business', Icons.business_center_rounded, 'Business', group: 'Scopo'),
+  IconOption(
+    'business',
+    Icons.business_center_rounded,
+    'Business',
+    group: 'Scopo',
+  ),
   IconOption('travel', Icons.flight_takeoff_rounded, 'Viaggio', group: 'Scopo'),
-  IconOption('family_account', Icons.family_restroom_rounded, 'Famiglia', group: 'Scopo'),
-  IconOption('car_account', Icons.directions_car_rounded, 'Auto', group: 'Scopo'),
-  IconOption('education_account', Icons.school_rounded, 'Studio', group: 'Scopo'),
+  IconOption(
+    'family_account',
+    Icons.family_restroom_rounded,
+    'Famiglia',
+    group: 'Scopo',
+  ),
+  IconOption(
+    'car_account',
+    Icons.directions_car_rounded,
+    'Auto',
+    group: 'Scopo',
+  ),
+  IconOption(
+    'education_account',
+    Icons.school_rounded,
+    'Studio',
+    group: 'Scopo',
+  ),
 
   IconOption('vault', Icons.security_rounded, 'Deposito', group: 'Altro'),
-  IconOption('archive_account', Icons.inventory_2_rounded, 'Archivio', group: 'Altro'),
-  IconOption('help', Icons.help_outline_rounded, 'Non assegnato', group: 'Sistema'),
+  IconOption(
+    'archive_account',
+    Icons.inventory_2_rounded,
+    'Archivio',
+    group: 'Altro',
+  ),
+  IconOption(
+    'help',
+    Icons.help_outline_rounded,
+    'Non assegnato',
+    group: 'Sistema',
+  ),
 ];
 
 const categoryPalette = <Color>[
@@ -205,7 +730,8 @@ IconData categoryIcon(String key) =>
 IconData accountIcon(String key) =>
     _iconFor(key, accountIconOptions, Icons.account_balance_wallet_rounded);
 
-Color transactionColor(BuildContext context, TransactionType type) => switch (type) {
+Color transactionColor(BuildContext context, TransactionType type) =>
+    switch (type) {
       TransactionType.expense => context.financeColors.negative,
       TransactionType.income => context.financeColors.positive,
       TransactionType.transfer => context.financeColors.neutral,
@@ -258,7 +784,8 @@ Future<String?> showIconPicker(
         final normalized = query.trim().toLowerCase();
         final filtered = options.where((option) {
           final matchesGroup = group == null || option.group == group;
-          final matchesSearch = normalized.isEmpty ||
+          final matchesSearch =
+              normalized.isEmpty ||
               option.label.toLowerCase().contains(normalized) ||
               option.group.toLowerCase().contains(normalized);
           return matchesGroup && matchesSearch;
@@ -270,7 +797,10 @@ Future<String?> showIconPicker(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Scegli icona', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Scegli icona',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: search,
@@ -313,12 +843,13 @@ Future<String?> showIconPicker(
                 const SizedBox(height: 8),
                 Expanded(
                   child: GridView.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      mainAxisSpacing: 8,
-                      crossAxisSpacing: 8,
-                      childAspectRatio: .92,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          mainAxisSpacing: 8,
+                          crossAxisSpacing: 8,
+                          childAspectRatio: .92,
+                        ),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
                       final option = filtered[index];
@@ -335,14 +866,17 @@ Future<String?> showIconPicker(
                             child: Ink(
                               decoration: BoxDecoration(
                                 color: active
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .surfaceContainerHighest
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainerHighest
                                     : Colors.transparent,
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 8,
+                                ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
@@ -353,7 +887,9 @@ Future<String?> showIconPicker(
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       textAlign: TextAlign.center,
-                                      style: Theme.of(context).textTheme.labelSmall,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
                                     ),
                                   ],
                                 ),
@@ -403,7 +939,10 @@ Future<Category?> showCategoryCreator(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Nuova categoria', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                'Nuova categoria',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               TextField(
                 controller: controller,
                 autofocus: true,
@@ -523,16 +1062,16 @@ class SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(title, style: Theme.of(context).textTheme.titleMedium),
-            ),
-            if (trailing != null) trailing!,
-          ],
+    padding: const EdgeInsets.only(bottom: 10),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleMedium),
         ),
-      );
+        if (trailing != null) trailing!,
+      ],
+    ),
+  );
 }
 
 class EmptyState extends StatelessWidget {
@@ -550,30 +1089,30 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 22),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              size: 38,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            if (action != null) ...[const SizedBox(height: 16), action!],
-          ],
+    padding: const EdgeInsets.symmetric(vertical: 22),
+    child: Column(
+      children: [
+        Icon(
+          icon,
+          size: 38,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-      );
+        const SizedBox(height: 12),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+        if (action != null) ...[const SizedBox(height: 16), action!],
+      ],
+    ),
+  );
 }
 
 class FlatMetric extends StatelessWidget {
@@ -593,14 +1132,14 @@ class FlatMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        minVerticalPadding: 10,
-        contentPadding: EdgeInsets.zero,
-        leading: icon == null ? null : Icon(icon, color: color),
-        title: Text(label),
-        trailing: Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
-        ),
-        onTap: onTap,
-      );
+    minVerticalPadding: 10,
+    contentPadding: EdgeInsets.zero,
+    leading: icon == null ? null : Icon(icon, color: color),
+    title: Text(label),
+    trailing: Text(
+      value,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
+    ),
+    onTap: onTap,
+  );
 }

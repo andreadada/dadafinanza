@@ -159,7 +159,9 @@ void main() {
     );
     expect(result.draft.accountId, isNull);
     expect(
-      result.issues.any((issue) => issue.type == VoiceIssueType.ambiguousAccount),
+      result.issues.any(
+        (issue) => issue.type == VoiceIssueType.ambiguousAccount,
+      ),
       isTrue,
     );
   });
@@ -200,18 +202,18 @@ void main() {
 }
 
 Account _account(int id, String name) => Account(
-      id: id,
-      name: name,
-      balance: 0,
-      colorValue: 0xff000000,
-      iconKey: 'wallet',
-      accountType: AccountType.checking,
-      includeInTotal: true,
-      includeInAnalytics: true,
-      isLocked: false,
-      isArchived: false,
-      hideBalance: false,
-      isSystem: false,
-      createdAt: DateTime(2026),
-      updatedAt: DateTime(2026),
-    );
+  id: id,
+  name: name,
+  balance: 0,
+  colorValue: 0xff000000,
+  iconKey: 'wallet',
+  accountType: AccountType.checking,
+  includeInTotal: true,
+  includeInAnalytics: true,
+  isLocked: false,
+  isArchived: false,
+  hideBalance: false,
+  isSystem: false,
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);

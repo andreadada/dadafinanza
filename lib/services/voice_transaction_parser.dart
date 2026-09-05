@@ -80,7 +80,8 @@ class VoiceTransactionParser {
         accountId = transfer.fromId;
         toAccountId = transfer.toId;
         if (accountId != null) sources['account'] = VoiceFieldSource.explicit;
-        if (toAccountId != null) sources['toAccount'] = VoiceFieldSource.explicit;
+        if (toAccountId != null)
+          sources['toAccount'] = VoiceFieldSource.explicit;
       }
     } else {
       final accountMatch = _matchEntity<Account>(
@@ -340,15 +341,16 @@ class VoiceTransactionParser {
     final nameTokens = name.split(' ').where((item) => item.length > 1).toSet();
     if (nameTokens.isEmpty) return 0;
     final inputTokens = input.split(' ').toSet();
-    final overlap = nameTokens.where(inputTokens.contains).length / nameTokens.length;
+    final overlap =
+        nameTokens.where(inputTokens.contains).length / nameTokens.length;
     if (overlap == 1) return nameTokens.length > 1 ? .92 : .88;
     return overlap * .78;
   }
 
   _TransferMatch _matchTransferAccounts(String input, List<Account> accounts) {
-    final fromPart = RegExp(r'\bda\s+(.+?)(?=\s+a\s+|\s+verso\s+|$)')
-        .firstMatch(input)
-        ?.group(1);
+    final fromPart = RegExp(
+      r'\bda\s+(.+?)(?=\s+a\s+|\s+verso\s+|$)',
+    ).firstMatch(input)?.group(1);
     final toPart = RegExp(
       r'\b(?:a|verso)\s+(.+?)(?=\s+(?:oggi|ieri|domani|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica)|$)',
     ).firstMatch(input)?.group(1);
@@ -378,7 +380,13 @@ class VoiceTransactionParser {
   }
 
   _DateParse _parseDate(String input, DateTime now) {
-    final current = DateTime(now.year, now.month, now.day, now.hour, now.minute);
+    final current = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      now.hour,
+      now.minute,
+    );
     if (RegExp(r'\bieri\b').hasMatch(input)) {
       return _DateParse(current.subtract(const Duration(days: 1)), true);
     }
@@ -418,12 +426,19 @@ class VoiceTransactionParser {
       'dicembre': 12,
     };
     for (final entry in months.entries) {
-      final match = RegExp(r'\b(?:il\s+)?(\d{1,2})\s+' + entry.key + r'\b')
-          .firstMatch(input);
+      final match = RegExp(
+        r'\b(?:il\s+)?(\d{1,2})\s+' + entry.key + r'\b',
+      ).firstMatch(input);
       if (match == null) continue;
       final day = int.parse(match.group(1)!);
       if (day < 1 || day > 31) continue;
-      final candidate = DateTime(now.year, entry.value, day, now.hour, now.minute);
+      final candidate = DateTime(
+        now.year,
+        entry.value,
+        day,
+        now.hour,
+        now.minute,
+      );
       return _DateParse(candidate, true);
     }
     return _DateParse(current, false);
@@ -491,10 +506,13 @@ class VoiceTransactionParser {
     };
     final entities = <String>{
       for (final account in accounts) ..._normalize(account.name).split(' '),
-      for (final category in categories) ..._normalize(category.name).split(' '),
+      for (final category in categories)
+        ..._normalize(category.name).split(' '),
     };
     final remaining = words.where((word) {
-      if (word.length < 2 || commands.contains(word) || entities.contains(word)) {
+      if (word.length < 2 ||
+          commands.contains(word) ||
+          entities.contains(word)) {
         return false;
       }
       if (RegExp(r'^\d+(?:[\.,]\d+)?€?$').hasMatch(word)) return false;
@@ -516,9 +534,9 @@ class VoiceTransactionParser {
   }
 
   bool _containsAny(String input, List<String> values) => values.any((value) {
-        final matcher = RegExp(r'(?:^| )' + RegExp.escape(value) + r'(?: |$)');
-        return matcher.hasMatch(input);
-      });
+    final matcher = RegExp(r'(?:^| )' + RegExp.escape(value) + r'(?: |$)');
+    return matcher.hasMatch(input);
+  });
 
   String _normalize(String value) => _stripAccents(value.toLowerCase())
       .replaceAll('’', "'")
@@ -544,7 +562,11 @@ class _AmountParse {
 }
 
 class _EntityMatch {
-  const _EntityMatch({this.id, this.ambiguous = false, this.candidates = const []});
+  const _EntityMatch({
+    this.id,
+    this.ambiguous = false,
+    this.candidates = const [],
+  });
   final int? id;
   final bool ambiguous;
   final List<int> candidates;

@@ -37,7 +37,9 @@ class _PolishedRootScreenState extends State<PolishedRootScreen> {
       PolishedPlanningScreen(),
     ];
     return Scaffold(
-      body: SafeArea(child: IndexedStack(index: index, children: pages)),
+      body: SafeArea(
+        child: IndexedStack(index: index, children: pages),
+      ),
       floatingActionButton: FloatingActionButton(
         tooltip: 'Nuovo movimento',
         onPressed: () => Navigator.push(
@@ -81,25 +83,24 @@ class PolishedHomeScreen extends StatelessWidget {
   const PolishedHomeScreen({super.key});
 
   Future<void> _quick(BuildContext context, String type) => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => QuickAddPage(initialTypeName: type)),
-      );
+    context,
+    MaterialPageRoute(builder: (_) => QuickAddPage(initialTypeName: type)),
+  );
 
   bool _isExplicitRecurring(
     AppState state,
     DetectedRecurringPattern detected,
-  ) =>
-      state.recurring.any(
-        (item) =>
-            item.enabled &&
-            SmartFinanceEngine.textSimilarity(
-                  SmartFinanceEngine.normalizeText(
-                    item.note?.isNotEmpty == true ? item.note : item.name,
-                  ),
-                  detected.normalizedText,
-                ) >=
-                .8,
-      );
+  ) => state.recurring.any(
+    (item) =>
+        item.enabled &&
+        SmartFinanceEngine.textSimilarity(
+              SmartFinanceEngine.normalizeText(
+                item.note?.isNotEmpty == true ? item.note : item.name,
+              ),
+              detected.normalizedText,
+            ) >=
+            .8,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -180,10 +181,9 @@ class PolishedHomeScreen extends StatelessWidget {
               ],
               Text(
                 'PATRIMONIO',
-                style: Theme.of(context)
-                    .textTheme
-                    .labelMedium
-                    ?.copyWith(letterSpacing: 1.1),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(letterSpacing: 1.1),
               ),
               const SizedBox(height: 4),
               Text(
@@ -296,10 +296,8 @@ class PolishedHomeScreen extends StatelessWidget {
                     subtitle:
                         '${detected.frequency} · ${moneyFor(state, detected.amountMedian)} · ${(detected.confidence * 100).round()}% confidenza',
                     actionLabel: 'Configura',
-                    onTap: () => showRecurringEditor(
-                      context,
-                      detected: detected,
-                    ),
+                    onTap: () =>
+                        showRecurringEditor(context, detected: detected),
                   ),
                 if (state.smartGoalSuggestions &&
                     activeGoal != null &&
@@ -382,7 +380,9 @@ class PolishedHomeScreen extends StatelessWidget {
                   ),
                 )
               else
-                ...upcoming.take(3).map(
+                ...upcoming
+                    .take(3)
+                    .map(
                       (item) => ListTile(
                         contentPadding: EdgeInsets.zero,
                         leading: Icon(
@@ -391,8 +391,10 @@ class PolishedHomeScreen extends StatelessWidget {
                         ),
                         title: Text(item.name),
                         subtitle: Text(
-                          DateFormat('EEE d MMM', 'it_IT')
-                              .format(item.nextDate),
+                          DateFormat(
+                            'EEE d MMM',
+                            'it_IT',
+                          ).format(item.nextDate),
                         ),
                         trailing: Text(
                           moneyFor(state, item.amount),
@@ -411,7 +413,9 @@ class PolishedHomeScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const advanced.HomeScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const advanced.HomeScreen(),
+                  ),
                 ),
               ),
             ],
@@ -430,23 +434,23 @@ class _Metric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label, style: Theme.of(context).textTheme.bodySmall),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              value,
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(color: color, fontWeight: FontWeight.w800),
-            ),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: Theme.of(context).textTheme.bodySmall),
+      const SizedBox(height: 4),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: Alignment.centerLeft,
+        child: Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
           ),
-        ],
-      );
+        ),
+      ),
+    ],
+  );
 }
 
 class _InsightRow extends StatelessWidget {
@@ -466,14 +470,14 @@ class _InsightRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 10,
-        leading: Icon(icon),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        subtitle: Text(subtitle),
-        trailing: TextButton(onPressed: onTap, child: Text(actionLabel)),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    leading: Icon(icon),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Text(subtitle),
+    trailing: TextButton(onPressed: onTap, child: Text(actionLabel)),
+    onTap: onTap,
+  );
 }
 
 class _SetupBlock extends StatelessWidget {
@@ -483,35 +487,35 @@ class _SetupBlock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        'Configura DadaFinanza',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+      const SizedBox(height: 8),
+      const Text(
+        'Parti dal primo conto oppure registra subito un movimento e assegnalo in seguito.',
+      ),
+      const SizedBox(height: 16),
+      Wrap(
+        spacing: 12,
+        runSpacing: 12,
         children: [
-          Text(
-            'Configura DadaFinanza',
-            style: Theme.of(context).textTheme.headlineSmall,
+          FilledButton.icon(
+            onPressed: onAccount,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Crea primo conto'),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'Parti dal primo conto oppure registra subito un movimento e assegnalo in seguito.',
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              FilledButton.icon(
-                onPressed: onAccount,
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Crea primo conto'),
-              ),
-              TextButton.icon(
-                onPressed: onMovement,
-                icon: const Icon(Icons.receipt_long_outlined),
-                label: const Text('Registra movimento'),
-              ),
-            ],
+          TextButton.icon(
+            onPressed: onMovement,
+            icon: const Icon(Icons.receipt_long_outlined),
+            label: const Text('Registra movimento'),
           ),
         ],
-      );
+      ),
+    ],
+  );
 }
 
 class _AccountRow extends StatelessWidget {
@@ -598,8 +602,8 @@ class _BudgetSummary extends StatelessWidget {
             color: progress >= 1
                 ? context.financeColors.negative
                 : progress >= .8
-                    ? context.financeColors.warning
-                    : null,
+                ? context.financeColors.warning
+                : null,
           ),
         ],
       ),
@@ -640,7 +644,9 @@ class PolishedPlanningScreen extends StatelessWidget {
           _PlanEntry(
             icon: Icons.pie_chart_outline_rounded,
             title: 'Budget del periodo',
-            value: budgets.isEmpty ? 'Nessun limite' : '${budgets.length} attivi',
+            value: budgets.isEmpty
+                ? 'Nessun limite'
+                : '${budgets.length} attivi',
             detail: budgets.isEmpty
                 ? 'Imposta un limite per sapere quanto puoi ancora spendere.'
                 : 'Apri per vedere residuo e ritmo di spesa.',
@@ -689,16 +695,16 @@ class PolishedPlanningScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const FinanceCalendarScreen(),
-              ),
+              MaterialPageRoute(builder: (_) => const FinanceCalendarScreen()),
             ),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.tune_rounded),
             title: const Text('Pianificazione avanzata'),
-            subtitle: const Text('Budget, ricorrenti e goal in un’unica vista.'),
+            subtitle: const Text(
+              'Budget, ricorrenti e goal in un’unica vista.',
+            ),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.push(
               context,
@@ -727,27 +733,24 @@ class _PlanEntry extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 10,
-        leading: Icon(icon, size: 28),
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Text(detail),
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(value, style: Theme.of(context).textTheme.labelLarge),
-            const Icon(Icons.chevron_right_rounded, size: 20),
-          ],
-        ),
-        onTap: onTap,
-      );
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    leading: Icon(icon, size: 28),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+    subtitle: Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Text(detail),
+    ),
+    trailing: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(value, style: Theme.of(context).textTheme.labelLarge),
+        const Icon(Icons.chevron_right_rounded, size: 20),
+      ],
+    ),
+    onTap: onTap,
+  );
 }
 
 enum _Period { week, month, year, custom }
@@ -770,8 +773,11 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       case _Period.week:
         final startWeekday = state.weekStart.clamp(1, 7);
         final offset = (now.weekday - startWeekday) % 7;
-        final start = DateTime(now.year, now.month, now.day)
-            .subtract(Duration(days: offset));
+        final start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: offset));
         return (start, start.add(const Duration(days: 7)));
       case _Period.month:
         final day = state.financialMonthStart.clamp(1, 28);
@@ -801,9 +807,10 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     DateTime to,
   ) {
     final totals = <Category, double>{};
-    for (final transaction in state
-        .analyticTransactions(from: from, to: to)
-        .where((item) => item.type == TransactionType.expense)) {
+    for (final transaction
+        in state
+            .analyticTransactions(from: from, to: to)
+            .where((item) => item.type == TransactionType.expense)) {
       final itemSplits = state.splitsFor(transaction.id);
       if (itemSplits.isNotEmpty) {
         for (final split in itemSplits) {
@@ -829,7 +836,8 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
       context: context,
       firstDate: DateTime(2000),
       lastDate: now.add(const Duration(days: 3650)),
-      initialDateRange: custom ??
+      initialDateRange:
+          custom ??
           DateTimeRange(start: DateTime(now.year, now.month), end: now),
     );
     if (result != null && mounted) {
@@ -848,7 +856,11 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
     final previousFrom = from.subtract(duration);
     final income = state.periodTotal(TransactionType.income, from, to);
     final expense = state.periodTotal(TransactionType.expense, from, to);
-    final previous = state.periodTotal(TransactionType.expense, previousFrom, from);
+    final previous = state.periodTotal(
+      TransactionType.expense,
+      previousFrom,
+      from,
+    );
     final delta = previous == 0 ? null : (expense - previous) / previous * 100;
     final categories = _categories(state, from, to).entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -909,16 +921,16 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
             icon: delta == null
                 ? Icons.horizontal_rule_rounded
                 : delta <= 0
-                    ? Icons.trending_down_rounded
-                    : Icons.trending_up_rounded,
+                ? Icons.trending_down_rounded
+                : Icons.trending_up_rounded,
             text: delta == null
                 ? 'Servono più dati per confrontare il periodo precedente.'
                 : 'Hai speso ${delta.abs().toStringAsFixed(0)}% ${delta <= 0 ? 'in meno' : 'in più'} rispetto al periodo precedente.',
             color: delta == null
                 ? null
                 : delta <= 0
-                    ? context.financeColors.positive
-                    : context.financeColors.negative,
+                ? context.financeColors.positive
+                : context.financeColors.negative,
           ),
           const SizedBox(height: 12),
           _AnalyticsInsight(
@@ -936,12 +948,15 @@ class _PolishedAnalyticsScreenState extends State<PolishedAnalyticsScreen> {
                   'Le categorie compariranno qui quando registri movimenti.',
             )
           else
-            ...categories.take(6).map(
+            ...categories
+                .take(6)
+                .map(
                   (entry) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor:
-                          Color(entry.key.colorValue).withValues(alpha: .12),
+                      backgroundColor: Color(
+                        entry.key.colorValue,
+                      ).withValues(alpha: .12),
                       child: Icon(
                         categoryIcon(entry.key.iconKey),
                         color: Color(entry.key.colorValue),
@@ -997,13 +1012,13 @@ class _AnalyticsInsight extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, size: 19, color: color),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text)),
-        ],
-      );
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, size: 19, color: color),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text)),
+    ],
+  );
 }
 
 class _CategoryPeriodScreen extends StatelessWidget {
@@ -1023,7 +1038,8 @@ class _CategoryPeriodScreen extends StatelessWidget {
     final items = state
         .analyticTransactions(from: from, to: to)
         .where(
-          (item) => item.categoryId == categoryId ||
+          (item) =>
+              item.categoryId == categoryId ||
               state
                   .splitsFor(item.id)
                   .any((split) => split.categoryId == categoryId),

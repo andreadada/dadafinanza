@@ -31,10 +31,8 @@ class BackupPreview {
 }
 
 class BackupService {
-  BackupService(
-    this.database, {
-    AttachmentService? attachments,
-  }) : attachments = attachments ?? AttachmentService();
+  BackupService(this.database, {AttachmentService? attachments})
+    : attachments = attachments ?? AttachmentService();
 
   static const formatVersion = 1;
   final AppDatabase database;
@@ -101,7 +99,8 @@ class BackupService {
       throw const FormatException('Manifest backup non leggibile.');
     }
     final json = jsonDecode(utf8.decode(bytes));
-    if (json is! Map<String, dynamic> || json['format'] != 'DadaFinanzaBackup') {
+    if (json is! Map<String, dynamic> ||
+        json['format'] != 'DadaFinanzaBackup') {
       throw const FormatException('Manifest backup non valido.');
     }
     return BackupPreview(
@@ -119,7 +118,10 @@ class BackupService {
     await inspect(path, password: password);
     final temp = await getTemporaryDirectory();
     final extract = Directory(
-      p.join(temp.path, 'dada-restore-${DateTime.now().microsecondsSinceEpoch}'),
+      p.join(
+        temp.path,
+        'dada-restore-${DateTime.now().microsecondsSinceEpoch}',
+      ),
     );
     await extract.create(recursive: true);
     final archive = await _decode(path, password: password);
@@ -135,13 +137,18 @@ class BackupService {
     try {
       await database.restoreDatabaseFrom(restoredDb.path);
       await FinanceSchemaService(database).ensure();
-      final restoredAttachments = Directory(p.join(extract.path, 'attachments'));
+      final restoredAttachments = Directory(
+        p.join(extract.path, 'attachments'),
+      );
       await attachments.replaceDirectory(restoredAttachments);
       await _integrityCheck(database.db);
     } catch (_) {
       final safetyArchive = await _decode(safety.path);
       final safetyExtract = Directory(
-        p.join(temp.path, 'dada-safety-${DateTime.now().microsecondsSinceEpoch}'),
+        p.join(
+          temp.path,
+          'dada-safety-${DateTime.now().microsecondsSinceEpoch}',
+        ),
       );
       await safetyExtract.create(recursive: true);
       await extractArchiveToDisk(safetyArchive, safetyExtract.path);
@@ -189,7 +196,8 @@ class BackupService {
 
   Future<void> _integrityCheck(Database db) async {
     final rows = await db.rawQuery('PRAGMA integrity_check');
-    if (rows.isEmpty || rows.first.values.first.toString().toLowerCase() != 'ok') {
+    if (rows.isEmpty ||
+        rows.first.values.first.toString().toLowerCase() != 'ok') {
       throw StateError(
         'Il database ripristinato non supera il controllo integrità.',
       );

@@ -60,7 +60,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
   final picker = ImagePicker();
   final attachments = AttachmentService();
   final voice = VoiceInputService();
-  const voiceParser = VoiceTransactionParser();
+  final voiceParser = VoiceTransactionParser();
 
   late TransactionType type;
   int? accountId;
@@ -86,7 +86,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
     super.initState();
     final editing = widget.editing;
     final draft = widget.initialDraft;
-    type = editing?.type ??
+    type =
+        editing?.type ??
         draft?.type ??
         switch (widget.initialTypeName) {
           'income' => TransactionType.income,
@@ -103,7 +104,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       date = editing.date;
       includeInAnalytics = editing.includeInAnalytics;
       existingReceiptPath = editing.receiptPath;
-      expanded = editing.tags.isNotEmpty ||
+      expanded =
+          editing.tags.isNotEmpty ||
           editing.receiptPath != null ||
           !editing.includeInAnalytics;
     } else {
@@ -130,7 +132,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       _defaultsSet = true;
       _setDefaults();
       _scheduleSuggestion();
-      final shouldStartVoice = widget.startVoice || widget.initialDraft?.startVoice == true;
+      final shouldStartVoice =
+          widget.startVoice || widget.initialDraft?.startVoice == true;
       if (shouldStartVoice && !_voiceAutoStarted && widget.editing == null) {
         _voiceAutoStarted = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -171,7 +174,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
 
   List<Category> _recentCategories(AppState state) {
     if (type == TransactionType.transfer) return const [];
-    final preferred = state.categoriesFor(type).where((item) => item.isFavorite).toList();
+    final preferred = state
+        .categoriesFor(type)
+        .where((item) => item.isFavorite)
+        .toList();
     final result = <Category>[...preferred];
     final seen = preferred.map((item) => item.id).toSet();
     for (final transaction in state.transactions) {
@@ -224,7 +230,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       categoryId = categories
           .where(
             (item) =>
-                item.name.toLowerCase() == widget.initialCategoryName!.toLowerCase(),
+                item.name.toLowerCase() ==
+                widget.initialCategoryName!.toLowerCase(),
           )
           .firstOrNull
           ?.id;
@@ -241,7 +248,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
       categoryId = value == TransactionType.transfer
           ? null
           : _recentCategories(state).firstOrNull?.id ??
-              state.categoriesFor(value).firstOrNull?.id;
+                state.categoriesFor(value).firstOrNull?.id;
       final recentAccount = _recentUsableAccount(state, value);
       if (recentAccount != null) accountId = recentAccount.id;
       if (value == TransactionType.transfer) {
@@ -272,20 +279,24 @@ class _QuickAddPageState extends State<QuickAddPage> {
   }
 
   Color _suggestionColor(BuildContext context) => switch (type) {
-        TransactionType.expense => context.financeColors.negative,
-        TransactionType.income => context.financeColors.positive,
-        TransactionType.transfer => context.financeColors.neutral,
-      };
+    TransactionType.expense => context.financeColors.negative,
+    TransactionType.income => context.financeColors.positive,
+    TransactionType.transfer => context.financeColors.neutral,
+  };
 
   Future<void> _startVoice() async {
     final state = AppScope.of(context);
-    final enabled = (await state.database.getSetting('voice_enabled') ?? '1') == '1';
+    final enabled =
+        (await state.database.getSetting('voice_enabled') ?? '1') == '1';
     if (!enabled) {
-      if (mounted) _error('L’inserimento vocale è disattivato nelle Impostazioni.');
+      if (mounted)
+        _error('L’inserimento vocale è disattivato nelle Impostazioni.');
       return;
     }
     final allowSystem =
-        (await state.database.getSetting('voice_allow_system_recognizer') ?? '0') == '1';
+        (await state.database.getSetting('voice_allow_system_recognizer') ??
+            '0') ==
+        '1';
     final status = await voice.prepare(allowSystemRecognizer: allowSystem);
     if (!mounted) return;
     if (!status.available) {
@@ -299,10 +310,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       isDismissible: false,
       enableDrag: false,
       showDragHandle: true,
-      builder: (_) => _VoiceListeningSheet(
-        voice: voice,
-        onDevice: status.onDevice,
-      ),
+      builder: (_) =>
+          _VoiceListeningSheet(voice: voice, onDevice: status.onDevice),
     );
     if (!mounted || transcript == null || transcript.trim().isEmpty) return;
     if (state.haptics) HapticFeedback.lightImpact();
@@ -363,7 +372,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       }
       if (draft.categoryId != null) {
         categoryId = draft.categoryId;
-      } else if (type != TransactionType.transfer && smart?.categoryId != null) {
+      } else if (type != TransactionType.transfer &&
+          smart?.categoryId != null) {
         categoryId = smart!.categoryId;
       }
       if (draft.accountId != null) {
@@ -376,7 +386,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
       }
       if (draft.toAccountId != null) {
         toAccountId = draft.toAccountId;
-      } else if (type == TransactionType.transfer && smart?.toAccountId != null) {
+      } else if (type == TransactionType.transfer &&
+          smart?.toAccountId != null) {
         toAccountId = smart!.toAccountId;
       }
       if (draft.date != null) date = draft.date!;
@@ -389,11 +400,15 @@ class _QuickAddPageState extends State<QuickAddPage> {
       suggestion = null;
     });
 
-    final blocking = result.issues.where((issue) =>
-        issue.type == VoiceIssueType.missingAmount ||
-        issue.type == VoiceIssueType.ambiguousAmount);
+    final blocking = result.issues.where(
+      (issue) =>
+          issue.type == VoiceIssueType.missingAmount ||
+          issue.type == VoiceIssueType.ambiguousAmount,
+    );
     if (blocking.isNotEmpty) {
-      _error('${blocking.first.message} Puoi inserirlo manualmente oppure riprovare.');
+      _error(
+        '${blocking.first.message} Puoi inserirlo manualmente oppure riprovare.',
+      );
       amountFocus.requestFocus();
     }
     _scheduleSuggestion();
@@ -412,8 +427,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Quale categoria intendevi?',
-                style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Quale categoria intendevi?',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
             ...items.map(
               (item) => ListTile(
@@ -442,8 +459,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Quale conto intendevi?',
-                style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Quale conto intendevi?',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
             ...items.map(
               (item) => ListTile(
@@ -477,7 +496,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ti suggerisco', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Ti suggerisco',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -485,18 +507,20 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 current.type == TransactionType.expense
                     ? Icons.arrow_upward_rounded
                     : current.type == TransactionType.income
-                        ? Icons.arrow_downward_rounded
-                        : Icons.swap_horiz_rounded,
+                    ? Icons.arrow_downward_rounded
+                    : Icons.swap_horiz_rounded,
                 color: _suggestionColor(sheetContext),
               ),
               title: Text(current.type.label),
-              subtitle: Text([
-                if (category != null) category.name,
-                if (account != null) account.name,
-                if (destination != null) '→ ${destination.name}',
-                if (current.tags.isNotEmpty)
-                  current.tags.map((item) => '#$item').join(' '),
-              ].join(' · ')),
+              subtitle: Text(
+                [
+                  if (category != null) category.name,
+                  if (account != null) account.name,
+                  if (destination != null) '→ ${destination.name}',
+                  if (current.tags.isNotEmpty)
+                    current.tags.map((item) => '#$item').join(' '),
+                ].join(' · '),
+              ),
               trailing: current.amount == null
                   ? null
                   : Text(
@@ -622,7 +646,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 ),
                 title: Text(
                   'Rimuovi ricevuta',
-                  style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
+                  style: TextStyle(
+                    color: Theme.of(sheetContext).colorScheme.error,
+                  ),
                 ),
                 onTap: () => Navigator.pop(sheetContext, 'remove'),
               ),
@@ -638,7 +664,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
       });
       return;
     }
-    final source = choice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    final source = choice == 'camera'
+        ? ImageSource.camera
+        : ImageSource.gallery;
     final result = await picker.pickImage(
       source: source,
       imageQuality: 82,
@@ -676,13 +704,16 @@ class _QuickAddPageState extends State<QuickAddPage> {
         return _error('L’obiettivo collegato non è più disponibile.');
       }
       if (goal.linkedAccountId != toAccountId) {
-        return _error('Usa il conto collegato all’obiettivo come destinazione.');
+        return _error(
+          'Usa il conto collegato all’obiettivo come destinazione.',
+        );
       }
     }
     setState(() => saving = true);
     String? managedReceipt = receiptRemoved ? null : existingReceiptPath;
     try {
-      if (receipt != null) managedReceipt = await attachments.persist(receipt!.path);
+      if (receipt != null)
+        managedReceipt = await attachments.persist(receipt!.path);
       final editing = widget.editing;
       if (editing == null) {
         final createdId = await state.addTransaction(
@@ -722,11 +753,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
             updatedAt: DateTime.now(),
           ),
         );
-        if ((receiptRemoved || receipt != null) && existingReceiptPath != null) {
+        if ((receiptRemoved || receipt != null) &&
+            existingReceiptPath != null) {
           await attachments.delete(existingReceiptPath);
         }
       }
-      await attachments.cleanup(state.transactions.map((item) => item.receiptPath));
+      await attachments.cleanup(
+        state.transactions.map((item) => item.receiptPath),
+      );
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         final message = editing != null
@@ -750,8 +784,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
     }
   }
 
-  void _error(String message) =>
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  void _error(String message) => ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _chooseCategory() async {
     final state = AppScope.of(context);
@@ -764,7 +799,10 @@ class _QuickAddPageState extends State<QuickAddPage> {
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           shrinkWrap: true,
           children: [
-            Text('Categoria', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Categoria',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
             ...values.map(
               (category) => ListTile(
@@ -832,7 +870,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 trailing: current == state.unassignedAccount!.id
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () => Navigator.pop(sheetContext, state.unassignedAccount!.id),
+                onTap: () =>
+                    Navigator.pop(sheetContext, state.unassignedAccount!.id),
               ),
             ...options.map(
               (account) => ListTile(
@@ -886,14 +925,19 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final destination = state.accountById(toAccountId);
     final linkedGoal = widget.initialGoalId == null
         ? null
-        : state.goals.where((item) => item.id == widget.initialGoalId).firstOrNull;
+        : state.goals
+              .where((item) => item.id == widget.initialGoalId)
+              .firstOrNull;
     final recentCategories = _recentCategories(state);
-    final visibleSuggestion = widget.editing == null && suggestion?.shouldSurface == true;
+    final visibleSuggestion =
+        widget.editing == null && suggestion?.shouldSurface == true;
     final hasInitialAmount = amount.text.trim().isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.editing == null ? 'Nuovo movimento' : 'Modifica movimento'),
+        title: Text(
+          widget.editing == null ? 'Nuovo movimento' : 'Modifica movimento',
+        ),
         actions: [
           if (widget.editing == null)
             Semantics(
@@ -944,18 +988,24 @@ class _QuickAddPageState extends State<QuickAddPage> {
             ],
             Text(
               'IMPORTO',
-              style: Theme.of(context)
-                  .textTheme
-                  .labelMedium
-                  ?.copyWith(letterSpacing: 1.2),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(letterSpacing: 1.2),
             ),
             TextField(
               controller: amount,
               focusNode: amountFocus,
-              autofocus: widget.editing == null && !hasInitialAmount && !widget.startVoice,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus:
+                  widget.editing == null &&
+                  !hasInitialAmount &&
+                  !widget.startVoice,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 48),
+              style: Theme.of(
+                context,
+              ).textTheme.displaySmall?.copyWith(fontSize: 48),
               decoration: const InputDecoration(
                 hintText: '0,00',
                 suffixText: '€',
@@ -968,8 +1018,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
               child: SegmentedButton<TransactionType>(
                 showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: TransactionType.expense, label: Text('Spesa')),
-                  ButtonSegment(value: TransactionType.income, label: Text('Entrata')),
+                  ButtonSegment(
+                    value: TransactionType.expense,
+                    label: Text('Spesa'),
+                  ),
+                  ButtonSegment(
+                    value: TransactionType.income,
+                    label: Text('Entrata'),
+                  ),
                   ButtonSegment(
                     value: TransactionType.transfer,
                     label: Text('Trasferimento'),
@@ -998,9 +1054,13 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
-            if (type != TransactionType.transfer && recentCategories.isNotEmpty) ...[
+            if (type != TransactionType.transfer &&
+                recentCategories.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text('Preferite e recenti', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'Preferite e recenti',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -1013,7 +1073,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                             avatar: Icon(categoryIcon(item.iconKey), size: 17),
                             label: Text(item.name),
                             selected: categoryId == item.id,
-                            onSelected: (_) => setState(() => categoryId = item.id),
+                            onSelected: (_) =>
+                                setState(() => categoryId = item.id),
                           ),
                         ),
                       )
@@ -1099,8 +1160,12 @@ class _QuickAddPageState extends State<QuickAddPage> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() => expanded = !expanded),
-                icon: Icon(expanded ? Icons.expand_less_rounded : Icons.add_rounded),
-                label: Text(expanded ? 'Nascondi dettagli' : 'Aggiungi dettagli'),
+                icon: Icon(
+                  expanded ? Icons.expand_less_rounded : Icons.add_rounded,
+                ),
+                label: Text(
+                  expanded ? 'Nascondi dettagli' : 'Aggiungi dettagli',
+                ),
               ),
             ),
             AnimatedSize(
@@ -1137,7 +1202,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                                   .map(
                                     (value) => InputChip(
                                       label: Text('#$value'),
-                                      onDeleted: () => setState(() => tags.remove(value)),
+                                      onDeleted: () =>
+                                          setState(() => tags.remove(value)),
                                     ),
                                   )
                                   .toList(),
@@ -1159,7 +1225,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                           leading: const Icon(Icons.receipt_long_outlined),
                           title: Text(
                             !receiptRemoved &&
-                                    (receipt != null || existingReceiptPath != null)
+                                    (receipt != null ||
+                                        existingReceiptPath != null)
                                 ? 'Ricevuta allegata'
                                 : 'Aggiungi ricevuta',
                           ),
@@ -1171,7 +1238,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
                           const ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: Icon(Icons.replay_rounded),
-                            title: Text('Questo movimento è un rimborso collegato'),
+                            title: Text(
+                              'Questo movimento è un rimborso collegato',
+                            ),
                           ),
                       ],
                     )
@@ -1253,7 +1322,10 @@ class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
     );
     if (!initialized) {
       if (mounted) {
-        setState(() => error = 'Permesso microfono negato o riconoscimento non disponibile.');
+        setState(
+          () => error =
+              'Permesso microfono negato o riconoscimento non disponibile.',
+        );
       }
       return;
     }
@@ -1276,77 +1348,80 @@ class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
 
   String _friendlyError(String raw) {
     final value = raw.toLowerCase();
-    if (value.contains('permission')) return 'Il permesso microfono non è disponibile.';
-    if (value.contains('no_match')) return 'Non ho riconosciuto parole. Puoi riprovare.';
-    if (value.contains('network')) return 'Il recognizer di sistema non è disponibile offline.';
+    if (value.contains('permission'))
+      return 'Il permesso microfono non è disponibile.';
+    if (value.contains('no_match'))
+      return 'Non ho riconosciuto parole. Puoi riprovare.';
+    if (value.contains('network'))
+      return 'Il recognizer di sistema non è disponibile offline.';
     return 'Riconoscimento vocale non riuscito. Puoi riprovare.';
   }
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+    padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.mic_rounded),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    ready ? 'Ti ascolto' : 'Preparo il microfono…',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                ),
-                if (widget.onDevice)
-                  const Chip(
-                    avatar: Icon(Icons.phonelink_lock_outlined, size: 16),
-                    label: Text('Sul dispositivo'),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Semantics(
-              liveRegion: true,
-              label: partial.isEmpty ? 'In ascolto' : partial,
+            const Icon(Icons.mic_rounded),
+            const SizedBox(width: 12),
+            Expanded(
               child: Text(
-                error ?? (partial.isEmpty ? 'Parla normalmente…' : '“$partial”'),
-                style: Theme.of(context).textTheme.bodyLarge,
+                ready ? 'Ti ascolto' : 'Preparo il microfono…',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () async {
-                      await widget.voice.cancel();
-                      if (context.mounted) Navigator.pop(context);
-                    },
-                    child: const Text('Annulla'),
-                  ),
-                ),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: partial.trim().isEmpty
-                        ? null
-                        : () async {
-                            final result = partial.trim();
-                            await widget.voice.stop();
-                            if (context.mounted && !finished) {
-                              finished = true;
-                              Navigator.pop(context, result);
-                            }
-                          },
-                    child: const Text('Termina'),
-                  ),
-                ),
-              ],
+            if (widget.onDevice)
+              const Chip(
+                avatar: Icon(Icons.phonelink_lock_outlined, size: 16),
+                label: Text('Sul dispositivo'),
+              ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Semantics(
+          liveRegion: true,
+          label: partial.isEmpty ? 'In ascolto' : partial,
+          child: Text(
+            error ?? (partial.isEmpty ? 'Parla normalmente…' : '“$partial”'),
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: () async {
+                  await widget.voice.cancel();
+                  if (context.mounted) Navigator.pop(context);
+                },
+                child: const Text('Annulla'),
+              ),
+            ),
+            Expanded(
+              child: FilledButton(
+                onPressed: partial.trim().isEmpty
+                    ? null
+                    : () async {
+                        final result = partial.trim();
+                        await widget.voice.stop();
+                        if (context.mounted && !finished) {
+                          finished = true;
+                          Navigator.pop(context, result);
+                        }
+                      },
+                child: const Text('Termina'),
+              ),
             ),
           ],
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _PickerRow extends StatelessWidget {
@@ -1364,21 +1439,21 @@ class _PickerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-        contentPadding: EdgeInsets.zero,
-        minVerticalPadding: 10,
-        leading: Icon(icon),
-        title: Text(label),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 180),
-              child: Text(value, overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            const Icon(Icons.chevron_right_rounded),
-          ],
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    leading: Icon(icon),
+    title: Text(label),
+    trailing: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 180),
+          child: Text(value, overflow: TextOverflow.ellipsis),
         ),
-        onTap: onTap,
-      );
+        const SizedBox(width: 8),
+        const Icon(Icons.chevron_right_rounded),
+      ],
+    ),
+    onTap: onTap,
+  );
 }
