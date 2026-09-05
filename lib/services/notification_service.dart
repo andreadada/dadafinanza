@@ -53,23 +53,29 @@ class NotificationService {
     final forecastEnabled =
         (await state.database.getSetting('notifications_forecast')) != '0';
 
-    final signature = <Object?>[
-      recurringEnabled,
-      budgetEnabled,
-      goalEnabled,
-      forecastEnabled,
-      ...state.recurring.map(
-        (item) =>
-            '${item.id}:${item.nextDate.millisecondsSinceEpoch}:${item.enabled}:${item.amount}:${item.toAccountId}',
-      ),
-      ...state.budgets.map(
-        (item) => '${item.id}:${state.budgetProgressFor(item).toStringAsFixed(2)}'),
-      ),
-      ...state.goals.map(
-        (item) => '${item.id}:${item.currentAmount}:${item.completed}:${item.archived}'),
-      ),
-      state.endOfMonthForecast.toStringAsFixed(2),
-    ].join('|');
+    final signatureParts = <String>[
+      '$recurringEnabled',
+      '$budgetEnabled',
+      '$goalEnabled',
+      '$forecastEnabled',
+    ];
+    for (final item in state.recurring) {
+      signatureParts.add(
+        '${item.id}:${item.nextDate.millisecondsSinceEpoch}:${item.enabled}:${item.amount}:${item.toAccountId}',
+      );
+    }
+    for (final item in state.budgets) {
+      signatureParts.add(
+        '${item.id}:${state.budgetProgressFor(item).toStringAsFixed(2)}',
+      );
+    }
+    for (final item in state.goals) {
+      signatureParts.add(
+        '${item.id}:${item.currentAmount}:${item.completed}:${item.archived}',
+      );
+    }
+    signatureParts.add(state.endOfMonthForecast.toStringAsFixed(2));
+    final signature = signatureParts.join('|');
     if (_lastSignature == signature) return;
     _lastSignature = signature;
 
@@ -125,7 +131,8 @@ class NotificationService {
               ? 80
               : 0;
       final key = 'notification_budget_${budget.id}_level';
-      final previous = int.tryParse(await state.database.getSetting(key) ?? '') ?? 0;
+      final previous =
+          int.tryParse(await state.database.getSetting(key) ?? '') ?? 0;
       if (level == 0) {
         if (previous != 0) await state.database.setSetting(key, '0');
         continue;
@@ -187,7 +194,8 @@ class NotificationService {
     final threshold = double.tryParse(thresholdRaw ?? '') ?? 0;
     if (threshold <= 0 || state.endOfMonthForecast >= threshold) return;
     final month = '${DateTime.now().year}-${DateTime.now().month}';
-    if (await state.database.getSetting('notification_forecast_month') == month) {
+    if (await state.database.getSetting('notification_forecast_month') ==
+        month) {
       return;
     }
     await plugin.show(
