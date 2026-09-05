@@ -12,15 +12,18 @@ class FinanceQuickAction extends StatelessWidget {
 
   final IconData icon;
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final String? semanticLabel;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    final resolvedColor = color ?? Theme.of(context).colorScheme.onSurface;
+    final enabled = onTap != null;
+    final base = color ?? Theme.of(context).colorScheme.onSurface;
+    final resolvedColor = enabled ? base : base.withValues(alpha: .38);
     return Semantics(
       button: true,
+      enabled: enabled,
       label: semanticLabel ?? label,
       child: Tooltip(
         message: semanticLabel ?? label,
@@ -46,10 +49,10 @@ class FinanceQuickAction extends StatelessWidget {
                       maxLines: 1,
                       softWrap: false,
                       overflow: TextOverflow.visible,
-                      style: Theme.of(context)
-                          .textTheme
-                          .labelLarge
-                          ?.copyWith(color: resolvedColor, fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                            color: resolvedColor,
+                            fontWeight: FontWeight.w700,
+                          ),
                     ),
                   ),
                 ],
