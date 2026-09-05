@@ -10,7 +10,9 @@ import 'models/models.dart';
 import 'screens/polished_shell.dart';
 import 'screens/quick_add_page.dart';
 import 'services/finance_schema_service.dart';
+import 'services/security_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/app_lock_gate.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -33,6 +35,7 @@ class DadaFinanzaApp extends StatefulWidget {
 }
 
 class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
+  final security = SecurityService();
   StreamSubscription<Uri?>? _widgetSubscription;
   bool? _lastWidgetPrivacy;
 
@@ -115,7 +118,10 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
               GlobalWidgetsLocalizations.delegate,
               GlobalCupertinoLocalizations.delegate,
             ],
-            home: const PolishedRootScreen(),
+            home: AppLockGate(
+              security: security,
+              child: const PolishedRootScreen(),
+            ),
           ),
         ),
       );
