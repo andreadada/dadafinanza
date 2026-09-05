@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   const parser = VoiceTransactionParser();
-  final now = DateTime(2026, 9, 5, 12, 0);
+  final now = DateTime(2026, 9, 5, 12);
   final accounts = [
     _account(1, 'Revolut'),
     _account(2, 'Intesa'),
@@ -50,14 +50,26 @@ void main() {
     expect(result.draft.type, TransactionType.expense);
   });
 
-  test('parses word amount', () {
-    final result = parser.parse(
+  test('parses spoken euro and cents', () {
+    for (final phrase in [
       'Segna un euro e ottanta per Uscite',
+      'Segna 1 euro e 80 per Uscite',
+    ]) {
+      final result = parser.parse(
+        phrase,
+        accounts: accounts,
+        categories: categories,
+        now: now,
+      );
+      expect(result.draft.amountCents, 180, reason: phrase);
+    }
+    final twelveFifty = parser.parse(
+      'Segna 12 euro e 50 per Uscite',
       accounts: accounts,
       categories: categories,
       now: now,
     );
-    expect(result.draft.amountCents, 180);
+    expect(twelveFifty.draft.amountCents, 1250);
   });
 
   test('parses category, yesterday and account', () {
@@ -84,6 +96,19 @@ void main() {
     expect(result.draft.amountCents, 1250);
     expect(result.draft.accountId, 1);
     expect(result.draft.note, "McDonald's");
+  });
+
+  test('parses fuel category and account', () {
+    final result = parser.parse(
+      'Ho pagato 22 euro di benzina con Revolut',
+      accounts: accounts,
+      categories: categories,
+      now: now,
+    );
+    expect(result.draft.type, TransactionType.expense);
+    expect(result.draft.amountCents, 2200);
+    expect(result.draft.categoryId, 11);
+    expect(result.draft.accountId, 1);
   });
 
   test('parses income with note', () {
@@ -125,45 +150,50 @@ void main() {
     }
   });
 
-  test('ambiguous account remains unresolved', () {
+  test('similar account names are surfaced as ambiguous', () {
     final result = parser.parse(
       'Ho speso 10 euro con Revolut',
       accounts: [...accounts, _account(4, 'Revolut Business')],
       categories: categories,
       now: now,
     );
-    // Exact match Revolut wins over the longer partial name.
-    expect(result.draft.accountId, 1);
+    expect(result.draft.accountId, isNull);
+    expect(
+      result.issues.any((issue) => issue.type == VoiceIssueType.ambiguousAccount),
+      isTrue,
+    );
   });
 
-  test('ambiguous category is surfaced', () {
-    final ambiguousCategories = [
-      ...categories,
-      const Category(
-        id: 20,
-        name: 'Bar',
-        iconKey: 'food',
-        colorValue: 0xff000000,
-        type: TransactionType.expense,
-        quickOrder: null,
-      ),
-      const Category(
-        id: 21,
-        name: 'Bar e ristoranti',
-        iconKey: 'food',
-        colorValue: 0xff000000,
-        type: TransactionType.expense,
-        quickOrder: null,
-      ),
-    ];
+  test('similar category names are surfaced as ambiguous', () {
     final result = parser.parse(
       'Segna 10 euro al bar',
       accounts: accounts,
-      categories: ambiguousCategories,
+      categories: [
+        ...categories,
+        const Category(
+          id: 20,
+          name: 'Bar',
+          iconKey: 'food',
+          colorValue: 0xff000000,
+          type: TransactionType.expense,
+          quickOrder: null,
+        ),
+        const Category(
+          id: 21,
+          name: 'Bar e ristoranti',
+          iconKey: 'food',
+          colorValue: 0xff000000,
+          type: TransactionType.expense,
+          quickOrder: null,
+        ),
+      ],
       now: now,
     );
+    expect(result.draft.categoryId, isNull);
     expect(
-      result.issues.any((issue) => issue.type == VoiceIssueType.ambiguousCategory),
+      result.issues.any(
+        (issue) => issue.type == VoiceIssueType.ambiguousCategory,
+      ),
       isTrue,
     );
   });
