@@ -2,7 +2,6 @@ import 'package:dadafinanza/app_state.dart';
 import 'package:dadafinanza/data/app_database.dart';
 import 'package:dadafinanza/main.dart';
 import 'package:dadafinanza/screens/home_screen.dart';
-import 'package:dadafinanza/theme/app_theme.dart';
 import 'package:dadafinanza/widgets/ui_helpers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,14 +29,20 @@ void main() {
           AppScope(
             notifier: state,
             child: MaterialApp(
-              theme: AppTheme.light(),
-              home: const Scaffold(body: DadaHomeScreen()),
+              theme: ThemeData.light(useMaterial3: true),
+              home: Scaffold(
+                body: DadaHomeScreen(
+                  selectedAccountId: null,
+                  onAccountChanged: (_) {},
+                ),
+              ),
             ),
           ),
         );
         await tester.pump();
 
         expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
+        expect(find.text('Totale'), findsOneWidget);
         expect(find.text('PATRIMONIO'), findsOneWidget);
         expect(tester.takeException(), isNull);
 
@@ -75,8 +80,13 @@ void main() {
         child: MediaQuery(
           data: const MediaQueryData(textScaler: TextScaler.linear(1.6)),
           child: MaterialApp(
-            theme: AppTheme.dark(),
-            home: const Scaffold(body: DadaHomeScreen()),
+            theme: ThemeData.dark(useMaterial3: true),
+            home: Scaffold(
+              body: DadaHomeScreen(
+                selectedAccountId: null,
+                onAccountChanged: (_) {},
+              ),
+            ),
           ),
         ),
       ),
