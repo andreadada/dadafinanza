@@ -9,13 +9,22 @@ void main() {
       final source = await File(
         'lib/screens/quick_add_page.dart',
       ).readAsString();
-      expect(source, contains('Icons.restart_alt_rounded'));
-      expect(source, contains('Icons.close_rounded'));
-      expect(source, contains('_VoiceWaveform'));
-      expect(source, contains("const _silenceWindow = Duration(seconds: 1)"));
-      expect(source, contains("label: const Text('Usa questo')"));
-      expect(source, isNot(contains("Text('Annulla')")));
-      expect(source, isNot(contains("label: Text('Sul dispositivo')")));
+      final modalStart = source.indexOf('class _VoiceListeningSheet ');
+      final modalEnd = source.indexOf('class _VoiceWaveform ');
+      expect(modalStart, greaterThanOrEqualTo(0));
+      expect(modalEnd, greaterThan(modalStart));
+      // Quick Add also has unrelated actions, such as unlinking an advance.
+      final modalSource = source.substring(modalStart, modalEnd);
+      expect(modalSource, contains('Icons.restart_alt_rounded'));
+      expect(modalSource, contains('Icons.close_rounded'));
+      expect(modalSource, contains('_VoiceWaveform'));
+      expect(
+        modalSource,
+        contains('const _silenceWindow = Duration(seconds: 1)'),
+      );
+      expect(modalSource, contains("label: const Text('Usa questo')"));
+      expect(modalSource, isNot(contains("Text('Annulla')")));
+      expect(modalSource, isNot(contains("label: Text('Sul dispositivo')")));
     },
   );
 

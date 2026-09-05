@@ -52,35 +52,23 @@ class AdvancesScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: FlatMetric(
-                  label: 'DA RICEVERE',
-                  value: state.hideBalance
-                      ? '••••'
-                      : moneyFor(
-                          state,
-                          Money.fromCents(state.advanceReceivableCents),
-                        ),
-                  icon: Icons.call_received_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: FlatMetric(
-                  label: 'DA RESTITUIRE',
-                  value: state.hideBalance
-                      ? '••••'
-                      : moneyFor(
-                          state,
-                          Money.fromCents(state.advancePayableCents),
-                        ),
-                  icon: Icons.call_made_rounded,
-                ),
-              ),
-            ],
+          FlatMetric(
+            label: 'DA RICEVERE',
+            value: state.hideBalance
+                ? '••••'
+                : moneyFor(
+                    state,
+                    Money.fromCents(state.advanceReceivableCents),
+                  ),
+            icon: Icons.call_received_rounded,
+          ),
+          const SizedBox(height: 12),
+          FlatMetric(
+            label: 'DA RESTITUIRE',
+            value: state.hideBalance
+                ? '••••'
+                : moneyFor(state, Money.fromCents(state.advancePayableCents)),
+            icon: Icons.call_made_rounded,
           ),
           const SizedBox(height: 16),
           FlatMetric(
