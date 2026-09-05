@@ -20,13 +20,11 @@ jobs:
         with:
           channel: stable
           cache: true
-      - name: Apply backup testability patch
-        run: python tooling/patch_backup_testability.py
       - name: Resolve packages
         run: flutter pub get
       - name: Format Dart sources
         run: dart format lib test
-      - name: Commit test hardening
+      - name: Commit formatting
         run: |
           if git diff --quiet; then
             echo "No changes"
@@ -35,5 +33,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add lib test pubspec.yaml pubspec.lock
-          git commit -m "test: harden Anticipi and backup coverage"
+          git commit -m "style: format Anticipi validation"
           git push
