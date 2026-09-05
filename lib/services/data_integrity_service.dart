@@ -1,5 +1,3 @@
-import 'package:sqflite/sqflite.dart';
-
 import '../app_state.dart';
 import '../core/money.dart';
 import '../models/models.dart';
@@ -108,9 +106,9 @@ class DataIntegrityService {
               item.refundOfTransactionId == expense.id,
         )
         .fold<int>(0, (sum, item) => sum + Money.toCents(item.amount));
-    return Money.fromCents(
-      (Money.toCents(expense.amount) - refundedCents).clamp(0, 1 << 62),
-    );
+    final remaining =
+        (Money.toCents(expense.amount) - refundedCents).clamp(0, 1 << 62);
+    return Money.fromCents(remaining.toInt());
   }
 
   static void validateRefund(
@@ -173,7 +171,9 @@ class DataIntegrityService {
   }
 
   static Future<void> deleteEmptyAccount(AppState state, Account account) async {
-    if (account.isSystem) throw StateError('Il conto di sistema non è eliminabile.');
+    if (account.isSystem) {
+      throw StateError('Il conto di sistema non è eliminabile.');
+    }
     final linked = state.transactionCountForAccount(account.id);
     final recurring = state.recurring
         .where(
@@ -209,48 +209,22 @@ class DataIntegrityService {
     }
     final db = state.database.db;
     await db.transaction((txn) async {
-      await txn.update(
+      for (final table in [
         'transactions',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'transaction_splits',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'recurring',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'budgets',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'automation_rules',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'learned_patterns',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
-      await txn.update(
         'detected_recurring_patterns',
-        {'category_id': destination.id},
-        where: 'category_id = ?',
-        whereArgs: [source.id],
-      );
+      ]) {
+        await txn.update(
+          table,
+          {'category_id': destination.id},
+          where: 'category_id = ?',
+          whereArgs: [source.id],
+        );
+      }
       await txn.delete('categories', where: 'id = ?', whereArgs: [source.id]);
     });
     await state.refreshCore(includePlanning: true);
@@ -267,8 +241,7 @@ class DataIntegrityService {
       where: 'id = ?',
       whereArgs: [category.id],
     );
-    state.categories = await state.database.categories();
-    state.notifyListeners();
+    await state.refreshCore(includePlanning: true);
   }
 
   static Future<void> setQuickSlots(
@@ -286,8 +259,6 @@ class DataIntegrityService {
         );
       }
     });
-    state.categories = await state.database.categories();
-    state.notifyListeners();
-    await state.syncWidget();
+    await state.refreshCore(includePlanning: true);
   }
 }
