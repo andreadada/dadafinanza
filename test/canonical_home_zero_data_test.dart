@@ -16,7 +16,7 @@ void main() {
     Size(390, 844),
     Size(430, 932),
   ]) {
-    testWidgets('zero-data Home stays compact at ${size.width}dp', (
+    testWidgets('zero-data Home keeps the account empty state compact at ${size.width}dp', (
       tester,
     ) async {
       tester.view.physicalSize = size;
@@ -36,12 +36,22 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Nessun conto'), findsOneWidget);
       expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
       expect(find.text('PATRIMONIO'), findsOneWidget);
       expect(tester.takeException(), isNull);
-      final offset = tester.getTopLeft(find.text('Nessun conto'));
-      expect(offset.dy, lessThan(size.height * .9));
+
+      await tester.scrollUntilVisible(
+        find.text('Nessun conto'),
+        240,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump();
+
+      expect(find.text('Nessun conto'), findsOneWidget);
+      final sectionTop = tester.getTopLeft(find.text('Conti')).dy;
+      final emptyTop = tester.getTopLeft(find.text('Nessun conto')).dy;
+      expect(emptyTop - sectionTop, lessThan(260));
+      expect(tester.takeException(), isNull);
     });
   }
 
@@ -66,8 +76,15 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Nessun conto'), findsOneWidget);
+
     expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Nessun conto'),
+      240,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pump();
+    expect(find.text('Nessun conto'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
