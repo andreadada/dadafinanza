@@ -56,11 +56,18 @@ class AccountManagementScreen extends StatelessWidget {
               ),
             )
           else
-            ...state.activeAccounts.map((account) => _AccountTile(account: account)),
+            ...state.activeAccounts.map(
+              (account) => _AccountTile(account: account),
+            ),
           if (state.archivedAccounts.isNotEmpty) ...[
             const SizedBox(height: 32),
-            SectionTitle('Archiviati', trailing: Text('${state.archivedAccounts.length}')),
-            ...state.archivedAccounts.map((account) => _AccountTile(account: account)),
+            SectionTitle(
+              'Archiviati',
+              trailing: Text('${state.archivedAccounts.length}'),
+            ),
+            ...state.archivedAccounts.map(
+              (account) => _AccountTile(account: account),
+            ),
           ],
         ],
       ),
@@ -78,8 +85,14 @@ class _AccountTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       minVerticalPadding: 12,
-      leading: Icon(accountIcon(account.iconKey), color: Color(account.colorValue)),
-      title: Text(account.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+      leading: Icon(
+        accountIcon(account.iconKey),
+        color: Color(account.colorValue),
+      ),
+      title: Text(
+        account.name,
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
       subtitle: Text(
         [
           account.accountType.label,
@@ -89,7 +102,9 @@ class _AccountTile extends StatelessWidget {
         ].join(' · '),
       ),
       trailing: Text(
-        state.hideBalance || account.hideBalance ? '••••' : moneyFor(state, account.balance),
+        state.hideBalance || account.hideBalance
+            ? '••••'
+            : moneyFor(state, account.balance),
         style: const TextStyle(fontWeight: FontWeight.w800),
       ),
       onTap: () => Navigator.push(
@@ -114,11 +129,20 @@ class SafeAccountDetailScreen extends StatelessWidget {
       return const Scaffold(body: Center(child: Text('Conto non trovato')));
     }
     final transactions = state.transactions
-        .where((item) => item.accountId == account.id || item.toAccountId == account.id)
+        .where(
+          (item) =>
+              item.accountId == account.id || item.toAccountId == account.id,
+        )
         .toList();
     final recent = transactions.take(8).toList();
-    final income = state.accountMonthTotal(account.id, TransactionType.income);
-    final expense = state.accountMonthTotal(account.id, TransactionType.expense);
+    final income = state.accountMonthTotal(
+      account.id,
+      TransactionType.income,
+    );
+    final expense = state.accountMonthTotal(
+      account.id,
+      TransactionType.expense,
+    );
     return Scaffold(
       appBar: AppBar(
         title: Text(account.name),
@@ -134,7 +158,9 @@ class SafeAccountDetailScreen extends StatelessWidget {
                 await _export(context, state, account);
               } else if (value == 'archive') {
                 if (account.isArchived) {
-                  await state.updateAccount(account.copyWith(isArchived: false));
+                  await state.updateAccount(
+                    account.copyWith(isArchived: false),
+                  );
                 } else {
                   await DataIntegrityService.archiveAccount(state, account);
                 }
@@ -143,15 +169,29 @@ class SafeAccountDetailScreen extends StatelessWidget {
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'edit', child: Text('Modifica dettagli')),
+              const PopupMenuItem(
+                value: 'edit',
+                child: Text('Modifica dettagli'),
+              ),
               if (!account.isArchived && !account.isLocked)
-                const PopupMenuItem(value: 'reconcile', child: Text('Riconcilia saldo')),
-              const PopupMenuItem(value: 'export', child: Text('Esporta movimenti CSV')),
+                const PopupMenuItem(
+                  value: 'reconcile',
+                  child: Text('Riconcilia saldo'),
+                ),
+              const PopupMenuItem(
+                value: 'export',
+                child: Text('Esporta movimenti CSV'),
+              ),
               PopupMenuItem(
                 value: 'archive',
-                child: Text(account.isArchived ? 'Ripristina conto' : 'Archivia conto'),
+                child: Text(
+                  account.isArchived ? 'Ripristina conto' : 'Archivia conto',
+                ),
               ),
-              const PopupMenuItem(value: 'delete', child: Text('Elimina se vuoto')),
+              const PopupMenuItem(
+                value: 'delete',
+                child: Text('Elimina se vuoto'),
+              ),
             ],
           ),
         ],
@@ -159,10 +199,15 @@ class SafeAccountDetailScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
-          Text(account.accountType.label, style: Theme.of(context).textTheme.bodyMedium),
+          Text(
+            account.accountType.label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
           const SizedBox(height: 4),
           Text(
-            state.hideBalance || account.hideBalance ? '••••••' : moneyFor(state, account.balance),
+            state.hideBalance || account.hideBalance
+                ? '••••••'
+                : moneyFor(state, account.balance),
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 6),
@@ -173,7 +218,8 @@ class SafeAccountDetailScreen extends StatelessWidget {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),
-          if (transactions.length >= 2) _AccountTrend(account: account, items: transactions),
+          if (transactions.length >= 2)
+            _AccountTrend(account: account, items: transactions),
           if (!account.isArchived) ...[
             const SizedBox(height: 24),
             Row(
@@ -185,7 +231,11 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     semanticLabel: 'Nuova spesa da ${account.name}',
                     onTap: account.isLocked
                         ? null
-                        : () => _openQuick(context, account, TransactionType.expense),
+                        : () => _openQuick(
+                              context,
+                              account,
+                              TransactionType.expense,
+                            ),
                   ),
                 ),
                 Expanded(
@@ -195,7 +245,11 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     semanticLabel: 'Nuova entrata su ${account.name}',
                     onTap: account.isLocked
                         ? null
-                        : () => _openQuick(context, account, TransactionType.income),
+                        : () => _openQuick(
+                              context,
+                              account,
+                              TransactionType.income,
+                            ),
                   ),
                 ),
                 Expanded(
@@ -205,7 +259,11 @@ class SafeAccountDetailScreen extends StatelessWidget {
                     semanticLabel: 'Nuovo trasferimento da ${account.name}',
                     onTap: account.isLocked
                         ? null
-                        : () => _openQuick(context, account, TransactionType.transfer),
+                        : () => _openQuick(
+                              context,
+                              account,
+                              TransactionType.transfer,
+                            ),
                   ),
                 ),
               ],
@@ -233,7 +291,10 @@ class SafeAccountDetailScreen extends StatelessWidget {
             icon: Icons.compare_arrows_rounded,
           ),
           const SizedBox(height: 28),
-          SectionTitle('Movimenti recenti', trailing: Text('${transactions.length}')),
+          SectionTitle(
+            'Movimenti recenti',
+            trailing: Text('${transactions.length}'),
+          ),
           if (recent.isEmpty)
             const Text('Nessun movimento')
           else
@@ -243,7 +304,11 @@ class SafeAccountDetailScreen extends StatelessWidget {
     );
   }
 
-  void _openQuick(BuildContext context, Account account, TransactionType type) {
+  void _openQuick(
+    BuildContext context,
+    Account account,
+    TransactionType type,
+  ) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -260,7 +325,9 @@ class SafeAccountDetailScreen extends StatelessWidget {
     AppState state,
     Account account,
   ) async {
-    final controller = TextEditingController(text: account.balance.toStringAsFixed(2));
+    final controller = TextEditingController(
+      text: account.balance.toStringAsFixed(2),
+    );
     final actual = await showModalBottomSheet<double>(
       context: context,
       isScrollControlled: true,
@@ -277,22 +344,33 @@ class SafeAccountDetailScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Riconcilia saldo', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Riconcilia saldo',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 8),
             Text('Saldo DadaFinanza: ${moneyFor(state, account.balance)}'),
             const SizedBox(height: 12),
             TextField(
               controller: controller,
               autofocus: true,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
-              decoration: const InputDecoration(labelText: 'Saldo reale', suffixText: '€'),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
+              decoration: const InputDecoration(
+                labelText: 'Saldo reale',
+                suffixText: '€',
+              ),
             ),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               child: FilledButton(
                 onPressed: () {
-                  final value = double.tryParse(controller.text.replaceAll(',', '.'));
+                  final value = double.tryParse(
+                    controller.text.replaceAll(',', '.'),
+                  );
                   if (value != null) Navigator.pop(sheetContext, value);
                 },
                 child: const Text('Continua'),
@@ -340,7 +418,8 @@ class SafeAccountDetailScreen extends StatelessWidget {
   ) async {
     if (state.transactionCountForAccount(account.id) > 0 ||
         state.recurring.any(
-          (item) => item.accountId == account.id || item.toAccountId == account.id,
+          (item) =>
+              item.accountId == account.id || item.toAccountId == account.id,
         )) {
       await showDialog<void>(
         context: context,
@@ -382,9 +461,10 @@ class SafeAccountDetailScreen extends StatelessWidget {
     Account account,
   ) async {
     final csv = const CsvService().export(state, accountId: account.id);
-    final output = await FilePicker.platform.saveFile(
+    final output = await FilePicker.saveFile(
       dialogTitle: 'Esporta ${account.name}',
-      fileName: '${account.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '-')}.csv',
+      fileName:
+          '${account.name.replaceAll(RegExp(r'[^A-Za-z0-9_-]+'), '-')}.csv',
       type: FileType.custom,
       allowedExtensions: const ['csv'],
       bytes: Uint8List.fromList(utf8.encode(csv)),
@@ -425,27 +505,39 @@ class SafeAccountDetailScreen extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Modifica conto', style: Theme.of(sheetContext).textTheme.titleLarge),
-                TextField(controller: name, decoration: const InputDecoration(labelText: 'Nome')),
-                TextField(controller: note, decoration: const InputDecoration(labelText: 'Nota opzionale')),
+                Text(
+                  'Modifica conto',
+                  style: Theme.of(sheetContext).textTheme.titleLarge,
+                ),
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Nome'),
+                ),
+                TextField(
+                  controller: note,
+                  decoration: const InputDecoration(labelText: 'Nota opzionale'),
+                ),
                 const SizedBox(height: 16),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Includi nel patrimonio'),
                   value: includeInTotal,
-                  onChanged: (value) => setSheetState(() => includeInTotal = value),
+                  onChanged: (value) =>
+                      setSheetState(() => includeInTotal = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Includi nelle statistiche'),
                   value: includeInAnalytics,
-                  onChanged: (value) => setSheetState(() => includeInAnalytics = value),
+                  onChanged: (value) =>
+                      setSheetState(() => includeInAnalytics = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Nascondi saldo'),
                   value: hideBalance,
-                  onChanged: (value) => setSheetState(() => hideBalance = value),
+                  onChanged: (value) =>
+                      setSheetState(() => hideBalance = value),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -462,14 +554,17 @@ class SafeAccountDetailScreen extends StatelessWidget {
                       await state.updateAccount(
                         account.copyWith(
                           name: name.text.trim(),
-                          note: note.text.trim().isEmpty ? null : note.text.trim(),
+                          note:
+                              note.text.trim().isEmpty ? null : note.text.trim(),
                           includeInTotal: includeInTotal,
                           includeInAnalytics: includeInAnalytics,
                           hideBalance: hideBalance,
                           isLocked: locked,
                         ),
                       );
-                      if (sheetContext.mounted) Navigator.pop(sheetContext);
+                      if (sheetContext.mounted) {
+                        Navigator.pop(sheetContext);
+                      }
                     },
                     child: const Text('Salva modifiche'),
                   ),
@@ -504,7 +599,8 @@ class _AccountTrend extends StatelessWidget {
           TransactionType.transfer => -item.amount,
         };
       }
-      if (item.type == TransactionType.transfer && item.toAccountId == account.id) {
+      if (item.type == TransactionType.transfer &&
+          item.toAccountId == account.id) {
         value += item.amount;
       }
       spots.add(FlSpot((index + 1).toDouble(), value));
