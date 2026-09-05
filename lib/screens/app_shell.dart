@@ -7,6 +7,7 @@ import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'canonical_shell.dart';
+import 'home_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
 import 'root_screen.dart' show TransactionsScreen;
@@ -28,7 +29,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
   @override
   Widget build(BuildContext context) {
     const pages = [
-      CanonicalHomeScreen(),
+      DadaHomeScreen(),
       TransactionsScreen(),
       CanonicalAnalyticsScreen(),
       PlanningScreen(),
