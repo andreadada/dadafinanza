@@ -1,6 +1,5 @@
 from pathlib import Path
 
-# Repair the one-time integration script against the actual canonical files.
 path = Path('tooling/apply_anticipi_ui_patch.py')
 text = path.read_text()
 text = text.replace(
@@ -25,25 +24,25 @@ text = text.replace(
 )
 text = text.replace('_InsightLine(insight: insight)', '_InsightRow(insight: insight)')
 
-# The original transaction detail patch was authored against an older list-tile
-# implementation. Keep the broader UI integration deterministic and apply the
-# transaction detail enrichment in a dedicated follow-up patch against the
-# current file instead of relying on stale anchors.
-start_marker = '# Transaction rows/details -------------------------------------------------------'
-end_marker = '# Settings ----------------------------------------------------------------------'
-start = text.find(start_marker)
-end = text.find(end_marker)
-if start != -1 and end != -1 and start < end:
-    text = (
-        text[:start]
-        + '# Transaction rows/details are finalized by tooling/finalize_anticipi.py\n\n\n'
-        + text[end:]
-    )
+# Stale sections are applied against current files by the finalizer.
+for start_marker, end_marker, replacement in [
+    (
+        '# Transaction rows/details -------------------------------------------------------',
+        '# Settings ----------------------------------------------------------------------',
+        '# Transaction rows/details are finalized by tooling/finalize_anticipi.py\n\n\n',
+    ),
+    (
+        '# Backup manifest counts ---------------------------------------------------------',
+        "print('Anticipi UI patch applied.')",
+        '# Backup manifest counts are finalized by tooling/finalize_anticipi.py\n\n',
+    ),
+]:
+    start = text.find(start_marker)
+    end = text.find(end_marker)
+    if start != -1 and end != -1 and start < end:
+        text = text[:start] + replacement + text[end:]
 path.write_text(text)
 
-# Remove a temporary local extension that clashes with the project's shared
-# firstOrNull extension, and an import that became redundant during the core
-# implementation. This keeps the branch analyzable before/after the UI patch.
 advance_path = Path('lib/screens/advances_screen.dart')
 advance = advance_path.read_text()
 advance = advance.replace("import '../app_state.dart';\n", '', 1)
