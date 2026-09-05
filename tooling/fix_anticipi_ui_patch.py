@@ -10,30 +10,20 @@ text = text.replace(
 )
 text = text.replace(
     "s = replace_once(s, \"import 'account_screens.dart';\", \"import 'account_screens.dart';\\nimport 'advances_screen.dart';\", 'home advances import')",
-    "s = replace_once(s, \"import 'account_screens.dart' show showAccountEditor;\", \"import 'account_screens.dart' show showAccountEditor;\\nimport 'advances_screen.dart';\", 'home advances import')",
+    "s = replace_once(s, \"import 'account_screens.dart' show showAccountEditor;\", \"import '../core/money.dart';\\nimport 'account_screens.dart' show showAccountEditor;\\nimport 'advances_screen.dart';\", 'home advances import')",
     1,
 )
-old_choice = '''    if (choice is QuickPreset) {
-      await _openQuick(choice.type, preset: choice);
-    } else if (choice is TransactionType) {
-      await _openQuick(choice);
-    }
-'''
-new_choice = '''    if (choice == 'advance') {
-      await showAdvanceEditor(context);
-    } else if (choice is QuickPreset) {
-      await _open(choice.type, preset: choice);
-    } else if (choice is TransactionType) {
-      await _open(choice);
-    } else if (choice is _VoiceChoice) {
-      await _open(TransactionType.expense, voice: true);
-    }
-'''
 text = text.replace(
     "s = replace_once(\n    s,\n    '''    if (choice is QuickPreset) {\n      await _openQuick(choice.type, preset: choice);\n    } else if (choice is TransactionType) {\n      await _openQuick(choice);\n    }\n''',\n    '''    if (choice == 'advance') {\n      await showAdvanceEditor(context);\n    } else if (choice is QuickPreset) {\n      await _openQuick(choice.type, preset: choice);\n    } else if (choice is TransactionType) {\n      await _openQuick(choice);\n    }\n''',\n    'app shell choice',\n)",
     "s = replace_once(\n    s,\n    '''    if (choice is QuickPreset) {\n      await _open(choice.type, preset: choice);\n    } else if (choice is TransactionType) {\n      await _open(choice);\n    } else if (choice is _VoiceChoice) {\n      await _open(TransactionType.expense, voice: true);\n    }\n''',\n    '''    if (choice == 'advance') {\n      await showAdvanceEditor(context);\n    } else if (choice is QuickPreset) {\n      await _open(choice.type, preset: choice);\n    } else if (choice is TransactionType) {\n      await _open(choice);\n    } else if (choice is _VoiceChoice) {\n      await _open(TransactionType.expense, voice: true);\n    }\n''',\n    'app shell choice',\n)",
     1,
 )
+text = text.replace(
+    "old_insight = '''          if (_smartInsight(state) case final insight?) ...[\n            const SizedBox(height: 28),\n            const SectionTitle('Per te'),\n            _InsightLine(insight: insight),\n          ],\n'''",
+    "old_insight = '''              if (insight != null) ...[\n                const SizedBox(height: 32),\n                const SectionTitle('Per te'),\n                _InsightRow(insight: insight),\n              ],\n'''",
+    1,
+)
+text = text.replace('_InsightLine(insight: insight)', '_InsightRow(insight: insight)')
 path.write_text(text)
 
 # Remove a temporary local extension that clashes with the project's shared
