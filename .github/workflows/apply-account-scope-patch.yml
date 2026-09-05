@@ -1,0 +1,49 @@
+name: Apply account scope patch
+
+on:
+  push:
+    branches:
+      - build/account-scope-expert-transactions
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-account-scope-patch
+  cancel-in-progress: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/account-scope-expert-transactions
+      - name: Route account editing through the full editor
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('lib/screens/account_management_screen.dart')
+          text = path.read_text()
+          old = "await _editMetadata(context, state, account);"
+          new = "await showAccountEditor(context, existing: account);"
+          if old in text:
+              text = text.replace(old, new)
+          marker = "  Future<void> _editMetadata("
+          if marker in text:
+              start = text.index(marker)
+              end = text.index("\n}\n\nclass _AccountTrend", start)
+              text = text[:start] + text[end:]
+          path.write_text(text)
+          PY
+      - name: Commit patch when needed
+        run: |
+          if git diff --quiet; then
+            echo "Patch already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/screens/account_management_screen.dart
+          git commit -m "fix: allow editing account icon after creation"
+          git push origin HEAD:build/account-scope-expert-transactions
