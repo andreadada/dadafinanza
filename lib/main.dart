@@ -11,6 +11,7 @@ import 'screens/canonical_shell.dart';
 import 'screens/quick_add_page.dart';
 import 'services/finance_schema_service.dart';
 import 'services/notification_service.dart';
+import 'services/recurring_execution_service.dart';
 import 'services/security_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lock_gate.dart';
@@ -22,6 +23,7 @@ Future<void> main() async {
   final database = AppDatabase();
   await database.init();
   await FinanceSchemaService(database).ensure();
+  await const RecurringExecutionService().processDue(database);
   final state = AppState(database);
   await state.load();
   runApp(DadaFinanzaApp(state: state));
