@@ -19,6 +19,9 @@ class BackupPreview {
     required this.categories,
     required this.attachments,
     required this.encrypted,
+    this.people = 0,
+    this.advances = 0,
+    this.advanceSettlements = 0,
   });
 
   final DateTime createdAt;
@@ -27,6 +30,9 @@ class BackupPreview {
   final int transactions;
   final int categories;
   final int attachments;
+  final int people;
+  final int advances;
+  final int advanceSettlements;
   final bool encrypted;
 }
 
@@ -57,6 +63,9 @@ class BackupService {
       'accounts': await _count(database.db, 'accounts', 'is_system = 0'),
       'transactions': await _count(database.db, 'transactions'),
       'categories': await _count(database.db, 'categories'),
+      'people': await _count(database.db, 'finance_people'),
+      'advances': await _count(database.db, 'advances'),
+      'advanceSettlements': await _count(database.db, 'advance_settlements'),
       'attachments': attachmentFiles.length,
       'encrypted': password?.isNotEmpty == true,
     };
@@ -109,6 +118,9 @@ class BackupService {
       accounts: (json['accounts'] as num?)?.toInt() ?? 0,
       transactions: (json['transactions'] as num?)?.toInt() ?? 0,
       categories: (json['categories'] as num?)?.toInt() ?? 0,
+      people: (json['people'] as num?)?.toInt() ?? 0,
+      advances: (json['advances'] as num?)?.toInt() ?? 0,
+      advanceSettlements: (json['advanceSettlements'] as num?)?.toInt() ?? 0,
       attachments: (json['attachments'] as num?)?.toInt() ?? 0,
       encrypted: json['encrypted'] == true,
     );
