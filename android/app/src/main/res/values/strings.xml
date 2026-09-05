@@ -3,8 +3,10 @@
     <string name="app_name">DadaFinanza</string>
     <string name="widget_summary_name">DadaFinanza · Riepilogo</string>
     <string name="widget_balance_name">DadaFinanza · Saldo</string>
-    <string name="widget_quick_name">DadaFinanza · Quick Add</string>
-    <string name="widget_description">Saldo e categorie rapide per registrare una spesa</string>
+    <string name="widget_quick_name">DadaFinanza · Quick Capture</string>
+    <string name="widget_amounts_name">DadaFinanza · Importi rapidi</string>
+    <string name="widget_description">Saldo e categorie rapide per registrare un movimento</string>
     <string name="widget_balance_description">Saldo totale compatto con accesso rapido a DadaFinanza</string>
-    <string name="widget_quick_description">Spesa, entrata e trasferimento direttamente dalla schermata Home</string>
+    <string name="widget_quick_description">Spesa, entrata, trasferimento e voce dalla schermata Home</string>
+    <string name="widget_amounts_description">Conto, categoria e quattro importi configurabili con accesso vocale</string>
 </resources>
