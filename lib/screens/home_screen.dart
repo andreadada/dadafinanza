@@ -106,10 +106,8 @@ class DadaHomeScreen extends StatelessWidget {
               if (state.userAccounts.isEmpty) ...[
                 _SetupBlock(
                   onAccount: () => showAccountEditor(context),
-                  onMovement: () => _openQuick(
-                    context,
-                    TransactionType.expense,
-                  ),
+                  onMovement: () =>
+                      _openQuick(context, TransactionType.expense),
                 ),
                 const SizedBox(height: 32),
               ],
@@ -166,10 +164,7 @@ class DadaHomeScreen extends StatelessWidget {
                       icon: Icons.arrow_upward_rounded,
                       label: 'Spesa',
                       color: context.financeColors.negative,
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.expense,
-                      ),
+                      onTap: () => _openQuick(context, TransactionType.expense),
                     ),
                   ),
                   Expanded(
@@ -177,20 +172,15 @@ class DadaHomeScreen extends StatelessWidget {
                       icon: Icons.arrow_downward_rounded,
                       label: 'Entrata',
                       color: context.financeColors.positive,
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.income,
-                      ),
+                      onTap: () => _openQuick(context, TransactionType.income),
                     ),
                   ),
                   Expanded(
                     child: FinanceQuickAction(
                       icon: Icons.swap_horiz_rounded,
                       label: 'Trasferisci',
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.transfer,
-                      ),
+                      onTap: () =>
+                          _openQuick(context, TransactionType.transfer),
                     ),
                   ),
                 ],
@@ -292,28 +282,37 @@ class DadaHomeScreen extends StatelessWidget {
                   ),
                 )
               else
-                ...upcoming.take(3).map(
-                  (item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    minVerticalPadding: 10,
-                    leading: Icon(
-                      Icons.repeat_rounded,
-                      color: transactionColor(context, item.type),
+                ...upcoming
+                    .take(3)
+                    .map(
+                      (item) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minVerticalPadding: 10,
+                        leading: Icon(
+                          Icons.repeat_rounded,
+                          color: transactionColor(context, item.type),
+                        ),
+                        title: Text(item.name),
+                        subtitle: Text(
+                          DateFormat(
+                            'EEE d MMM',
+                            'it_IT',
+                          ).format(item.nextDate),
+                        ),
+                        trailing: Text(
+                          state.hideBalance
+                              ? '••••'
+                              : moneyFor(state, item.amount),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RecurringScreen(),
+                          ),
+                        ),
+                      ),
                     ),
-                    title: Text(item.name),
-                    subtitle: Text(
-                      DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
-                    ),
-                    trailing: Text(
-                      state.hideBalance ? '••••' : moneyFor(state, item.amount),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const RecurringScreen()),
-                    ),
-                  ),
-                ),
               if (extraWidgets.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 const SectionTitle('Riepilogo'),
@@ -335,9 +334,8 @@ class DadaHomeScreen extends StatelessWidget {
     final enabled = state.budgets.where((item) => item.enabled).toList();
     if (enabled.isEmpty) return null;
     enabled.sort(
-      (a, b) => state
-          .budgetProgressFor(b)
-          .compareTo(state.budgetProgressFor(a)),
+      (a, b) =>
+          state.budgetProgressFor(b).compareTo(state.budgetProgressFor(a)),
     );
     return enabled.first;
   }
@@ -382,10 +380,7 @@ class DadaHomeScreen extends StatelessWidget {
     return null;
   }
 
-  Future<void> _openQuick(
-    BuildContext context,
-    TransactionType type,
-  ) async {
+  Future<void> _openQuick(BuildContext context, TransactionType type) async {
     final state = AppScope.of(context);
     final key = switch (type) {
       TransactionType.expense => 'preferred_expense_account',
