@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../app_state.dart';
 import '../main.dart';
+import '../models/models.dart';
 import '../services/backup_service.dart';
 import '../services/csv_service.dart';
 import '../widgets/ui_helpers.dart';
@@ -47,7 +48,7 @@ class DataManagementScreen extends StatelessWidget {
           _Action(
             icon: Icons.file_upload_outlined,
             title: 'Importa movimenti',
-            subtitle: 'Preview, mapping dei dati mancanti e duplicati.',
+            subtitle: 'Anteprima, mapping dei dati mancanti e duplicati.',
             onTap: () => _importCsv(context, state),
           ),
           const SizedBox(height: 32),
@@ -89,14 +90,13 @@ class DataManagementScreen extends StatelessWidget {
       final file = await BackupService(state.database).create(
         password: password?.isEmpty == true ? null : password,
       );
-      final bytes = await file.readAsBytes();
-      final output = await FilePicker.platform.saveFile(
+      final output = await FilePicker.saveFile(
         dialogTitle: 'Salva backup DadaFinanza',
         fileName:
             'DadaFinanzaBackup-${DateFormat('yyyy-MM-dd-HHmm').format(DateTime.now())}.zip',
         type: FileType.custom,
         allowedExtensions: const ['zip'],
-        bytes: bytes,
+        bytes: await file.readAsBytes(),
       );
       if (await file.exists()) await file.delete();
       if (context.mounted && output != null) {
@@ -110,14 +110,12 @@ class DataManagementScreen extends StatelessWidget {
   }
 
   Future<void> _restoreBackup(BuildContext context, AppState state) async {
-    final picked = await FilePicker.platform.pickFiles(
+    final selected = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['zip'],
-      withData: true,
     );
-    final selected = picked?.files.single;
     if (selected == null) return;
-    final source = await _materialize(selected);
+    final source = await _materialize(selected, extension: '.zip');
     final service = BackupService(state.database);
     String? password;
     BackupPreview preview;
@@ -150,7 +148,7 @@ class DataManagementScreen extends StatelessWidget {
     }
     try {
       await service.restore(source.path, password: password);
-      await state.restoreDatabaseFrom(await state.database.databaseFilePath());
+      await state.load();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Backup ripristinato e verificato.')),
@@ -177,9 +175,15 @@ class DataManagementScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Contenuto backup', style: Theme.of(sheetContext).textTheme.titleLarge),
+            Text(
+              'Contenuto backup',
+              style: Theme.of(sheetContext).textTheme.titleLarge,
+            ),
             const SizedBox(height: 16),
-            _PreviewLine('Creato', DateFormat('dd/MM/yyyy HH:mm').format(preview.createdAt)),
+            _PreviewLine(
+              'Creato',
+              DateFormat('dd/MM/yyyy HH:mm').format(preview.createdAt),
+            ),
             _PreviewLine('Schema', 'v${preview.schemaVersion}'),
             _PreviewLine('Conti', '${preview.accounts}'),
             _PreviewLine('Movimenti', '${preview.transactions}'),
@@ -216,7 +220,7 @@ class DataManagementScreen extends StatelessWidget {
   Future<void> _exportCsv(BuildContext context, AppState state) async {
     try {
       final csv = const CsvService().export(state);
-      final output = await FilePicker.platform.saveFile(
+      final output = await FilePicker.saveFile(
         dialogTitle: 'Esporta movimenti',
         fileName:
             'dadafinanza-${DateFormat('yyyy-MM-dd').format(DateTime.now())}.csv',
@@ -235,18 +239,16 @@ class DataManagementScreen extends StatelessWidget {
   }
 
   Future<void> _importCsv(BuildContext context, AppState state) async {
-    final result = await FilePicker.platform.pickFiles(
+    final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: const ['csv'],
-      withData: true,
     );
-    final file = result?.files.single;
     if (file == null) return;
     try {
-      final bytes = file.bytes ??
-          (file.path == null ? null : await File(file.path!).readAsBytes());
-      if (bytes == null) throw StateError('File non leggibile.');
-      final preview = const CsvService().preview(state, utf8.decode(bytes));
+      final preview = const CsvService().preview(
+        state,
+        utf8.decode(await file.readAsBytes()),
+      );
       if (!context.mounted) return;
       await Navigator.push(
         context,
@@ -276,13 +278,15 @@ class DataManagementScreen extends StatelessWidget {
     }
   }
 
-  Future<File> _materialize(PlatformFile selected) async {
+  Future<File> _materialize(
+    PlatformFile selected, {
+    required String extension,
+  }) async {
     if (selected.path != null) return File(selected.path!);
-    final temp = Directory.systemTemp;
     final file = File(
-      '${temp.path}/dada-restore-${DateTime.now().microsecondsSinceEpoch}.zip',
+      '${Directory.systemTemp.path}/dada-import-${DateTime.now().microsecondsSinceEpoch}$extension',
     );
-    await file.writeAsBytes(selected.bytes ?? const [], flush: true);
+    await file.writeAsBytes(await selected.readAsBytes(), flush: true);
     return file;
   }
 
@@ -371,7 +375,8 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
             const SizedBox(height: 12),
             ...widget.preview.rows.take(3).map(
                   (row) => FlatMetric(
-                    label: '${row.account} · ${row.category ?? row.type.label}',
+                    label:
+                        '${row.account} · ${row.category ?? row.type.label}',
                     value: moneyFor(state, row.amount),
                     icon: row.duplicate
                         ? Icons.content_copy_rounded
@@ -387,7 +392,8 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
                 name: name,
                 value: accountActions[name]!,
                 account: true,
-                onChanged: (value) => setState(() => accountActions[name] = value),
+                onChanged: (value) =>
+                    setState(() => accountActions[name] = value),
               ),
             ),
           ],
@@ -399,7 +405,8 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
                 name: name,
                 value: categoryActions[name]!,
                 account: false,
-                onChanged: (value) => setState(() => categoryActions[name] = value),
+                onChanged: (value) =>
+                    setState(() => categoryActions[name] = value),
               ),
             ),
           ],
@@ -408,7 +415,9 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: const Text('Ignora possibili duplicati'),
-              subtitle: Text('${widget.preview.duplicates} righe corrispondono allo storico esistente.'),
+              subtitle: Text(
+                '${widget.preview.duplicates} righe corrispondono allo storico esistente.',
+              ),
               value: skipDuplicates,
               onChanged: (value) => setState(() => skipDuplicates = value),
             ),
@@ -425,7 +434,9 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
               onPressed: importing || widget.preview.rows.isEmpty
                   ? null
                   : () => _import(state),
-              child: Text(importing ? 'Importazione…' : 'Conferma importazione'),
+              child: Text(
+                importing ? 'Importazione…' : 'Conferma importazione',
+              ),
             ),
           ),
         ],
@@ -446,8 +457,9 @@ class _CsvImportWizardState extends State<CsvImportWizard> {
         ),
       );
       if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
+      messenger.showSnackBar(
         SnackBar(content: Text('$count movimenti importati.')),
       );
     } catch (error) {
