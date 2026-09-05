@@ -1,35 +1,49 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../app_state.dart';
+import '../core/money.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../models/quick_capture_models.dart';
 import '../models/smart_models.dart';
+import '../services/attachment_service.dart';
 import '../services/goal_ledger_service.dart';
+import '../services/voice_input_service.dart';
+import '../services/voice_transaction_parser.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_screens.dart';
 
 class QuickAddPage extends StatefulWidget {
   const QuickAddPage({
+    this.initialDraft,
     this.initialCategoryName,
     this.initialTypeName,
     this.initialAccountId,
     this.initialToAccountId,
     this.initialAmount,
+    this.initialNote,
+    this.initialDate,
+    this.startVoice = false,
     this.initialGoalId,
     this.editing,
     this.refundOfTransactionId,
     super.key,
   });
 
+  final TransactionDraft? initialDraft;
   final String? initialCategoryName;
   final String? initialTypeName;
   final int? initialAccountId;
   final int? initialToAccountId;
   final double? initialAmount;
+  final String? initialNote;
+  final DateTime? initialDate;
+  final bool startVoice;
   final int? initialGoalId;
   final FinanceTransaction? editing;
   final int? refundOfTransactionId;
@@ -42,7 +56,11 @@ class _QuickAddPageState extends State<QuickAddPage> {
   final amount = TextEditingController();
   final note = TextEditingController();
   final tag = TextEditingController();
+  final amountFocus = FocusNode();
   final picker = ImagePicker();
+  final attachments = AttachmentService();
+  final voice = VoiceInputService();
+  const voiceParser = VoiceTransactionParser();
 
   late TransactionType type;
   int? accountId;
@@ -52,10 +70,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
   final tags = <String>[];
   XFile? receipt;
   String? existingReceiptPath;
+  bool receiptRemoved = false;
   bool includeInAnalytics = true;
   bool expanded = false;
   bool saving = false;
   bool _defaultsSet = false;
+  bool _voiceAutoStarted = false;
+  bool voiceApplied = false;
+  String? lastVoiceTranscript;
   Timer? _suggestionDebounce;
   SmartSuggestion? suggestion;
 
@@ -63,7 +85,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
   void initState() {
     super.initState();
     final editing = widget.editing;
+    final draft = widget.initialDraft;
     type = editing?.type ??
+        draft?.type ??
         switch (widget.initialTypeName) {
           'income' => TransactionType.income,
           'transfer' => TransactionType.transfer,
@@ -82,8 +106,18 @@ class _QuickAddPageState extends State<QuickAddPage> {
       expanded = editing.tags.isNotEmpty ||
           editing.receiptPath != null ||
           !editing.includeInAnalytics;
-    } else if (widget.initialAmount != null && widget.initialAmount! > 0) {
-      amount.text = widget.initialAmount!.toStringAsFixed(2);
+    } else {
+      if (draft?.amountCents != null) {
+        amount.text = Money.fromCents(draft!.amountCents!).toStringAsFixed(2);
+      } else if (widget.initialAmount != null && widget.initialAmount! > 0) {
+        amount.text = widget.initialAmount!.toStringAsFixed(2);
+      }
+      note.text = draft?.note ?? widget.initialNote ?? '';
+      tags.addAll(draft?.tags ?? const []);
+      accountId = draft?.accountId;
+      toAccountId = draft?.toAccountId;
+      categoryId = draft?.categoryId;
+      date = draft?.date ?? widget.initialDate ?? DateTime.now();
     }
     amount.addListener(_scheduleSuggestion);
     note.addListener(_scheduleSuggestion);
@@ -96,7 +130,27 @@ class _QuickAddPageState extends State<QuickAddPage> {
       _defaultsSet = true;
       _setDefaults();
       _scheduleSuggestion();
+      final shouldStartVoice = widget.startVoice || widget.initialDraft?.startVoice == true;
+      if (shouldStartVoice && !_voiceAutoStarted && widget.editing == null) {
+        _voiceAutoStarted = true;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) unawaited(_startVoice());
+        });
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _suggestionDebounce?.cancel();
+    amount.removeListener(_scheduleSuggestion);
+    note.removeListener(_scheduleSuggestion);
+    amount.dispose();
+    note.dispose();
+    tag.dispose();
+    amountFocus.dispose();
+    unawaited(voice.cancel());
+    super.dispose();
   }
 
   Account? _recentUsableAccount(AppState state, TransactionType wanted) {
@@ -117,18 +171,19 @@ class _QuickAddPageState extends State<QuickAddPage> {
 
   List<Category> _recentCategories(AppState state) {
     if (type == TransactionType.transfer) return const [];
-    final result = <Category>[];
-    final seen = <int>{};
+    final preferred = state.categoriesFor(type).where((item) => item.isFavorite).toList();
+    final result = <Category>[...preferred];
+    final seen = preferred.map((item) => item.id).toSet();
     for (final transaction in state.transactions) {
       if (transaction.type != type || transaction.categoryId == null) continue;
       final category = state.categoryById(transaction.categoryId);
       if (category != null && category.type == type && seen.add(category.id)) {
         result.add(category);
       }
-      if (result.length >= 5) break;
+      if (result.length >= 6) break;
     }
     if (result.isEmpty) return state.categoriesFor(type).take(5).toList();
-    return result;
+    return result.take(6).toList();
   }
 
   List<Account> _orderedAccounts(AppState state, {bool destination = false}) {
@@ -165,28 +220,17 @@ class _QuickAddPageState extends State<QuickAddPage> {
       }
     }
     final categories = state.categoriesFor(type);
-    if (widget.initialCategoryName != null) {
+    if (categoryId == null && widget.initialCategoryName != null) {
       categoryId = categories
           .where(
-            (c) =>
-                c.name.toLowerCase() == widget.initialCategoryName!.toLowerCase(),
+            (item) =>
+                item.name.toLowerCase() == widget.initialCategoryName!.toLowerCase(),
           )
           .firstOrNull
           ?.id;
     }
     categoryId ??= _recentCategories(state).firstOrNull?.id;
     categoryId ??= categories.firstOrNull?.id;
-  }
-
-  @override
-  void dispose() {
-    _suggestionDebounce?.cancel();
-    amount.removeListener(_scheduleSuggestion);
-    note.removeListener(_scheduleSuggestion);
-    amount.dispose();
-    note.dispose();
-    tag.dispose();
-    super.dispose();
   }
 
   void _changeType(TransactionType value) {
@@ -216,7 +260,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
     _suggestionDebounce = Timer(const Duration(milliseconds: 280), () {
       if (!mounted) return;
       final state = AppScope.of(context);
-      final parsed = double.tryParse(amount.text.replaceAll(',', '.'));
+      final parsed = Money.parseExpression(amount.text);
       final next = state.smartSuggestion(
         note: note.text,
         type: type,
@@ -227,20 +271,193 @@ class _QuickAddPageState extends State<QuickAddPage> {
     });
   }
 
-  Future<void> _pickReceipt() async {
-    final result = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 82,
-      maxWidth: 1800,
-    );
-    if (result != null && mounted) setState(() => receipt = result);
-  }
-
   Color _suggestionColor(BuildContext context) => switch (type) {
         TransactionType.expense => context.financeColors.negative,
         TransactionType.income => context.financeColors.positive,
         TransactionType.transfer => context.financeColors.neutral,
       };
+
+  Future<void> _startVoice() async {
+    final state = AppScope.of(context);
+    final enabled = (await state.database.getSetting('voice_enabled') ?? '1') == '1';
+    if (!enabled) {
+      if (mounted) _error('L’inserimento vocale è disattivato nelle Impostazioni.');
+      return;
+    }
+    final allowSystem =
+        (await state.database.getSetting('voice_allow_system_recognizer') ?? '0') == '1';
+    final status = await voice.prepare(allowSystemRecognizer: allowSystem);
+    if (!mounted) return;
+    if (!status.available) {
+      _error(status.message ?? 'Riconoscimento vocale non disponibile.');
+      return;
+    }
+    if (state.haptics) HapticFeedback.selectionClick();
+    final transcript = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      isDismissible: false,
+      enableDrag: false,
+      showDragHandle: true,
+      builder: (_) => _VoiceListeningSheet(
+        voice: voice,
+        onDevice: status.onDevice,
+      ),
+    );
+    if (!mounted || transcript == null || transcript.trim().isEmpty) return;
+    if (state.haptics) HapticFeedback.lightImpact();
+    await _applyVoiceTranscript(transcript);
+  }
+
+  Future<void> _applyVoiceTranscript(String transcript) async {
+    final state = AppScope.of(context);
+    var result = voiceParser.parse(
+      transcript,
+      accounts: state.accounts,
+      categories: state.categories,
+    );
+
+    for (final issue in result.issues) {
+      if (!mounted) return;
+      if (issue.type == VoiceIssueType.ambiguousCategory &&
+          issue.candidateIds.isNotEmpty) {
+        final selected = await _pickVoiceCategory(issue.candidateIds);
+        if (selected != null) {
+          result = VoiceParseResult(
+            transcript: result.transcript,
+            issues: result.issues.where((item) => item != issue).toList(),
+            draft: result.draft.copyWith(categoryId: selected),
+          );
+        }
+      } else if (issue.type == VoiceIssueType.ambiguousAccount &&
+          issue.candidateIds.isNotEmpty) {
+        final selected = await _pickVoiceAccount(issue.candidateIds);
+        if (selected != null && result.draft.type != TransactionType.transfer) {
+          result = VoiceParseResult(
+            transcript: result.transcript,
+            issues: result.issues.where((item) => item != issue).toList(),
+            draft: result.draft.copyWith(accountId: selected),
+          );
+        }
+      }
+    }
+
+    final draft = result.draft;
+    final parsedAmount = draft.amountCents == null
+        ? null
+        : Money.fromCents(draft.amountCents!);
+    SmartSuggestion? smart;
+    if ((draft.note ?? '').trim().isNotEmpty) {
+      smart = state.smartSuggestion(
+        note: draft.note!,
+        type: draft.type,
+        amount: parsedAmount,
+        date: draft.date ?? DateTime.now(),
+      );
+    }
+
+    setState(() {
+      type = draft.type;
+      if (draft.amountCents != null) {
+        amount.text = Money.fromCents(draft.amountCents!).toStringAsFixed(2);
+      }
+      if (draft.categoryId != null) {
+        categoryId = draft.categoryId;
+      } else if (type != TransactionType.transfer && smart?.categoryId != null) {
+        categoryId = smart!.categoryId;
+      }
+      if (draft.accountId != null) {
+        accountId = draft.accountId;
+      } else if (smart?.accountId != null) {
+        final candidate = state.accountById(smart!.accountId);
+        if (candidate != null && !candidate.isArchived && !candidate.isLocked) {
+          accountId = candidate.id;
+        }
+      }
+      if (draft.toAccountId != null) {
+        toAccountId = draft.toAccountId;
+      } else if (type == TransactionType.transfer && smart?.toAccountId != null) {
+        toAccountId = smart!.toAccountId;
+      }
+      if (draft.date != null) date = draft.date!;
+      if ((draft.note ?? '').trim().isNotEmpty) note.text = draft.note!;
+      for (final value in draft.tags) {
+        if (!tags.contains(value)) tags.add(value);
+      }
+      lastVoiceTranscript = transcript;
+      voiceApplied = true;
+      suggestion = null;
+    });
+
+    final blocking = result.issues.where((issue) =>
+        issue.type == VoiceIssueType.missingAmount ||
+        issue.type == VoiceIssueType.ambiguousAmount);
+    if (blocking.isNotEmpty) {
+      _error('${blocking.first.message} Puoi inserirlo manualmente oppure riprovare.');
+      amountFocus.requestFocus();
+    }
+    _scheduleSuggestion();
+  }
+
+  Future<int?> _pickVoiceCategory(List<int> ids) async {
+    final state = AppScope.of(context);
+    final items = ids.map(state.categoryById).whereType<Category>().toList();
+    return showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Quale categoria intendevi?',
+                style: Theme.of(sheetContext).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            ...items.map(
+              (item) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(categoryIcon(item.iconKey)),
+                title: Text(item.name),
+                onTap: () => Navigator.pop(sheetContext, item.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<int?> _pickVoiceAccount(List<int> ids) async {
+    final state = AppScope.of(context);
+    final items = ids.map(state.accountById).whereType<Account>().toList();
+    return showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Quale conto intendevi?',
+                style: Theme.of(sheetContext).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            ...items.map(
+              (item) => ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(accountIcon(item.iconKey)),
+                title: Text(item.name),
+                onTap: () => Navigator.pop(sheetContext, item.id),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Future<void> _previewSuggestion() async {
     final current = suggestion;
@@ -254,14 +471,13 @@ class _QuickAddPageState extends State<QuickAddPage> {
       useSafeArea: true,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) => SingleChildScrollView(
-        child: Padding(
+      builder: (sheetContext) => SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ti suggerisco', style: Theme.of(context).textTheme.titleLarge),
+            Text('Ti suggerisco', style: Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height: 12),
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -271,7 +487,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                     : current.type == TransactionType.income
                         ? Icons.arrow_downward_rounded
                         : Icons.swap_horiz_rounded,
-                color: _suggestionColor(context),
+                color: _suggestionColor(sheetContext),
               ),
               title: Text(current.type.label),
               subtitle: Text([
@@ -298,36 +514,32 @@ class _QuickAddPageState extends State<QuickAddPage> {
               ],
             ),
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.end,
               children: [
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, 'reject'),
-                    child: const Text('Non suggerire'),
-                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'reject'),
+                  child: const Text('Non suggerire'),
                 ),
-                Expanded(
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context, 'modify'),
-                    child: const Text('Modifica'),
-                  ),
+                TextButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'modify'),
+                  child: const Text('Modifica'),
                 ),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => Navigator.pop(context, 'apply'),
-                    child: const Text('Applica'),
-                  ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(sheetContext, 'apply'),
+                  child: const Text('Applica'),
                 ),
               ],
             ),
             Center(
               child: TextButton(
-                onPressed: () => Navigator.pop(context, 'suppress'),
+                onPressed: () => Navigator.pop(sheetContext, 'suppress'),
                 child: const Text('Non suggerire più per questo testo'),
               ),
             ),
           ],
-        ),
         ),
       ),
     );
@@ -379,9 +591,70 @@ class _QuickAddPageState extends State<QuickAddPage> {
     await state.acceptSuggestion(current, note.text);
   }
 
+  Future<void> _chooseReceipt() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetContext) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Scatta foto'),
+              onTap: () => Navigator.pop(sheetContext, 'camera'),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Scegli dalla galleria'),
+              onTap: () => Navigator.pop(sheetContext, 'gallery'),
+            ),
+            if (receipt != null || existingReceiptPath != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  Icons.delete_outline_rounded,
+                  color: Theme.of(sheetContext).colorScheme.error,
+                ),
+                title: Text(
+                  'Rimuovi ricevuta',
+                  style: TextStyle(color: Theme.of(sheetContext).colorScheme.error),
+                ),
+                onTap: () => Navigator.pop(sheetContext, 'remove'),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'remove') {
+      setState(() {
+        receipt = null;
+        receiptRemoved = true;
+      });
+      return;
+    }
+    final source = choice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    final result = await picker.pickImage(
+      source: source,
+      imageQuality: 82,
+      maxWidth: 1800,
+    );
+    if (result != null && mounted) {
+      setState(() {
+        receipt = result;
+        receiptRemoved = false;
+      });
+    }
+  }
+
   Future<void> _save() async {
     final state = AppScope.of(context);
-    final parsed = double.tryParse(amount.text.replaceAll(',', '.'));
+    final parsed = Money.parseExpression(amount.text);
     if (parsed == null || parsed <= 0) {
       return _error('Inserisci un importo maggiore di 0.');
     }
@@ -407,7 +680,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
       }
     }
     setState(() => saving = true);
+    String? managedReceipt = receiptRemoved ? null : existingReceiptPath;
     try {
+      if (receipt != null) managedReceipt = await attachments.persist(receipt!.path);
       final editing = widget.editing;
       if (editing == null) {
         final createdId = await state.addTransaction(
@@ -419,7 +694,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
           date: date,
           note: note.text.trim().isEmpty ? null : note.text.trim(),
           tags: tags,
-          receiptPath: receipt?.path,
+          receiptPath: managedReceipt,
           includeInAnalytics: includeInAnalytics,
           refundOfTransactionId: widget.refundOfTransactionId,
         );
@@ -437,17 +712,21 @@ class _QuickAddPageState extends State<QuickAddPage> {
             type: type,
             amount: parsed,
             accountId: accountId!,
-            toAccountId: toAccountId,
-            categoryId: categoryId,
+            toAccountId: type == TransactionType.transfer ? toAccountId : null,
+            categoryId: type == TransactionType.transfer ? null : categoryId,
             date: date,
             note: note.text.trim().isEmpty ? null : note.text.trim(),
             tags: tags,
-            receiptPath: receipt?.path ?? existingReceiptPath,
+            receiptPath: managedReceipt,
             includeInAnalytics: includeInAnalytics,
             updatedAt: DateTime.now(),
           ),
         );
+        if ((receiptRemoved || receipt != null) && existingReceiptPath != null) {
+          await attachments.delete(existingReceiptPath);
+        }
       }
+      await attachments.cleanup(state.transactions.map((item) => item.receiptPath));
       if (mounted) {
         final messenger = ScaffoldMessenger.of(context);
         final message = editing != null
@@ -461,6 +740,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
         messenger.showSnackBar(SnackBar(content: Text(message)));
       }
     } catch (error) {
+      if (managedReceipt != null && managedReceipt != existingReceiptPath) {
+        await attachments.delete(managedReceipt);
+      }
       if (mounted) {
         setState(() => saving = false);
         _error(error.toString().replaceFirst('Bad state: ', ''));
@@ -477,12 +759,12 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final picked = await showModalBottomSheet<int?>(
       context: context,
       useSafeArea: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           shrinkWrap: true,
           children: [
-            Text('Categoria', style: Theme.of(context).textTheme.titleLarge),
+            Text('Categoria', style: Theme.of(sheetContext).textTheme.titleLarge),
             const SizedBox(height: 8),
             ...values.map(
               (category) => ListTile(
@@ -495,7 +777,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 trailing: categoryId == category.id
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () => Navigator.pop(context, category.id),
+                onTap: () => Navigator.pop(sheetContext, category.id),
               ),
             ),
             const Divider(),
@@ -504,7 +786,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
               leading: const Icon(Icons.add_rounded),
               title: const Text('Nuova categoria'),
               subtitle: const Text('Creala senza perdere i dati inseriti'),
-              onTap: () => Navigator.pop(context, -1),
+              onTap: () => Navigator.pop(sheetContext, -1),
             ),
           ],
         ),
@@ -530,14 +812,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final picked = await showModalBottomSheet<int?>(
       context: context,
       useSafeArea: true,
-      builder: (context) => SafeArea(
+      builder: (sheetContext) => SafeArea(
         child: ListView(
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
           children: [
             Text(
               destination ? 'Conto destinazione' : 'Conto',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(sheetContext).textTheme.titleLarge,
             ),
             if (!destination &&
                 state.allowUnassigned &&
@@ -550,8 +832,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 trailing: current == state.unassignedAccount!.id
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () =>
-                    Navigator.pop(context, state.unassignedAccount!.id),
+                onTap: () => Navigator.pop(sheetContext, state.unassignedAccount!.id),
               ),
             ...options.map(
               (account) => ListTile(
@@ -565,7 +846,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 trailing: current == account.id
                     ? const Icon(Icons.check_rounded)
                     : null,
-                onTap: () => Navigator.pop(context, account.id),
+                onTap: () => Navigator.pop(sheetContext, account.id),
               ),
             ),
             if (!destination) ...[
@@ -574,7 +855,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.add_rounded),
                 title: const Text('Nuovo conto'),
-                onTap: () => Navigator.pop(context, -1),
+                onTap: () => Navigator.pop(sheetContext, -1),
               ),
             ],
           ],
@@ -605,17 +886,26 @@ class _QuickAddPageState extends State<QuickAddPage> {
     final destination = state.accountById(toAccountId);
     final linkedGoal = widget.initialGoalId == null
         ? null
-        : state.goals
-            .where((item) => item.id == widget.initialGoalId)
-            .firstOrNull;
+        : state.goals.where((item) => item.id == widget.initialGoalId).firstOrNull;
     final recentCategories = _recentCategories(state);
     final visibleSuggestion = widget.editing == null && suggestion?.shouldSurface == true;
+    final hasInitialAmount = amount.text.trim().isNotEmpty;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.editing == null ? 'Nuovo movimento' : 'Modifica movimento',
-        ),
+        title: Text(widget.editing == null ? 'Nuovo movimento' : 'Modifica movimento'),
+        actions: [
+          if (widget.editing == null)
+            Semantics(
+              button: true,
+              label: 'Compila con la voce',
+              child: IconButton(
+                tooltip: 'Compila con la voce',
+                onPressed: _startVoice,
+                icon: const Icon(Icons.mic_none_rounded),
+              ),
+            ),
+        ],
       ),
       floatingActionButton: visibleSuggestion
           ? FloatingActionButton.extended(
@@ -633,6 +923,25 @@ class _QuickAddPageState extends State<QuickAddPage> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 4, 20, 120),
           children: [
+            if (voiceApplied) ...[
+              Row(
+                children: [
+                  const Icon(Icons.mic_rounded, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Compilato dalla voce · controlla e salva',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _startVoice,
+                    child: const Text('Ripeti'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
               'IMPORTO',
               style: Theme.of(context)
@@ -642,11 +951,16 @@ class _QuickAddPageState extends State<QuickAddPage> {
             ),
             TextField(
               controller: amount,
-              autofocus: widget.editing == null,
+              focusNode: amountFocus,
+              autofocus: widget.editing == null && !hasInitialAmount && !widget.startVoice,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.displaySmall?.copyWith(fontSize: 48),
-              decoration: const InputDecoration(hintText: '0,00', suffixText: '€'),
+              decoration: const InputDecoration(
+                hintText: '0,00',
+                suffixText: '€',
+                helperText: 'Puoi anche scrivere 12,50 + 4,20',
+              ),
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -654,14 +968,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
               child: SegmentedButton<TransactionType>(
                 showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(
-                    value: TransactionType.expense,
-                    label: Text('Spesa'),
-                  ),
-                  ButtonSegment(
-                    value: TransactionType.income,
-                    label: Text('Entrata'),
-                  ),
+                  ButtonSegment(value: TransactionType.expense, label: Text('Spesa')),
+                  ButtonSegment(value: TransactionType.income, label: Text('Entrata')),
                   ButtonSegment(
                     value: TransactionType.transfer,
                     label: Text('Trasferimento'),
@@ -681,13 +989,18 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 prefixIcon: Icon(Icons.notes_rounded),
               ),
             ),
-            if (type != TransactionType.transfer &&
-                recentCategories.isNotEmpty) ...[
-              const SizedBox(height: 16),
+            if (lastVoiceTranscript != null) ...[
+              const SizedBox(height: 4),
               Text(
-                'Usate di recente',
-                style: Theme.of(context).textTheme.labelMedium,
+                'Hai detto: “$lastVoiceTranscript”',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
+            ],
+            if (type != TransactionType.transfer && recentCategories.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text('Preferite e recenti', style: Theme.of(context).textTheme.labelMedium),
               const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -786,12 +1099,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
                 onPressed: () => setState(() => expanded = !expanded),
-                icon: Icon(
-                  expanded ? Icons.expand_less_rounded : Icons.add_rounded,
-                ),
-                label: Text(
-                  expanded ? 'Nascondi dettagli' : 'Aggiungi dettagli',
-                ),
+                icon: Icon(expanded ? Icons.expand_less_rounded : Icons.add_rounded),
+                label: Text(expanded ? 'Nascondi dettagli' : 'Aggiungi dettagli'),
               ),
             ),
             AnimatedSize(
@@ -828,8 +1137,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
                                   .map(
                                     (value) => InputChip(
                                       label: Text('#$value'),
-                                      onDeleted: () =>
-                                          setState(() => tags.remove(value)),
+                                      onDeleted: () => setState(() => tags.remove(value)),
                                     ),
                                   )
                                   .toList(),
@@ -850,12 +1158,14 @@ class _QuickAddPageState extends State<QuickAddPage> {
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.receipt_long_outlined),
                           title: Text(
-                            receipt != null || existingReceiptPath != null
+                            !receiptRemoved &&
+                                    (receipt != null || existingReceiptPath != null)
                                 ? 'Ricevuta allegata'
                                 : 'Aggiungi ricevuta',
                           ),
-                          trailing: const Icon(Icons.camera_alt_outlined),
-                          onTap: _pickReceipt,
+                          subtitle: const Text('Fotocamera o galleria'),
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: _chooseReceipt,
                         ),
                         if (widget.refundOfTransactionId != null)
                           const ListTile(
@@ -907,6 +1217,136 @@ class _QuickAddPageState extends State<QuickAddPage> {
       tag.clear();
     });
   }
+}
+
+class _VoiceListeningSheet extends StatefulWidget {
+  const _VoiceListeningSheet({required this.voice, required this.onDevice});
+
+  final VoiceInputService voice;
+  final bool onDevice;
+
+  @override
+  State<_VoiceListeningSheet> createState() => _VoiceListeningSheetState();
+}
+
+class _VoiceListeningSheetState extends State<_VoiceListeningSheet> {
+  String partial = '';
+  String? error;
+  bool ready = false;
+  bool finished = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _begin());
+  }
+
+  Future<void> _begin() async {
+    final initialized = await widget.voice.initialize(
+      onStatus: (status) {
+        if (!mounted) return;
+        setState(() => ready = status == 'listening' || ready);
+      },
+      onError: (message) {
+        if (mounted) setState(() => error = _friendlyError(message));
+      },
+    );
+    if (!initialized) {
+      if (mounted) {
+        setState(() => error = 'Permesso microfono negato o riconoscimento non disponibile.');
+      }
+      return;
+    }
+    try {
+      await widget.voice.listen(
+        onDevice: widget.onDevice,
+        onResult: (text, finalResult) {
+          if (!mounted) return;
+          setState(() => partial = text);
+          if (finalResult && text.trim().isNotEmpty && !finished) {
+            finished = true;
+            Navigator.pop(context, text.trim());
+          }
+        },
+      );
+    } catch (exception) {
+      if (mounted) setState(() => error = _friendlyError('$exception'));
+    }
+  }
+
+  String _friendlyError(String raw) {
+    final value = raw.toLowerCase();
+    if (value.contains('permission')) return 'Il permesso microfono non è disponibile.';
+    if (value.contains('no_match')) return 'Non ho riconosciuto parole. Puoi riprovare.';
+    if (value.contains('network')) return 'Il recognizer di sistema non è disponibile offline.';
+    return 'Riconoscimento vocale non riuscito. Puoi riprovare.';
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.mic_rounded),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    ready ? 'Ti ascolto' : 'Preparo il microfono…',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                if (widget.onDevice)
+                  const Chip(
+                    avatar: Icon(Icons.phonelink_lock_outlined, size: 16),
+                    label: Text('Sul dispositivo'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Semantics(
+              liveRegion: true,
+              label: partial.isEmpty ? 'In ascolto' : partial,
+              child: Text(
+                error ?? (partial.isEmpty ? 'Parla normalmente…' : '“$partial”'),
+                style: Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () async {
+                      await widget.voice.cancel();
+                      if (context.mounted) Navigator.pop(context);
+                    },
+                    child: const Text('Annulla'),
+                  ),
+                ),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: partial.trim().isEmpty
+                        ? null
+                        : () async {
+                            final result = partial.trim();
+                            await widget.voice.stop();
+                            if (context.mounted && !finished) {
+                              finished = true;
+                              Navigator.pop(context, result);
+                            }
+                          },
+                    child: const Text('Termina'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
 }
 
 class _PickerRow extends StatelessWidget {
