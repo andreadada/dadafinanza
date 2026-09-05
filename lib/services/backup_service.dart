@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -75,7 +74,9 @@ class BackupService {
         'DadaFinanzaBackup-${DateTime.now().millisecondsSinceEpoch}.zip',
       ),
     );
-    final encoder = ZipFileEncoder(password: password?.isEmpty == true ? null : password);
+    final encoder = ZipFileEncoder(
+      password: password?.isEmpty == true ? null : password,
+    );
     encoder.create(zip.path);
     await encoder.addFile(manifestFile, 'manifest.json');
     await encoder.addFile(databaseCopy, 'database/dadafinanza.db');
@@ -95,7 +96,11 @@ class BackupService {
     if (manifestEntry == null) {
       throw const FormatException('Backup DadaFinanza non riconosciuto.');
     }
-    final json = jsonDecode(utf8.decode(manifestEntry.readBytes()));
+    final bytes = manifestEntry.readBytes();
+    if (bytes == null) {
+      throw const FormatException('Manifest backup non leggibile.');
+    }
+    final json = jsonDecode(utf8.decode(bytes));
     if (json is! Map<String, dynamic> || json['format'] != 'DadaFinanzaBackup') {
       throw const FormatException('Manifest backup non valido.');
     }
@@ -133,7 +138,7 @@ class BackupService {
       final restoredAttachments = Directory(p.join(extract.path, 'attachments'));
       await attachments.replaceDirectory(restoredAttachments);
       await _integrityCheck(database.db);
-    } catch (error) {
+    } catch (_) {
       final safetyArchive = await _decode(safety.path);
       final safetyExtract = Directory(
         p.join(temp.path, 'dada-safety-${DateTime.now().microsecondsSinceEpoch}'),
@@ -185,7 +190,9 @@ class BackupService {
   Future<void> _integrityCheck(Database db) async {
     final rows = await db.rawQuery('PRAGMA integrity_check');
     if (rows.isEmpty || rows.first.values.first.toString().toLowerCase() != 'ok') {
-      throw StateError('Il database ripristinato non supera il controllo integrità.');
+      throw StateError(
+        'Il database ripristinato non supera il controllo integrità.',
+      );
     }
   }
 }
