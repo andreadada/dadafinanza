@@ -9,7 +9,9 @@ import '../widgets/ui_helpers.dart';
 import 'transaction_screens.dart';
 
 enum TransactionsViewMode { list, accounts, categories }
+
 enum _TypeFilter { all, expense, income, transfer }
+
 enum _SortMode { newest, oldest, amountDesc, amountAsc }
 
 class ExpertTransactionsScreen extends StatefulWidget {
@@ -147,12 +149,14 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
       return haystack.contains(query);
     }).toList();
 
-    items.sort((a, b) => switch (_sortMode) {
-      _SortMode.newest => b.date.compareTo(a.date),
-      _SortMode.oldest => a.date.compareTo(b.date),
-      _SortMode.amountDesc => b.amount.compareTo(a.amount),
-      _SortMode.amountAsc => a.amount.compareTo(b.amount),
-    });
+    items.sort(
+      (a, b) => switch (_sortMode) {
+        _SortMode.newest => b.date.compareTo(a.date),
+        _SortMode.oldest => a.date.compareTo(b.date),
+        _SortMode.amountDesc => b.amount.compareTo(a.amount),
+        _SortMode.amountAsc => a.amount.compareTo(b.amount),
+      },
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,10 +185,7 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
           ),
         ),
         const SizedBox(height: 24),
-        SectionTitle(
-          'Movimenti',
-          trailing: Text('${items.length}'),
-        ),
+        SectionTitle('Movimenti', trailing: Text('${items.length}')),
         if (items.isEmpty)
           const EmptyState(
             icon: Icons.receipt_long_outlined,
@@ -213,10 +214,7 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionTitle(
-          'Per conto',
-          trailing: Text('${accounts.length}'),
-        ),
+        SectionTitle('Per conto', trailing: Text('${accounts.length}')),
         if (accounts.isEmpty)
           const EmptyState(
             icon: Icons.account_balance_wallet_outlined,
@@ -282,18 +280,12 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
     );
   }
 
-  Widget _buildCategories(
-    AppState state,
-    List<FinanceTransaction> scoped,
-  ) {
+  Widget _buildCategories(AppState state, List<FinanceTransaction> scoped) {
     final groups = _categoryGroups(state, scoped);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionTitle(
-          'Per categoria',
-          trailing: Text('${groups.length}'),
-        ),
+        SectionTitle('Per categoria', trailing: Text('${groups.length}')),
         if (groups.isEmpty)
           const EmptyState(
             icon: Icons.category_outlined,
@@ -386,7 +378,8 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
       final builder = map.putIfAbsent(
         key,
         () => _CategoryGroupBuilder(
-          label: category?.name ??
+          label:
+              category?.name ??
               (item.type == TransactionType.income
                   ? 'Entrate senza categoria'
                   : 'Senza categoria'),
@@ -402,19 +395,20 @@ class _ExpertTransactionsScreenState extends State<ExpertTransactionsScreen> {
       builder.items[item.id] = item;
     }
 
-    final groups = map.values
-        .map(
-          (builder) => _CategoryGroup(
-            label: builder.label,
-            icon: builder.icon,
-            color: builder.color,
-            total: builder.total,
-            items: builder.items.values.toList()
-              ..sort((a, b) => b.date.compareTo(a.date)),
-          ),
-        )
-        .toList()
-      ..sort((a, b) => b.total.compareTo(a.total));
+    final groups =
+        map.values
+            .map(
+              (builder) => _CategoryGroup(
+                label: builder.label,
+                icon: builder.icon,
+                color: builder.color,
+                total: builder.total,
+                items: builder.items.values.toList()
+                  ..sort((a, b) => b.date.compareTo(a.date)),
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.total.compareTo(a.total));
     return groups;
   }
 }
@@ -469,10 +463,7 @@ class _CategoryTransactionsPage extends StatelessWidget {
             style: Theme.of(context).textTheme.headlineLarge,
           ),
           const SizedBox(height: 24),
-          SectionTitle(
-            'Movimenti',
-            trailing: Text('${group.items.length}'),
-          ),
+          SectionTitle('Movimenti', trailing: Text('${group.items.length}')),
           ...group.items.map((item) => TransactionListTile(item: item)),
         ],
       ),

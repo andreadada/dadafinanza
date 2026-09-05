@@ -54,8 +54,7 @@ class VoiceInputService {
       return const VoiceInputStatus(
         available: false,
         onDevice: false,
-        message:
-            'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
+        message: 'Il riconoscimento vocale offline non è disponibile su questo dispositivo.',
       );
     }
     if (!onDevice && !await isSystemRecognizerAvailable()) {

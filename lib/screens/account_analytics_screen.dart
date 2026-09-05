@@ -82,7 +82,9 @@ class _AccountAnalyticsScreenState extends State<AccountAnalyticsScreen> {
         .length;
     final largest = transactions.isEmpty
         ? null
-        : ([...transactions]..sort((a, b) => b.amount.compareTo(a.amount))).first;
+        : ([
+            ...transactions,
+          ]..sort((a, b) => b.amount.compareTo(a.amount))).first;
 
     return Scaffold(
       appBar: AppBar(
@@ -172,26 +174,30 @@ class _AccountAnalyticsScreenState extends State<AccountAnalyticsScreen> {
           if (categoryTotals.isEmpty)
             const Text('Nessun dato')
           else
-            ...categoryTotals.take(8).map(
-              (entry) => FlatMetric(
-                label: entry.$1.name,
-                value: moneyFor(state, entry.$2),
-                icon: categoryIcon(entry.$1.iconKey),
-                color: Color(entry.$1.colorValue),
-              ),
-            ),
+            ...categoryTotals
+                .take(8)
+                .map(
+                  (entry) => FlatMetric(
+                    label: entry.$1.name,
+                    value: moneyFor(state, entry.$2),
+                    icon: categoryIcon(entry.$1.iconKey),
+                    color: Color(entry.$1.colorValue),
+                  ),
+                ),
           if (accountTotals.isNotEmpty) ...[
             const SizedBox(height: 28),
             const SectionTitle('Spese per conto'),
-            ...accountTotals.take(8).map(
-              (entry) => FlatMetric(
-                label: entry.$1.name,
-                value: moneyFor(state, entry.$2),
-                icon: accountIcon(entry.$1.iconKey),
-                color: Color(entry.$1.colorValue),
-                onTap: () => widget.onAccountChanged(entry.$1.id),
-              ),
-            ),
+            ...accountTotals
+                .take(8)
+                .map(
+                  (entry) => FlatMetric(
+                    label: entry.$1.name,
+                    value: moneyFor(state, entry.$2),
+                    icon: accountIcon(entry.$1.iconKey),
+                    color: Color(entry.$1.colorValue),
+                    onTap: () => widget.onAccountChanged(entry.$1.id),
+                  ),
+                ),
           ],
           const SizedBox(height: 28),
           const SectionTitle('Indicatori'),
@@ -266,9 +272,11 @@ class _AccountAnalyticsScreenState extends State<AccountAnalyticsScreen> {
     final now = DateTime.now();
     switch (period) {
       case _AnalyticsPeriod.week:
-        final start = DateTime(now.year, now.month, now.day).subtract(
-          Duration(days: now.weekday - DateTime.monday),
-        );
+        final start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: now.weekday - DateTime.monday));
         return DateTimeRange(
           start: start,
           end: start.add(const Duration(days: 7)),
@@ -318,9 +326,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(
-            context,
-          ).textTheme.headlineMedium?.copyWith(color: color),
+          style: Theme.of(context).textTheme.headlineMedium
+              ?.copyWith(color: color),
         ),
       ),
     ],

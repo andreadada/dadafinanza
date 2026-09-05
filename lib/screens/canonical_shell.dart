@@ -115,9 +115,8 @@ class _CanonicalRootScreenState extends State<CanonicalRootScreen> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
-    final presets = await QuickPresetService(
-      state.database,
-    ).all(enabledOnly: true);
+    final presets = await QuickPresetService(state.database)
+        .all(enabledOnly: true);
     if (!mounted) return;
     final choice = await showModalBottomSheet<Object>(
       context: context,
@@ -502,9 +501,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: color),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color),
         ),
       ),
     ],

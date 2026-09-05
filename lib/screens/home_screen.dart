@@ -63,9 +63,10 @@ class DadaHomeScreen extends StatelessWidget {
     final accounts = selectedAccount == null
         ? state.activeAccounts.take(4).toList()
         : [selectedAccount];
-    final recent = AccountScopeService.transactions(state, selectedAccountId)
-        .take(5)
-        .toList();
+    final recent = AccountScopeService.transactions(
+      state,
+      selectedAccountId,
+    ).take(5).toList();
     final upcoming = AccountScopeService.recurring(state, selectedAccountId);
     final budget = selectedAccountId == null ? _priorityBudget(state) : null;
     final insight = selectedAccountId == null ? _smartInsight(state) : null;
@@ -278,8 +279,7 @@ class DadaHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.account_balance_wallet_outlined,
                   title: 'Nessun conto',
-                  subtitle:
-                      'Aggiungi il conto che usi davvero oppure continua con movimenti Non assegnati.',
+                  subtitle: 'Aggiungi il conto che usi davvero oppure continua con movimenti Non assegnati.',
                   action: TextButton.icon(
                     onPressed: () => showAccountEditor(context),
                     icon: const Icon(Icons.add_rounded),
@@ -306,8 +306,7 @@ class DadaHomeScreen extends StatelessWidget {
                 const EmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: 'Inizia dal primo movimento',
-                  subtitle:
-                      'Usa il pulsante + per registrare una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
+                  subtitle: 'Usa il pulsante + per registrare una spesa o un’entrata: analisi e previsioni nasceranno dai tuoi dati reali.',
                 )
               else
                 ...recent.map((item) => TransactionListTile(item: item)),
@@ -336,32 +335,37 @@ class DadaHomeScreen extends StatelessWidget {
                   ),
                 )
               else
-                ...upcoming.take(3).map(
-                  (item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    minVerticalPadding: 10,
-                    leading: Icon(
-                      Icons.repeat_rounded,
-                      color: transactionColor(context, item.type),
-                    ),
-                    title: Text(item.name),
-                    subtitle: Text(
-                      DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
-                    ),
-                    trailing: Text(
-                      state.hideBalance
-                          ? '••••'
-                          : moneyFor(state, item.amount),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const RecurringScreen(),
+                ...upcoming
+                    .take(3)
+                    .map(
+                      (item) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minVerticalPadding: 10,
+                        leading: Icon(
+                          Icons.repeat_rounded,
+                          color: transactionColor(context, item.type),
+                        ),
+                        title: Text(item.name),
+                        subtitle: Text(
+                          DateFormat(
+                            'EEE d MMM',
+                            'it_IT',
+                          ).format(item.nextDate),
+                        ),
+                        trailing: Text(
+                          state.hideBalance
+                              ? '••••'
+                              : moneyFor(state, item.amount),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RecurringScreen(),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               if (extraWidgets.isNotEmpty) ...[
                 const SizedBox(height: 32),
                 const SectionTitle('Riepilogo'),
@@ -521,10 +525,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            color: color,
-            fontWeight: FontWeight.w700,
-          ),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color, fontWeight: FontWeight.w700),
         ),
       ),
     ],
@@ -607,8 +609,8 @@ class _BudgetSummary extends StatelessWidget {
             color: progress >= 1
                 ? context.financeColors.negative
                 : progress >= .8
-                    ? context.financeColors.warning
-                    : null,
+                ? context.financeColors.warning
+                : null,
           ),
         ],
       ),

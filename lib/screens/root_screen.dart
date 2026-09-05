@@ -1689,9 +1689,8 @@ class _AnalyticsMetric extends StatelessWidget {
       const SizedBox(height: 4),
       Text(
         value,
-        style: Theme.of(
-          context,
-        ).textTheme.headlineMedium?.copyWith(color: color),
+        style: Theme.of(context).textTheme.headlineMedium
+            ?.copyWith(color: color),
       ),
     ],
   );
@@ -1844,9 +1843,8 @@ class NetWorthScreen extends StatelessWidget {
         children: [
           Text(
             'PATRIMONIO ATTUALE',
-            style: Theme.of(
-              context,
-            ).textTheme.labelMedium?.copyWith(letterSpacing: 1.1),
+            style: Theme.of(context).textTheme.labelMedium
+                ?.copyWith(letterSpacing: 1.1),
           ),
           const SizedBox(height: 6),
           Text(

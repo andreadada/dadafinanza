@@ -6,9 +6,8 @@ void main() {
   test(
     'voice modal keeps transcript and exposes restart, close and waveform',
     () async {
-      final source = await File(
-        'lib/screens/quick_add_page.dart',
-      ).readAsString();
+      final source = await File('lib/screens/quick_add_page.dart')
+          .readAsString();
       expect(source, contains('Icons.restart_alt_rounded'));
       expect(source, contains('Icons.close_rounded'));
       expect(source, contains('_VoiceWaveform'));
@@ -22,9 +21,8 @@ void main() {
   test(
     'voice service keeps recognition session alive after short pauses',
     () async {
-      final source = await File(
-        'lib/services/voice_input_service.dart',
-      ).readAsString();
+      final source = await File('lib/services/voice_input_service.dart')
+          .readAsString();
       expect(source, contains('onSoundLevelChange: onSoundLevel'));
       expect(source, contains('listenMode: ListenMode.dictation'));
       expect(source, contains('pauseFor: const Duration(seconds: 30)'));

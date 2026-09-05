@@ -88,9 +88,8 @@ class DataManagementScreen extends StatelessWidget {
     );
     if (password == _cancelledPassword) return;
     try {
-      final file = await BackupService(
-        state.database,
-      ).create(password: password?.isEmpty == true ? null : password);
+      final file = await BackupService(state.database)
+          .create(password: password?.isEmpty == true ? null : password);
       final output = await FilePicker.saveFile(
         dialogTitle: 'Salva backup DadaFinanza',
         fileName:
@@ -230,9 +229,8 @@ class DataManagementScreen extends StatelessWidget {
         bytes: Uint8List.fromList(utf8.encode(csv)),
       );
       if (context.mounted && output != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('CSV esportato.')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('CSV esportato.')));
       }
     } catch (error) {
       if (context.mounted) _error(context, 'Esportazione non riuscita: $error');
@@ -264,8 +262,7 @@ class DataManagementScreen extends StatelessWidget {
     final confirmed = await confirmDestructiveAction(
       context,
       title: 'Cancellare tutti i dati?',
-      message:
-          'Conti, movimenti, categorie, budget, obiettivi, regole e apprendimento locale verranno eliminati. Crea prima un backup se vuoi conservarli.',
+      message: 'Conti, movimenti, categorie, budget, obiettivi, regole e apprendimento locale verranno eliminati. Crea prima un backup se vuoi conservarli.',
       confirmLabel: 'Cancella definitivamente',
     );
     if (!confirmed) return;

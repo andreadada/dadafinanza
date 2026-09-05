@@ -783,9 +783,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
     }
   }
 
-  void _error(String message) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(message)));
+  void _error(String message) =>
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
 
   Future<void> _chooseCategory() async {
     final state = AppScope.of(context);
@@ -987,9 +987,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
             ],
             Text(
               'IMPORTO',
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(letterSpacing: 1.2),
+              style: Theme.of(context).textTheme.labelMedium
+                  ?.copyWith(letterSpacing: 1.2),
             ),
             TextField(
               controller: amount,
@@ -1002,9 +1001,8 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 decimal: true,
               ),
               textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.displaySmall?.copyWith(fontSize: 48),
+              style: Theme.of(context).textTheme.displaySmall
+                  ?.copyWith(fontSize: 48),
               decoration: const InputDecoration(
                 hintText: '0,00',
                 suffixText: '€',

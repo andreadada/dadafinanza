@@ -54,8 +54,7 @@ class AccountScopeSelector extends StatelessWidget {
                         : null,
                     onTap: () => Navigator.pop(sheetContext, 0),
                   ),
-                  if (state.activeAccounts.isNotEmpty)
-                    const Divider(height: 1),
+                  if (state.activeAccounts.isNotEmpty) const Divider(height: 1),
                   ...state.activeAccounts.map(
                     (account) => ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -89,9 +88,8 @@ class AccountScopeSelector extends StatelessWidget {
                   label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge
+                      ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
               const SizedBox(width: 4),

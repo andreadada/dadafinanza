@@ -9,10 +9,7 @@ class AccountScopeService {
   static bool includesTransaction(FinanceTransaction item, int accountId) =>
       item.accountId == accountId || item.toAccountId == accountId;
 
-  static List<FinanceTransaction> transactions(
-    AppState state,
-    int? accountId,
-  ) {
+  static List<FinanceTransaction> transactions(AppState state, int? accountId) {
     final items = accountId == null
         ? state.transactions
         : state.transactions
@@ -29,8 +26,7 @@ class AccountScopeService {
   }) => state
       .analyticTransactions(from: from, to: to)
       .where(
-        (item) =>
-            accountId == null || includesTransaction(item, accountId),
+        (item) => accountId == null || includesTransaction(item, accountId),
       )
       .toList();
 
