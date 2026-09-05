@@ -30,12 +30,16 @@ class _VoiceSettingsScreenState extends State<VoiceSettingsScreen> {
       state.database.getSetting('voice_allow_system_recognizer'),
     ]);
     if (!mounted) return;
+    final localOnly = (values[1] ?? '1') == '1';
     setState(() {
       enabled = (values[0] ?? '1') == '1';
-      onDeviceOnly = (values[1] ?? '1') == '1';
-      allowSystem = (values[2] ?? '0') == '1';
+      onDeviceOnly = localOnly;
+      allowSystem = !localOnly && (values[2] ?? '0') == '1';
       loading = false;
     });
+    if (localOnly && (values[2] ?? '0') == '1') {
+      await state.setSetting('voice_allow_system_recognizer', '0');
+    }
   }
 
   Future<void> _set(String key, bool value) async {
@@ -68,14 +72,20 @@ class _VoiceSettingsScreenState extends State<VoiceSettingsScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Solo sul dispositivo'),
                     subtitle: const Text(
-                      'Preferisce il riconoscimento offline/on-device quando Android lo supporta.',
+                      'Usa esclusivamente il riconoscimento offline/on-device quando Android lo supporta.',
                     ),
                     value: onDeviceOnly,
                     onChanged: !enabled
                         ? null
                         : (value) async {
-                            setState(() => onDeviceOnly = value);
+                            setState(() {
+                              onDeviceOnly = value;
+                              if (value) allowSystem = false;
+                            });
                             await _set('voice_on_device_only', value);
+                            if (value) {
+                              await _set('voice_allow_system_recognizer', false);
+                            }
                           },
                   ),
                   SwitchListTile(
