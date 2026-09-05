@@ -27,19 +27,15 @@ class AdvanceService {
   }
 
   Future<List<Advance>> advances() async => (await database.db.query(
-        'advances',
-        orderBy: 'closed_at IS NOT NULL, created_at DESC, id DESC',
-      ))
-          .map(Advance.fromMap)
-          .toList();
+    'advances',
+    orderBy: 'closed_at IS NOT NULL, created_at DESC, id DESC',
+  )).map(Advance.fromMap).toList();
 
   Future<List<AdvanceSettlement>> settlements() async =>
       (await database.db.query(
         'advance_settlements',
         orderBy: 'date DESC, id DESC',
-      ))
-          .map(AdvanceSettlement.fromMap)
-          .toList();
+      )).map(AdvanceSettlement.fromMap).toList();
 
   Future<int> createPerson(
     String name, {
@@ -48,7 +44,8 @@ class AdvanceService {
     String? note,
   }) async {
     final normalized = name.trim();
-    if (normalized.isEmpty) throw StateError('Inserisci il nome della persona.');
+    if (normalized.isEmpty)
+      throw StateError('Inserisci il nome della persona.');
     final now = DateTime.now().millisecondsSinceEpoch;
     return database.db.insert('finance_people', {
       'name': normalized,
@@ -143,7 +140,9 @@ class AdvanceService {
     final personalCents = Money.toCents(personalAmount);
     final advanceCents = _positiveCents(advanceAmount);
     if (personalCents < 0 || personalCents + advanceCents != totalCents) {
-      throw StateError('La tua parte e la quota anticipata devono coincidere con il totale.');
+      throw StateError(
+        'La tua parte e la quota anticipata devono coincidere con il totale.',
+      );
     }
     return database.db.transaction((txn) async {
       await _validatePerson(txn, personId);
@@ -155,7 +154,8 @@ class AdvanceService {
         whereArgs: [categoryId],
         limit: 1,
       );
-      if (category.isEmpty || category.first['type'] != TransactionType.expense.name) {
+      if (category.isEmpty ||
+          category.first['type'] != TransactionType.expense.name) {
         throw StateError('Scegli una categoria di spesa valida.');
       }
       final transactionId = await _insertCashTransaction(
@@ -193,22 +193,28 @@ class AdvanceService {
 
   Future<int> remainingCents(int advanceId, {Transaction? txn}) async {
     final executor = txn ?? database.db;
-    final rows = await executor.rawQuery('''
+    final rows = await executor.rawQuery(
+      '''
       SELECT a.original_amount_cents - COALESCE(SUM(s.amount_cents), 0) AS remaining
       FROM advances a
       LEFT JOIN advance_settlements s ON s.advance_id = a.id
       WHERE a.id = ?
       GROUP BY a.id
-    ''', [advanceId]);
+    ''',
+      [advanceId],
+    );
     if (rows.isEmpty) throw StateError('Anticipo non trovato.');
     return math.max(0, (rows.first['remaining'] as num).toInt());
   }
 
   Future<int> settledCents(int advanceId) async {
-    final value = Sqflite.firstIntValue(await database.db.rawQuery(
-          'SELECT COALESCE(SUM(amount_cents), 0) FROM advance_settlements WHERE advance_id = ?',
-          [advanceId],
-        )) ??
+    final value =
+        Sqflite.firstIntValue(
+          await database.db.rawQuery(
+            'SELECT COALESCE(SUM(amount_cents), 0) FROM advance_settlements WHERE advance_id = ?',
+            [advanceId],
+          ),
+        ) ??
         0;
     return value;
   }
@@ -229,7 +235,9 @@ class AdvanceService {
       await _validateAccount(txn, accountId);
       final remaining = await remainingCents(advanceId, txn: txn);
       if (cents > remaining) {
-        throw StateError('L’importo supera il residuo di ${Money.fromCents(remaining).toStringAsFixed(2)} €.');
+        throw StateError(
+          'L’importo supera il residuo di ${Money.fromCents(remaining).toStringAsFixed(2)} €.',
+        );
       }
       final type = advance.direction == AdvanceDirection.receivable
           ? TransactionType.income
@@ -286,12 +294,16 @@ class AdvanceService {
       if (rows.isEmpty) throw StateError('Rimborso non trovato.');
       final old = AdvanceSettlement.fromMap(rows.first);
       final advance = await _advanceIn(txn, old.advanceId);
-      if (advance.closedKind != null) throw StateError('Questo anticipo è già chiuso.');
+      if (advance.closedKind != null)
+        throw StateError('Questo anticipo è già chiuso.');
       await _validateAccount(txn, accountId);
-      final totalOther = Sqflite.firstIntValue(await txn.rawQuery(
-            'SELECT COALESCE(SUM(amount_cents),0) FROM advance_settlements WHERE advance_id = ? AND id <> ?',
-            [old.advanceId, settlementId],
-          )) ??
+      final totalOther =
+          Sqflite.firstIntValue(
+            await txn.rawQuery(
+              'SELECT COALESCE(SUM(amount_cents),0) FROM advance_settlements WHERE advance_id = ? AND id <> ?',
+              [old.advanceId, settlementId],
+            ),
+          ) ??
           0;
       if (totalOther + cents > advance.originalAmountCents) {
         throw StateError('L’importo supera il residuo disponibile.');
@@ -302,7 +314,8 @@ class AdvanceService {
         whereArgs: [old.transactionId],
         limit: 1,
       );
-      if (transactionRows.isEmpty) throw StateError('Movimento collegato non trovato.');
+      if (transactionRows.isEmpty)
+        throw StateError('Movimento collegato non trovato.');
       final oldTransaction = FinanceTransaction.fromMap(transactionRows.first);
       await _applyCashDelta(
         txn,
@@ -330,7 +343,11 @@ class AdvanceService {
         where: 'id = ?',
         whereArgs: [old.transactionId],
       );
-      await _applyCashDelta(txn, accountId, type == TransactionType.income ? cents : -cents);
+      await _applyCashDelta(
+        txn,
+        accountId,
+        type == TransactionType.income ? cents : -cents,
+      );
       await txn.update(
         'advance_settlements',
         {
@@ -378,7 +395,11 @@ class AdvanceService {
         );
         await txn.delete('transactions', where: 'id = ?', whereArgs: [item.id]);
       } else {
-        await txn.delete('advance_settlements', where: 'id = ?', whereArgs: [settlementId]);
+        await txn.delete(
+          'advance_settlements',
+          where: 'id = ?',
+          whereArgs: [settlementId],
+        );
       }
       await txn.update(
         'advances',
@@ -395,7 +416,8 @@ class AdvanceService {
   }) async {
     await database.db.transaction((txn) async {
       final advance = await _advanceIn(txn, advanceId);
-      if (advance.closedKind != null) throw StateError('Questo anticipo è già chiuso.');
+      if (advance.closedKind != null)
+        throw StateError('Questo anticipo è già chiuso.');
       final rows = await txn.query(
         'transactions',
         where: 'id = ?',
@@ -407,16 +429,22 @@ class AdvanceService {
       final expected = advance.direction == AdvanceDirection.receivable
           ? TransactionType.income
           : TransactionType.expense;
-      if (item.type != expected) throw StateError('Il movimento ha una direzione incompatibile.');
+      if (item.type != expected)
+        throw StateError('Il movimento ha una direzione incompatibile.');
       final cents = Money.toCents(item.amount);
       final remaining = await remainingCents(advanceId, txn: txn);
-      if (cents > remaining) throw StateError('Il movimento supera il residuo dell’anticipo.');
-      final existing = Sqflite.firstIntValue(await txn.rawQuery(
-            'SELECT COUNT(*) FROM advance_settlements WHERE transaction_id = ?',
-            [transactionId],
-          )) ??
+      if (cents > remaining)
+        throw StateError('Il movimento supera il residuo dell’anticipo.');
+      final existing =
+          Sqflite.firstIntValue(
+            await txn.rawQuery(
+              'SELECT COUNT(*) FROM advance_settlements WHERE transaction_id = ?',
+              [transactionId],
+            ),
+          ) ??
           0;
-      if (existing > 0) throw StateError('Movimento già collegato a un anticipo.');
+      if (existing > 0)
+        throw StateError('Movimento già collegato a un anticipo.');
       await txn.update(
         'transactions',
         {
@@ -448,14 +476,16 @@ class AdvanceService {
   }) async {
     await database.db.transaction((txn) async {
       final advance = await _advanceIn(txn, advanceId);
-      if (advance.closedKind != null) throw StateError('Questo anticipo è già chiuso.');
+      if (advance.closedKind != null)
+        throw StateError('Questo anticipo è già chiuso.');
       final remaining = await remainingCents(advanceId, txn: txn);
       if (remaining <= 0) return;
       final closedKind = advance.direction == AdvanceDirection.receivable
           ? AdvanceClosedKind.writtenOff
           : AdvanceClosedKind.forgiven;
       if (recognizeInAnalytics) {
-        if (accountId == null) throw StateError('Scegli un conto per l’aggiustamento analitico.');
+        if (accountId == null)
+          throw StateError('Scegli un conto per l’aggiustamento analitico.');
         await _validateAccount(txn, accountId);
         if (categoryId == null) throw StateError('Scegli una categoria.');
         final expectedType = advance.direction == AdvanceDirection.receivable
@@ -468,8 +498,11 @@ class AdvanceService {
           whereArgs: [categoryId],
           limit: 1,
         );
-        if (categories.isEmpty || categories.first['type'] != expectedType.name) {
-          throw StateError('La categoria non è compatibile con l’aggiustamento.');
+        if (categories.isEmpty ||
+            categories.first['type'] != expectedType.name) {
+          throw StateError(
+            'La categoria non è compatibile con l’aggiustamento.',
+          );
         }
         await _insertCashTransaction(
           txn,
@@ -549,13 +582,15 @@ class AdvanceService {
       }
       final person = peopleById[advance.personId];
       final normalizedNote = (note ?? '').toLowerCase();
-      if (person != null && normalizedNote.contains(person.name.toLowerCase())) {
+      if (person != null &&
+          normalizedNote.contains(person.name.toLowerCase())) {
         score += .34;
         reasons.add('nome ${person.name} nella descrizione');
       }
       final ageDays = DateTime.now().difference(advance.updatedAt).inDays.abs();
       if (ageDays <= 14) score += .08;
-      if (score >= .66) candidates.add((advance, score.clamp(0, 1), reasons.join(' e ')));
+      if (score >= .66)
+        candidates.add((advance, score.clamp(0, 1), reasons.join(' e ')));
     }
     if (candidates.isEmpty) return null;
     candidates.sort((a, b) => b.$2.compareTo(a.$2));
@@ -599,12 +634,19 @@ class AdvanceService {
     if ((row['is_system'] as int? ?? 0) == 1) {
       throw StateError('Gli anticipi richiedono un conto reale.');
     }
-    if ((row['is_archived'] as int? ?? 0) == 1) throw StateError('Il conto è archiviato.');
-    if ((row['is_locked'] as int? ?? 0) == 1) throw StateError('Il conto è bloccato.');
+    if ((row['is_archived'] as int? ?? 0) == 1)
+      throw StateError('Il conto è archiviato.');
+    if ((row['is_locked'] as int? ?? 0) == 1)
+      throw StateError('Il conto è bloccato.');
   }
 
   Future<Advance> _advanceIn(Transaction txn, int id) async {
-    final rows = await txn.query('advances', where: 'id = ?', whereArgs: [id], limit: 1);
+    final rows = await txn.query(
+      'advances',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
     if (rows.isEmpty) throw StateError('Anticipo non trovato.');
     return Advance.fromMap(rows.first);
   }
@@ -643,10 +685,18 @@ class AdvanceService {
     });
   }
 
-  Future<void> _applyCashDelta(Transaction txn, int accountId, int deltaCents) async {
+  Future<void> _applyCashDelta(
+    Transaction txn,
+    int accountId,
+    int deltaCents,
+  ) async {
     await txn.rawUpdate(
       'UPDATE accounts SET balance = balance + ?, updated_at = ? WHERE id = ?',
-      [Money.fromCents(deltaCents), DateTime.now().millisecondsSinceEpoch, accountId],
+      [
+        Money.fromCents(deltaCents),
+        DateTime.now().millisecondsSinceEpoch,
+        accountId,
+      ],
     );
   }
 }

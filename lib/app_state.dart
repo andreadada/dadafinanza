@@ -2,9 +2,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' hide Category;
 
+import 'core/money.dart';
 import 'data/app_database.dart';
+import 'models/advance_models.dart';
 import 'models/models.dart';
 import 'models/smart_models.dart';
+import 'services/advance_service.dart';
 import 'services/goal_ledger_service.dart';
 import 'services/smart_finance_engine.dart';
 import 'services/widget_service.dart';
@@ -25,6 +28,9 @@ class AppState extends ChangeNotifier {
   List<Goal> goals = [];
   List<DashboardWidgetConfig> dashboardWidgets = [];
   List<AutomationRule> rules = [];
+  List<FinancePerson> people = [];
+  List<Advance> advances = [];
+  List<AdvanceSettlement> advanceSettlements = [];
   List<LearnedPattern> learnedPatterns = [];
   List<DetectedRecurringPattern> detectedRecurringPatterns = [];
   Set<String> suppressedSuggestionTexts = {};
@@ -73,6 +79,10 @@ class AppState extends ChangeNotifier {
     goals = await database.goals();
     dashboardWidgets = await database.dashboardWidgets();
     rules = await database.rules();
+    final advanceService = AdvanceService(database);
+    people = await advanceService.people(includeArchived: true);
+    advances = await advanceService.advances();
+    advanceSettlements = await advanceService.settlements();
     learnedPatterns = await database.learnedPatterns();
     detectedRecurringPatterns = await database.detectedRecurringPatterns();
     suppressedSuggestionTexts = await database.suppressedSuggestionTexts();
@@ -189,20 +199,158 @@ class AppState extends ChangeNotifier {
   List<Category> categoriesFor(TransactionType type) =>
       categories.where((c) => c.type == type).toList(growable: false);
 
+  FinancePerson? personById(int? id) =>
+      id == null ? null : people.where((item) => item.id == id).firstOrNull;
+
+  List<AdvanceSettlement> settlementsForAdvance(int advanceId) =>
+      advanceSettlements
+          .where((item) => item.advanceId == advanceId)
+          .toList(growable: false);
+
+  Advance? advanceForSourceTransaction(int transactionId) => advances
+      .where((item) => item.sourceTransactionId == transactionId)
+      .firstOrNull;
+
+  AdvanceSettlement? settlementForTransaction(int transactionId) =>
+      advanceSettlements
+          .where((item) => item.transactionId == transactionId)
+          .firstOrNull;
+
+  Advance? advanceForSettlementTransaction(int transactionId) {
+    final settlement = settlementForTransaction(transactionId);
+    if (settlement == null) return null;
+    return advances
+        .where((item) => item.id == settlement.advanceId)
+        .firstOrNull;
+  }
+
+  int advanceRemainingCents(int advanceId) {
+    final advance = advances.where((item) => item.id == advanceId).firstOrNull;
+    if (advance == null) return 0;
+    final settled = settlementsForAdvance(
+      advanceId,
+    ).fold<int>(0, (sum, item) => sum + item.amountCents);
+    return math.max(0, advance.originalAmountCents - settled).toInt();
+  }
+
+  AdvanceStatus advanceStatus(Advance advance, {DateTime? now}) {
+    switch (advance.closedKind) {
+      case AdvanceClosedKind.cancelled:
+        return AdvanceStatus.cancelled;
+      case AdvanceClosedKind.writtenOff:
+        return AdvanceStatus.writtenOff;
+      case AdvanceClosedKind.forgiven:
+        return AdvanceStatus.forgiven;
+      case null:
+        break;
+    }
+    final remaining = advanceRemainingCents(advance.id);
+    if (remaining <= 0) return AdvanceStatus.settled;
+    final due = advance.dueDate;
+    final target = now ?? DateTime.now();
+    if (due != null &&
+        DateTime(
+          due.year,
+          due.month,
+          due.day,
+        ).isBefore(DateTime(target.year, target.month, target.day))) {
+      return AdvanceStatus.overdue;
+    }
+    if (remaining < advance.originalAmountCents) return AdvanceStatus.partial;
+    return AdvanceStatus.open;
+  }
+
+  int get advanceReceivableCents => advances
+      .where(
+        (item) =>
+            item.direction == AdvanceDirection.receivable &&
+            item.closedKind == null,
+      )
+      .fold<int>(0, (sum, item) => sum + advanceRemainingCents(item.id));
+
+  int get advancePayableCents => advances
+      .where(
+        (item) =>
+            item.direction == AdvanceDirection.payable &&
+            item.closedKind == null,
+      )
+      .fold<int>(0, (sum, item) => sum + advanceRemainingCents(item.id));
+
+  int get advanceNetCents => advanceReceivableCents - advancePayableCents;
+
+  int advanceAllocationCentsForTransaction(int transactionId) => advances
+      .where(
+        (item) =>
+            item.sourceTransactionId == transactionId &&
+            item.direction == AdvanceDirection.receivable &&
+            item.closedKind != AdvanceClosedKind.cancelled,
+      )
+      .fold<int>(0, (sum, item) => sum + item.originalAmountCents);
+
+  double analyticsAmountForSplit(int transactionId, TransactionSplit split) {
+    final original = transactionById(transactionId);
+    if (original == null || original.kind != 'mixed_advance')
+      return split.amount;
+    final totalCents = Money.toCents(original.amount);
+    if (totalCents <= 0) return 0;
+    final personalCents = math
+        .max(
+          0,
+          totalCents - advanceAllocationCentsForTransaction(transactionId),
+        )
+        .toInt();
+    final splitCents = Money.toCents(split.amount);
+    return Money.fromCents((splitCents * personalCents / totalCents).round());
+  }
+
+  int advanceSettledInPeriodCents(DateTime from, DateTime to) =>
+      advanceSettlements
+          .where((item) => !item.date.isBefore(from) && item.date.isBefore(to))
+          .fold<int>(0, (sum, item) => sum + item.amountCents);
+
+  bool isAdvanceProtectedTransaction(FinanceTransaction item) =>
+      item.kind == 'advance_origin' ||
+      item.kind == 'mixed_advance' ||
+      item.kind == 'advance_settlement' ||
+      item.kind == 'advance_writeoff' ||
+      item.kind == 'advance_forgiven_income';
+
   Iterable<FinanceTransaction> analyticTransactions({
     DateTime? from,
     DateTime? to,
-  }) => transactions.where((t) {
-    if (!t.includeInAnalytics) return false;
-    final account = accountById(t.accountId);
-    if (account != null && !account.isSystem && !account.includeInAnalytics)
-      return false;
-    if (t.type == TransactionType.transfer && !showTransfersInAnalytics)
-      return false;
-    if (from != null && t.date.isBefore(from)) return false;
-    if (to != null && !t.date.isBefore(to)) return false;
-    return true;
-  });
+  }) sync* {
+    for (final transaction in transactions) {
+      if (!transaction.includeInAnalytics) continue;
+      final account = accountById(transaction.accountId);
+      if (account != null && !account.isSystem && !account.includeInAnalytics) {
+        continue;
+      }
+      if (transaction.type == TransactionType.transfer &&
+          !showTransfersInAnalytics) {
+        continue;
+      }
+      if (from != null && transaction.date.isBefore(from)) continue;
+      if (to != null && !transaction.date.isBefore(to)) continue;
+
+      var projected = transaction;
+      if (transaction.type == TransactionType.expense &&
+          transaction.kind == 'mixed_advance') {
+        final originalCents = Money.toCents(transaction.amount);
+        final personalCents = math
+            .max(
+              0,
+              originalCents -
+                  advanceAllocationCentsForTransaction(transaction.id),
+            )
+            .toInt();
+        if (personalCents <= 0) continue;
+        projected = transaction.copyWith(
+          amount: Money.fromCents(personalCents),
+        );
+      }
+      yield projected;
+    }
+  }
 
   double refundsFor(int transactionId) => transactions
       .where(
@@ -266,7 +414,7 @@ class AppState extends ChangeNotifier {
       if (itemSplits.isNotEmpty) {
         total += itemSplits
             .where((s) => s.categoryId == categoryId)
-            .fold(0.0, (sum, s) => sum + s.amount);
+            .fold(0.0, (sum, s) => sum + analyticsAmountForSplit(t.id, s));
       } else if (t.categoryId == categoryId) {
         total += effectiveExpense(t);
       }
@@ -413,18 +561,29 @@ class AppState extends ChangeNotifier {
     FinanceTransaction oldItem,
     FinanceTransaction newItem,
   ) async {
+    if (isAdvanceProtectedTransaction(oldItem)) {
+      throw StateError('Gestisci questo movimento dalla sezione Anticipi.');
+    }
     await database.updateTransaction(oldItem, newItem);
     await refreshCore(includePlanning: true);
     await _rebuildLearning();
   }
 
   Future<void> duplicateTransaction(FinanceTransaction item) async {
+    if (isAdvanceProtectedTransaction(item)) {
+      throw StateError(
+        'I movimenti Anticipi non possono essere duplicati direttamente.',
+      );
+    }
     await database.duplicateTransaction(item);
     await refreshCore();
     await _rebuildLearning();
   }
 
   Future<void> deleteTransaction(FinanceTransaction item) async {
+    if (isAdvanceProtectedTransaction(item)) {
+      throw StateError('Gestisci questo movimento dalla sezione Anticipi.');
+    }
     await database.deleteTransaction(item);
     await refreshCore(includePlanning: true);
     await _rebuildLearning();
@@ -512,6 +671,148 @@ class AppState extends ChangeNotifier {
     await database.deleteCategory(category.id);
     await refreshCore(includePlanning: true);
     await _rebuildLearning();
+  }
+
+  Future<int> createFinancePerson(String name) async {
+    final id = await AdvanceService(database).createPerson(name);
+    people = await AdvanceService(database).people(includeArchived: true);
+    notifyListeners();
+    return id;
+  }
+
+  Future<int> createPureAdvance({
+    required AdvanceDirection direction,
+    required int personId,
+    required double amount,
+    required int accountId,
+    required DateTime date,
+    DateTime? dueDate,
+    DateTime? reminderDate,
+    String? note,
+  }) async {
+    final id = await AdvanceService(database).createPureAdvance(
+      direction: direction,
+      personId: personId,
+      amount: amount,
+      accountId: accountId,
+      date: date,
+      dueDate: dueDate,
+      reminderDate: reminderDate,
+      note: note,
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+    return id;
+  }
+
+  Future<int> createMixedAdvanceExpense({
+    required int personId,
+    required double totalAmount,
+    required double personalAmount,
+    required double advanceAmount,
+    required int accountId,
+    required int categoryId,
+    required DateTime date,
+    String? note,
+    List<String> tags = const [],
+    String? receiptPath,
+  }) async {
+    final id = await AdvanceService(database).createMixedExpense(
+      personId: personId,
+      totalAmount: totalAmount,
+      personalAmount: personalAmount,
+      advanceAmount: advanceAmount,
+      accountId: accountId,
+      categoryId: categoryId,
+      date: date,
+      note: note,
+      tags: tags,
+      receiptPath: receiptPath,
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+    return id;
+  }
+
+  Future<void> recordAdvanceSettlement({
+    required int advanceId,
+    required double amount,
+    required int accountId,
+    required DateTime date,
+    String? note,
+  }) async {
+    await AdvanceService(database).recordSettlement(
+      advanceId: advanceId,
+      amount: amount,
+      accountId: accountId,
+      date: date,
+      note: note,
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
+  Future<void> linkTransactionToAdvance({
+    required int advanceId,
+    required int transactionId,
+  }) async {
+    await AdvanceService(database).linkExistingTransactionAsSettlement(
+      advanceId: advanceId,
+      transactionId: transactionId,
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
+  Future<void> closeAdvanceWithoutRecovery(
+    int advanceId, {
+    required bool recognizeInAnalytics,
+    int? categoryId,
+    int? accountId,
+  }) async {
+    await AdvanceService(database).closeWithoutRecovery(
+      advanceId: advanceId,
+      recognizeInAnalytics: recognizeInAnalytics,
+      categoryId: categoryId,
+      accountId: accountId,
+      date: DateTime.now(),
+    );
+    await refreshCore(includePlanning: true);
+    await _reloadAdvances();
+    await _rebuildLearning();
+  }
+
+  Future<void> updateAdvanceDates(
+    int advanceId, {
+    DateTime? dueDate,
+    DateTime? reminderDate,
+  }) async {
+    await AdvanceService(database).updateDates(
+      advanceId: advanceId,
+      dueDate: dueDate,
+      reminderDate: reminderDate,
+    );
+    await _reloadAdvances();
+    notifyListeners();
+  }
+
+  Future<AdvanceMatchSuggestion?> advanceMatchSuggestion({
+    required TransactionType type,
+    required double amount,
+    String? note,
+  }) => AdvanceService(
+    database,
+  ).suggestMatch(type: type, amount: amount, note: note);
+
+  Future<void> _reloadAdvances() async {
+    final service = AdvanceService(database);
+    people = await service.people(includeArchived: true);
+    advances = await service.advances();
+    advanceSettlements = await service.settlements();
   }
 
   Future<void> addRecurring({
@@ -638,7 +939,11 @@ class AppState extends ChangeNotifier {
       } else if (itemSplits.isNotEmpty) {
         total += itemSplits
             .where((split) => split.categoryId == budget.categoryId)
-            .fold(0.0, (sum, split) => sum + split.amount);
+            .fold(
+              0.0,
+              (sum, split) =>
+                  sum + analyticsAmountForSplit(transaction.id, split),
+            );
       } else if (transaction.categoryId == budget.categoryId) {
         total += effectiveExpense(transaction);
       }
@@ -870,14 +1175,17 @@ class AppState extends ChangeNotifier {
       for (final pattern in await database.learnedPatterns())
         pattern.signature: pattern,
     };
+    final learningTransactions = analyticTransactions()
+        .where((item) => !item.kind.startsWith('advance_'))
+        .toList();
     final patterns = SmartFinanceEngine.buildPatterns(
-      transactions,
+      learningTransactions,
       previous: previous,
     );
     await database.replaceLearnedPatterns(patterns);
     learnedPatterns = await database.learnedPatterns();
     if (smartDetectRecurring) {
-      final detected = SmartFinanceEngine.detectRecurring(transactions);
+      final detected = SmartFinanceEngine.detectRecurring(learningTransactions);
       await database.replaceDetectedRecurringPatterns(detected);
       detectedRecurringPatterns = await database.detectedRecurringPatterns();
     }
@@ -944,6 +1252,7 @@ class AppState extends ChangeNotifier {
     accounts = await database.accounts();
     transactions = await database.transactions();
     splits = await database.splits();
+    await _reloadAdvances();
     if (includePlanning) {
       categories = await database.categories();
       recurring = await database.recurring();

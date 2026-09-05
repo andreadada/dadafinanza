@@ -20,9 +20,11 @@ extension AdvanceDirectionX on AdvanceDirection {
     AdvanceDirection.payable => 'Devo restituire dei soldi',
   };
 
-  static AdvanceDirection fromDb(String value) => AdvanceDirection.values
-      .firstWhere((item) => item.name == value,
-          orElse: () => AdvanceDirection.receivable);
+  static AdvanceDirection fromDb(String value) =>
+      AdvanceDirection.values.firstWhere(
+        (item) => item.name == value,
+        orElse: () => AdvanceDirection.receivable,
+      );
 }
 
 enum AdvanceClosedKind { cancelled, writtenOff, forgiven }
@@ -32,11 +34,21 @@ extension AdvanceClosedKindX on AdvanceClosedKind {
 
   static AdvanceClosedKind? fromDb(String? value) {
     if (value == null || value.isEmpty) return null;
-    return AdvanceClosedKind.values.where((item) => item.name == value).firstOrNull;
+    return AdvanceClosedKind.values
+        .where((item) => item.name == value)
+        .firstOrNull;
   }
 }
 
-enum AdvanceStatus { open, partial, overdue, settled, cancelled, writtenOff, forgiven }
+enum AdvanceStatus {
+  open,
+  partial,
+  overdue,
+  settled,
+  cancelled,
+  writtenOff,
+  forgiven,
+}
 
 class FinancePerson {
   const FinancePerson({
@@ -60,15 +72,19 @@ class FinancePerson {
   final DateTime updatedAt;
 
   factory FinancePerson.fromMap(Map<String, Object?> map) => FinancePerson(
-        id: map['id'] as int,
-        name: map['name'] as String,
-        colorValue: (map['color'] as num?)?.toInt() ?? 0xFF8E8E93,
-        iconKey: (map['icon_key'] as String?) ?? 'person',
-        archived: (map['archived'] as int? ?? 0) == 1,
-        note: map['note'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int? ?? 0),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int? ?? 0),
-      );
+    id: map['id'] as int,
+    name: map['name'] as String,
+    colorValue: (map['color'] as num?)?.toInt() ?? 0xFF8E8E93,
+    iconKey: (map['icon_key'] as String?) ?? 'person',
+    archived: (map['archived'] as int? ?? 0) == 1,
+    note: map['note'] as String?,
+    createdAt: DateTime.fromMillisecondsSinceEpoch(
+      map['created_at'] as int? ?? 0,
+    ),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(
+      map['updated_at'] as int? ?? 0,
+    ),
+  );
 }
 
 class Advance {
@@ -105,26 +121,26 @@ class Advance {
   double get originalAmount => Money.fromCents(originalAmountCents);
 
   factory Advance.fromMap(Map<String, Object?> map) => Advance(
-        id: map['id'] as int,
-        direction: AdvanceDirectionX.fromDb(map['direction'] as String),
-        personId: map['person_id'] as int,
-        originalAmountCents: (map['original_amount_cents'] as num).toInt(),
-        sourceAccountId: map['source_account_id'] as int?,
-        sourceTransactionId: map['source_transaction_id'] as int?,
-        dueDate: map['due_date'] == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(map['due_date'] as int),
-        reminderDate: map['reminder_date'] == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(map['reminder_date'] as int),
-        note: map['note'] as String?,
-        closedKind: AdvanceClosedKindX.fromDb(map['closed_kind'] as String?),
-        closedAt: map['closed_at'] == null
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(map['closed_at'] as int),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
-      );
+    id: map['id'] as int,
+    direction: AdvanceDirectionX.fromDb(map['direction'] as String),
+    personId: map['person_id'] as int,
+    originalAmountCents: (map['original_amount_cents'] as num).toInt(),
+    sourceAccountId: map['source_account_id'] as int?,
+    sourceTransactionId: map['source_transaction_id'] as int?,
+    dueDate: map['due_date'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(map['due_date'] as int),
+    reminderDate: map['reminder_date'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(map['reminder_date'] as int),
+    note: map['note'] as String?,
+    closedKind: AdvanceClosedKindX.fromDb(map['closed_kind'] as String?),
+    closedAt: map['closed_at'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(map['closed_at'] as int),
+    createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updated_at'] as int),
+  );
 }
 
 class AdvanceSettlement {
@@ -150,7 +166,8 @@ class AdvanceSettlement {
 
   double get amount => Money.fromCents(amountCents);
 
-  factory AdvanceSettlement.fromMap(Map<String, Object?> map) => AdvanceSettlement(
+  factory AdvanceSettlement.fromMap(Map<String, Object?> map) =>
+      AdvanceSettlement(
         id: map['id'] as int,
         advanceId: map['advance_id'] as int,
         amountCents: (map['amount_cents'] as num).toInt(),
@@ -158,7 +175,9 @@ class AdvanceSettlement {
         accountId: map['account_id'] as int,
         date: DateTime.fromMillisecondsSinceEpoch(map['date'] as int),
         note: map['note'] as String?,
-        createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at'] as int),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(
+          map['created_at'] as int,
+        ),
       );
 }
 

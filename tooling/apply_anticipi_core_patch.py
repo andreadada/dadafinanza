@@ -26,7 +26,7 @@ s = replace_once(
     'schema ensure hook',
 )
 marker = '  Future<void> _ensureCompatibilityTriggers(Transaction txn) async {'
-advance_schema = r'''  Future<void> _ensureAdvances(Transaction txn) async {
+advance_schema = r"""  Future<void> _ensureAdvances(Transaction txn) async {
     await txn.execute('''CREATE TABLE IF NOT EXISTS finance_people(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL COLLATE NOCASE,
@@ -124,7 +124,7 @@ advance_schema = r'''  Future<void> _ensureAdvances(Transaction txn) async {
       END''');
   }
 
-'''
+"""
 s = replace_once(s, marker, advance_schema + marker, 'schema method insertion')
 s = replace_once(
     s,
