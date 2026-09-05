@@ -7,9 +7,10 @@ import 'package:home_widget/home_widget.dart';
 import 'app_state.dart';
 import 'data/app_database.dart';
 import 'models/models.dart';
-import 'screens/polished_shell.dart';
+import 'screens/canonical_shell.dart';
 import 'screens/quick_add_page.dart';
 import 'services/finance_schema_service.dart';
+import 'services/notification_service.dart';
 import 'services/security_service.dart';
 import 'theme/app_theme.dart';
 import 'widgets/app_lock_gate.dart';
@@ -36,15 +37,17 @@ class DadaFinanzaApp extends StatefulWidget {
 
 class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
   final security = SecurityService();
+  final notificationService = NotificationService();
   StreamSubscription<Uri?>? _widgetSubscription;
+  Timer? _notificationDebounce;
   bool? _lastWidgetPrivacy;
 
   @override
   void initState() {
     super.initState();
     _widgetSubscription = HomeWidget.widgetClicked.listen(_handleWidgetUri);
-    widget.state.addListener(_syncWidgetPrivacy);
-    _syncWidgetPrivacy();
+    widget.state.addListener(_handleStateChanged);
+    _handleStateChanged();
     WidgetsBinding.instance.addPostFrameCallback(
       (_) async => _handleWidgetUri(
         await HomeWidget.initiallyLaunchedFromHomeWidget(),
@@ -52,15 +55,26 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
     );
   }
 
+  void _handleStateChanged() {
+    _syncWidgetPrivacy();
+    _notificationDebounce?.cancel();
+    _notificationDebounce = Timer(
+      const Duration(milliseconds: 350),
+      () => unawaited(notificationService.sync(widget.state)),
+    );
+  }
+
   void _handleWidgetUri(Uri? uri) {
     if (uri == null || uri.scheme != 'dadafinanza' || uri.host != 'quick-add') {
       return;
     }
+    final accountId = int.tryParse(uri.queryParameters['account'] ?? '');
     navigatorKey.currentState?.push(
       MaterialPageRoute(
         builder: (_) => QuickAddPage(
           initialCategoryName: uri.queryParameters['category'],
           initialTypeName: uri.queryParameters['type'],
+          initialAccountId: accountId,
         ),
       ),
     );
@@ -89,7 +103,8 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
 
   @override
   void dispose() {
-    widget.state.removeListener(_syncWidgetPrivacy);
+    widget.state.removeListener(_handleStateChanged);
+    _notificationDebounce?.cancel();
     _widgetSubscription?.cancel();
     super.dispose();
   }
@@ -120,7 +135,7 @@ class _DadaFinanzaAppState extends State<DadaFinanzaApp> {
             ],
             home: AppLockGate(
               security: security,
-              child: const PolishedRootScreen(),
+              child: const CanonicalRootScreen(),
             ),
           ),
         ),
