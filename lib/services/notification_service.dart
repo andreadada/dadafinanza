@@ -54,12 +54,15 @@ class NotificationService {
         (await state.database.getSetting('notifications_goal')) != '0';
     final forecastEnabled =
         (await state.database.getSetting('notifications_forecast')) != '0';
+    final advancesEnabled =
+        (await state.database.getSetting('notifications_advances')) != '0';
 
     final signatureParts = <String>[
       '$recurringEnabled',
       '$budgetEnabled',
       '$goalEnabled',
       '$forecastEnabled',
+      '$advancesEnabled',
     ];
     for (final item in state.recurring) {
       signatureParts.add(
@@ -77,6 +80,11 @@ class NotificationService {
       );
     }
     signatureParts.add(state.endOfMonthForecast.toStringAsFixed(2));
+    for (final advance in state.advances) {
+      signatureParts.add(
+        'advance:${advance.id}:${state.advanceRemainingCents(advance.id)}:${advance.reminderDate?.millisecondsSinceEpoch}:${advance.dueDate?.millisecondsSinceEpoch}:${advance.closedKind}',
+      );
+    }
     final signature = signatureParts.join('|');
     if (_lastSignature == signature) return;
     _lastSignature = signature;
@@ -86,6 +94,7 @@ class NotificationService {
     if (budgetEnabled) await _notifyBudgetThresholds(state);
     if (goalEnabled) await _notifyGoalStatus(state);
     if (forecastEnabled) await _notifyLowForecast(state);
+    if (advancesEnabled) await _scheduleAdvances(state);
   }
 
   Future<void> _scheduleRecurring(AppState state) async {
@@ -187,6 +196,82 @@ class NotificationService {
         payload: 'goal:${goal.id}',
       );
       await state.database.setSetting(key, plan.status.name);
+    }
+  }
+
+  Future<void> _scheduleAdvances(AppState state) async {
+    final now = DateTime.now();
+    for (final advance in state.advances) {
+      final remainingCents = state.advanceRemainingCents(advance.id);
+      if (advance.closedKind != null || remainingCents <= 0) continue;
+      final person = state.personById(advance.personId);
+      final due = advance.dueDate;
+      final requested =
+          advance.reminderDate ??
+          (due == null ? null : due.subtract(const Duration(days: 1)));
+      if (requested == null) continue;
+      final reminder = DateTime(
+        requested.year,
+        requested.month,
+        requested.day,
+        9,
+      );
+      if (!reminder.isAfter(now)) {
+        final overdueKey = 'notification_advance_${advance.id}_remaining';
+        final previous = int.tryParse(
+          await state.database.getSetting(overdueKey) ?? '',
+        );
+        if (previous == remainingCents) continue;
+        final amount = (remainingCents / 100)
+            .toStringAsFixed(2)
+            .replaceAll('.', ',');
+        await plugin.show(
+          id: 500000 + advance.id,
+          title: advance.direction.name == 'receivable'
+              ? '${person?.name ?? 'Qualcuno'} deve ancora restituirti $amount €'
+              : 'Devi ancora restituire $amount € a ${person?.name ?? 'qualcuno'}',
+          body:
+              'Apri Anticipi per registrare un rimborso o aggiornare il promemoria.',
+          notificationDetails: const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'finance_advances',
+              'Anticipi',
+              channelDescription:
+                  'Promemoria locali per soldi da ricevere o restituire',
+              importance: Importance.defaultImportance,
+              priority: Priority.defaultPriority,
+            ),
+          ),
+          payload: 'advance:${advance.id}',
+        );
+        await state.database.setSetting(overdueKey, '$remainingCents');
+        continue;
+      }
+      final amount = (remainingCents / 100)
+          .toStringAsFixed(2)
+          .replaceAll('.', ',');
+      await plugin.zonedSchedule(
+        id: 500000 + advance.id,
+        title: advance.direction.name == 'receivable'
+            ? '${person?.name ?? 'Qualcuno'} deve restituirti $amount €'
+            : 'Devi restituire $amount € a ${person?.name ?? 'qualcuno'}',
+        body: due == null
+            ? 'Promemoria Anticipi'
+            : 'Scadenza ${due.day}/${due.month}/${due.year}',
+        scheduledDate: tz.TZDateTime.from(reminder.toUtc(), tz.UTC),
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'finance_advances',
+            'Anticipi',
+            channelDescription:
+                'Promemoria locali per soldi da ricevere o restituire',
+            importance: Importance.defaultImportance,
+            priority: Priority.defaultPriority,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        payload: 'advance:${advance.id}',
+      );
     }
   }
 

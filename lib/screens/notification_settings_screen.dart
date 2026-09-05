@@ -22,6 +22,7 @@ class _NotificationSettingsScreenState
   bool budget = true;
   bool goal = true;
   bool forecast = true;
+  bool advances = true;
 
   @override
   void didChangeDependencies() {
@@ -37,6 +38,7 @@ class _NotificationSettingsScreenState
       state.database.getSetting('notifications_budget'),
       state.database.getSetting('notifications_goal'),
       state.database.getSetting('notifications_forecast'),
+      state.database.getSetting('notifications_advances'),
       state.database.getSetting('notifications_low_balance_threshold'),
     ]);
     if (!mounted) return;
@@ -46,7 +48,8 @@ class _NotificationSettingsScreenState
       budget = values[2] != '0';
       goal = values[3] != '0';
       forecast = values[4] != '0';
-      threshold.text = values[5] ?? '0';
+      advances = values[5] != '0';
+      threshold.text = values[6] ?? '0';
       loading = false;
     });
   }
@@ -122,6 +125,14 @@ class _NotificationSettingsScreenState
                 goal,
                 'notifications_goal',
                 (value) => goal = value,
+              ),
+              _toggle(
+                'Anticipi',
+                'Ricorda i soldi ancora da ricevere o restituire.',
+                Icons.handshake_outlined,
+                advances,
+                'notifications_advances',
+                (value) => advances = value,
               ),
               _toggle(
                 'Saldo previsto basso',
