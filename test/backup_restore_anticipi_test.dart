@@ -52,77 +52,81 @@ void main() {
     if (await temp.exists()) await temp.delete(recursive: true);
   });
 
-  test('backup manifest and restore preserve the full Anticipi ledger', () async {
-    final accountId = await database.addAccount(
-      name: 'Carta',
-      balance: 500,
-      colorValue: 0xFF8E8E93,
-      iconKey: 'wallet',
-      type: AccountType.card,
-      includeInTotal: true,
-      includeInAnalytics: true,
-      hideBalance: false,
-    );
-    final personId = await advances.createPerson('Andrea');
-    final advanceId = await advances.createPureAdvance(
-      direction: AdvanceDirection.receivable,
-      personId: personId,
-      amount: 80,
-      accountId: accountId,
-      date: DateTime(2026, 9, 5),
-      note: 'Biglietti',
-    );
-    await advances.recordSettlement(
-      advanceId: advanceId,
-      amount: 30,
-      accountId: accountId,
-      date: DateTime(2026, 9, 6),
-      note: 'Prima parte',
-    );
+  test(
+    'backup manifest and restore preserve the full Anticipi ledger',
+    () async {
+      final accountId = await database.addAccount(
+        name: 'Carta',
+        balance: 500,
+        colorValue: 0xFF8E8E93,
+        iconKey: 'wallet',
+        type: AccountType.card,
+        includeInTotal: true,
+        includeInAnalytics: true,
+        hideBalance: false,
+      );
+      final personId = await advances.createPerson('Andrea');
+      final advanceId = await advances.createPureAdvance(
+        direction: AdvanceDirection.receivable,
+        personId: personId,
+        amount: 80,
+        accountId: accountId,
+        date: DateTime(2026, 9, 5),
+        note: 'Biglietti',
+      );
+      await advances.recordSettlement(
+        advanceId: advanceId,
+        amount: 30,
+        accountId: accountId,
+        date: DateTime(2026, 9, 6),
+        note: 'Prima parte',
+      );
 
-    final attachmentDir = await attachments.directory();
-    await File(p.join(attachmentDir.path, 'receipt-test.jpg')).writeAsBytes([
-      1,
-      2,
-      3,
-      4,
-    ]);
+      final attachmentDir = await attachments.directory();
+      await File(
+        p.join(attachmentDir.path, 'receipt-test.jpg'),
+      ).writeAsBytes([1, 2, 3, 4]);
 
-    final backupService = BackupService(
-      database,
-      attachments: attachments,
-      temporaryDirectory: () async => temp,
-    );
-    final backup = await backupService.create();
-    final preview = await backupService.inspect(backup.path);
+      final backupService = BackupService(
+        database,
+        attachments: attachments,
+        temporaryDirectory: () async => temp,
+      );
+      final backup = await backupService.create();
+      final preview = await backupService.inspect(backup.path);
 
-    expect(preview.people, 1);
-    expect(preview.advances, 1);
-    expect(preview.advanceSettlements, 1);
-    expect(preview.attachments, 1);
+      expect(preview.people, 1);
+      expect(preview.advances, 1);
+      expect(preview.advanceSettlements, 1);
+      expect(preview.attachments, 1);
 
-    await database.clearAllUserData();
-    expect(await database.db.query('finance_people'), isEmpty);
-    expect(await database.db.query('advances'), isEmpty);
-    expect(await database.db.query('advance_settlements'), isEmpty);
+      await database.clearAllUserData();
+      expect(await database.db.query('finance_people'), isEmpty);
+      expect(await database.db.query('advances'), isEmpty);
+      expect(await database.db.query('advance_settlements'), isEmpty);
 
-    final liveAttachment = File(p.join(attachmentDir.path, 'receipt-test.jpg'));
-    if (await liveAttachment.exists()) await liveAttachment.delete();
+      final liveAttachment = File(
+        p.join(attachmentDir.path, 'receipt-test.jpg'),
+      );
+      if (await liveAttachment.exists()) await liveAttachment.delete();
 
-    await backupService.restore(backup.path);
+      await backupService.restore(backup.path);
 
-    final restoredPeople = await database.db.query('finance_people');
-    final restoredAdvances = await database.db.query('advances');
-    final restoredSettlements = await database.db.query('advance_settlements');
-    expect(restoredPeople, hasLength(1));
-    expect(restoredPeople.single['name'], 'Andrea');
-    expect(restoredAdvances, hasLength(1));
-    expect(restoredAdvances.single['original_amount_cents'], 8000);
-    expect(restoredSettlements, hasLength(1));
-    expect(restoredSettlements.single['amount_cents'], 3000);
-    expect(
-      await File(p.join(attachmentDir.path, 'receipt-test.jpg')).exists(),
-      isTrue,
-    );
-  });
+      final restoredPeople = await database.db.query('finance_people');
+      final restoredAdvances = await database.db.query('advances');
+      final restoredSettlements = await database.db.query(
+        'advance_settlements',
+      );
+      expect(restoredPeople, hasLength(1));
+      expect(restoredPeople.single['name'], 'Andrea');
+      expect(restoredAdvances, hasLength(1));
+      expect(restoredAdvances.single['original_amount_cents'], 8000);
+      expect(restoredSettlements, hasLength(1));
+      expect(restoredSettlements.single['amount_cents'], 3000);
+      expect(
+        await File(p.join(attachmentDir.path, 'receipt-test.jpg')).exists(),
+        isTrue,
+      );
+    },
+  );
 }
