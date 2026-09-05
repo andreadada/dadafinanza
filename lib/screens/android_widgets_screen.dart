@@ -73,7 +73,8 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
         _WidgetChoice(
           icon: Icons.account_balance_wallet_outlined,
           title: 'Saldo',
-          subtitle: 'Circa 2×1 · saldo compatto e accesso a Nuovo movimento. La visibilità del saldo è configurabile per istanza.',
+          subtitle:
+              'Circa 2×1 · saldo compatto e accesso a Nuovo movimento. La visibilità del saldo è configurabile per istanza.',
           buttonLabel: 'Aggiungi Saldo',
           enabled: !checking && supported,
           onPressed: () => _pin('DadaBalanceWidgetProvider'),
@@ -82,7 +83,8 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
         _WidgetChoice(
           icon: Icons.mic_none_rounded,
           title: 'Quick Capture',
-          subtitle: 'Circa 2×2 · Spesa, Entrata, Trasferisci e Voce. Conto e categoria possono essere preconfigurati.',
+          subtitle:
+              'Circa 2×2 · Spesa, Entrata, Trasferisci e Voce. Conto e categoria possono essere preconfigurati.',
           buttonLabel: 'Aggiungi Quick Capture',
           enabled: !checking && supported,
           onPressed: () => _pin('DadaQuickAddWidgetProvider'),
@@ -91,7 +93,8 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
         _WidgetChoice(
           icon: Icons.pin_outlined,
           title: 'Importi rapidi',
-          subtitle: 'Circa 4×2 · quattro importi personalizzati, conto, categoria, trasferimento e microfono.',
+          subtitle:
+              'Circa 4×2 · quattro importi personalizzati, conto, categoria, trasferimento e microfono.',
           buttonLabel: 'Aggiungi Importi rapidi',
           enabled: !checking && supported,
           onPressed: () => _pin('DadaQuickAmountsWidgetProvider'),
@@ -100,7 +103,8 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
         _WidgetChoice(
           icon: Icons.space_dashboard_outlined,
           title: 'Riepilogo',
-          subtitle: 'Circa 4×2 · saldo e quattro categorie rapide. Le categorie seguono prima i quick slot e poi le preferite.',
+          subtitle:
+              'Circa 4×2 · saldo e quattro categorie rapide. Le categorie seguono prima i quick slot e poi le preferite.',
           buttonLabel: 'Aggiungi Riepilogo',
           enabled: !checking && supported,
           onPressed: () => _pin('DadaFinanceWidgetProvider'),

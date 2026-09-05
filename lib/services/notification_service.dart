@@ -204,7 +204,8 @@ class NotificationService {
     await plugin.show(
       id: 400001,
       title: 'Saldo previsto basso',
-      body: 'La previsione di fine mese è sotto la soglia che hai impostato. Apri Pianifica per i dettagli.',
+      body:
+          'La previsione di fine mese è sotto la soglia che hai impostato. Apri Pianifica per i dettagli.',
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'finance_forecast',

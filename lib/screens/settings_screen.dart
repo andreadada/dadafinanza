@@ -428,7 +428,8 @@ class LearningManagementScreen extends StatelessWidget {
                 final confirmed = await confirmDestructiveAction(
                   context,
                   title: 'Cancellare l’apprendimento?',
-                  message: 'Pattern, feedback e soppressioni verranno eliminati. I movimenti resteranno invariati e il sistema potrà imparare di nuovo.',
+                  message:
+                      'Pattern, feedback e soppressioni verranno eliminati. I movimenti resteranno invariati e il sistema potrà imparare di nuovo.',
                   confirmLabel: 'Cancella apprendimento',
                 );
                 if (confirmed) await state.clearLearning();
@@ -458,7 +459,8 @@ class LearningManagementScreen extends StatelessWidget {
             const EmptyState(
               icon: Icons.school_outlined,
               title: 'Nessun pattern ancora',
-              subtitle: 'Dopo alcuni movimenti coerenti compariranno qui le abitudini riconosciute.',
+              subtitle:
+                  'Dopo alcuni movimenti coerenti compariranno qui le abitudini riconosciute.',
             )
           else
             ...state.learnedPatterns.map((pattern) {
@@ -687,8 +689,9 @@ Future<void> _exportCsv(BuildContext context, AppState state) async {
       bytes: Uint8List.fromList(utf8.encode(csv)),
     );
     if (context.mounted && output != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('CSV esportato.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('CSV esportato.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -708,8 +711,9 @@ Future<void> _importCsv(BuildContext context, AppState state) async {
     if (file == null) return;
     final count = await state.importCsv(utf8.decode(await file.readAsBytes()));
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('$count movimenti importati.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('$count movimenti importati.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -732,13 +736,15 @@ Future<void> _backup(BuildContext context, AppState state) async {
       bytes: bytes,
     );
     if (context.mounted && output != null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Backup salvato.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Backup salvato.')));
     }
   } catch (error) {
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Backup non riuscito: $error')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Backup non riuscito: $error')));
     }
   }
 }
@@ -753,7 +759,8 @@ Future<void> _restore(BuildContext context, AppState state) async {
     final confirmed = await confirmDestructiveAction(
       context,
       title: 'Ripristinare questo backup?',
-      message: 'Il database corrente verrà sostituito completamente. Crea prima un backup se vuoi conservarlo.',
+      message:
+          'Il database corrente verrà sostituito completamente. Crea prima un backup se vuoi conservarlo.',
       confirmLabel: 'Ripristina',
     );
     if (!confirmed) return;
@@ -762,8 +769,9 @@ Future<void> _restore(BuildContext context, AppState state) async {
     await source.writeAsBytes(await picked.readAsBytes(), flush: true);
     await state.restoreDatabaseFrom(source.path);
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Backup ripristinato.')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Backup ripristinato.')));
     }
   } catch (error) {
     if (context.mounted) {
@@ -778,14 +786,16 @@ Future<void> _clearAll(BuildContext context, AppState state) async {
   final confirmed = await confirmDestructiveAction(
     context,
     title: 'Cancellare tutti i dati?',
-    message: 'Verranno rimossi conti, movimenti, categorie, budget, obiettivi, ricorrenti, regole e apprendimento locale.',
+    message:
+        'Verranno rimossi conti, movimenti, categorie, budget, obiettivi, ricorrenti, regole e apprendimento locale.',
     confirmLabel: 'Cancella definitivamente',
   );
   if (!confirmed) return;
   await state.clearAllUserData();
   if (context.mounted) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Dati cancellati.')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Dati cancellati.')));
   }
 }
 
@@ -1175,7 +1185,8 @@ class RulesScreen extends StatelessWidget {
                     final confirmed = await confirmDestructiveAction(
                       context,
                       title: 'Eliminare “${item.name}”?',
-                      message: 'I movimenti già classificati non verranno modificati.',
+                      message:
+                          'I movimenti già classificati non verranno modificati.',
                     );
                     if (confirmed) await state.deleteRule(item);
                   },

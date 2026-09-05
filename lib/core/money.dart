@@ -40,10 +40,9 @@ abstract final class Money {
     if (input.isEmpty || !RegExp(r'^[0-9.+\-*/]+$').hasMatch(input)) {
       return null;
     }
-    final tokens = RegExp(r'(\d+(?:\.\d+)?|[+\-*/])')
-        .allMatches(input)
-        .map((match) => match.group(0)!)
-        .toList();
+    final tokens = RegExp(
+      r'(\d+(?:\.\d+)?|[+\-*/])',
+    ).allMatches(input).map((match) => match.group(0)!).toList();
     if (tokens.join() != input || tokens.isEmpty) return null;
 
     final values = <double>[];
