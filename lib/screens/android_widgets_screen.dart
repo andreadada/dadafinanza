@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 
+import '../widgets/ui_helpers.dart';
+
 class AndroidWidgetsScreen extends StatefulWidget {
   const AndroidWidgetsScreen({super.key});
 
@@ -44,7 +46,9 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Apri il selettore widget del launcher e cerca DadaFinanza.'),
+          content: Text(
+            'Apri il selettore widget del launcher e cerca DadaFinanza.',
+          ),
         ),
       );
     }
@@ -54,57 +58,87 @@ class _AndroidWidgetsScreenState extends State<AndroidWidgetsScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(title: const Text('Widget Android')),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 60),
           children: [
             Text(
               'DadaFinanza sulla Home',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Scegli solo le informazioni che vuoi avere a colpo d’occhio. I dettagli restano nell’app.',
-              style: Theme.of(context).textTheme.bodyMedium,
+            const SizedBox(height: 8),
+            const Text(
+              'Ogni istanza può avere impostazioni proprie. Il widget apre sempre Quick Add: nessun tap registra denaro senza la tua conferma.',
             ),
-            const SizedBox(height: 26),
+            const SizedBox(height: 28),
+            const SectionTitle('Widget disponibili'),
             _WidgetChoice(
               icon: Icons.account_balance_wallet_outlined,
               title: 'Saldo',
-              subtitle: 'Compatto · circa 2×1\nSaldo totale e accesso rapido all’app.',
+              subtitle:
+                  'Circa 2×1 · saldo compatto e accesso a Nuovo movimento. La visibilità del saldo è configurabile per istanza.',
               buttonLabel: 'Aggiungi Saldo',
               enabled: !checking && supported,
               onPressed: () => _pin('DadaBalanceWidgetProvider'),
             ),
             const Divider(height: 32),
             _WidgetChoice(
-              icon: Icons.add_circle_outline_rounded,
-              title: 'Quick Add',
-              subtitle: 'Azioni · circa 2×2\nApri direttamente Spesa, Entrata o Trasferimento.',
-              buttonLabel: 'Aggiungi Quick Add',
+              icon: Icons.mic_none_rounded,
+              title: 'Quick Capture',
+              subtitle:
+                  'Circa 2×2 · Spesa, Entrata, Trasferisci e Voce. Conto e categoria possono essere preconfigurati.',
+              buttonLabel: 'Aggiungi Quick Capture',
               enabled: !checking && supported,
               onPressed: () => _pin('DadaQuickAddWidgetProvider'),
             ),
             const Divider(height: 32),
             _WidgetChoice(
+              icon: Icons.pin_outlined,
+              title: 'Importi rapidi',
+              subtitle:
+                  'Circa 4×2 · quattro importi personalizzati, conto, categoria, trasferimento e microfono.',
+              buttonLabel: 'Aggiungi Importi rapidi',
+              enabled: !checking && supported,
+              onPressed: () => _pin('DadaQuickAmountsWidgetProvider'),
+            ),
+            const Divider(height: 32),
+            _WidgetChoice(
               icon: Icons.space_dashboard_outlined,
               title: 'Riepilogo',
-              subtitle: 'Completo · circa 4×2\nSaldo e quattro categorie rapide configurate dai tuoi dati.',
+              subtitle:
+                  'Circa 4×2 · saldo e quattro categorie rapide. Le categorie seguono prima i quick slot e poi le preferite.',
               buttonLabel: 'Aggiungi Riepilogo',
               enabled: !checking && supported,
               onPressed: () => _pin('DadaFinanceWidgetProvider'),
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 32),
+            const SectionTitle('Privacy widget'),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.visibility_off_outlined),
+              title: Text('Separata dall’app'),
+              subtitle: Text(
+                'Durante la configurazione puoi scegliere se mostrare saldo e importi. “Nascondi saldi” nell’app prevale comunque e oscura i widget.',
+              ),
+            ),
+            const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.tune_rounded),
+              title: Text('Configurazione per istanza'),
+              subtitle: Text(
+                'Puoi avere, per esempio, un widget Revolut/Bar e un altro Contanti/Benzina con importi diversi.',
+              ),
+            ),
+            const SizedBox(height: 20),
             if (checking)
               const Center(child: CircularProgressIndicator())
             else if (!supported)
               Text(
                 Platform.isAndroid
-                    ? 'Il launcher non supporta l’aggiunta automatica. Tieni premuto sulla schermata Home → Widget → DadaFinanza.'
+                    ? 'Il launcher non supporta l’aggiunta automatica. Tieni premuto sulla Home → Widget → DadaFinanza.'
                     : 'I widget di questa sezione sono disponibili su Android.',
-                style: Theme.of(context).textTheme.bodyMedium,
               )
             else
               Text(
-                'Android può chiederti una conferma prima di posizionare il widget.',
+                'Android può chiederti conferma e aprire la configurazione prima di posizionare il widget.',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
           ],
@@ -139,8 +173,8 @@ class _WidgetChoice extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, size: 30),
-                const SizedBox(width: 14),
+                Icon(icon, size: 28),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,8 +187,8 @@ class _WidgetChoice extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            FilledButton.tonalIcon(
+            const SizedBox(height: 12),
+            TextButton.icon(
               onPressed: enabled ? onPressed : null,
               icon: const Icon(Icons.add_to_home_screen_rounded),
               label: Text(buttonLabel),
