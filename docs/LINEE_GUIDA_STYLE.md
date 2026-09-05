@@ -113,7 +113,7 @@ Uno stato vuoto non deve mai riservare altezze artificiali o mostrare skeleton p
 
 Bottom navigation ufficiale: Home, Movimenti, Analisi, Pianifica. Il FAB centrale/prominente crea un movimento. Conti resta destinazione secondaria, non quinta tab.
 
-Esiste una sola shell canonica. Vecchie shell/dashboard possono restare temporaneamente nel sorgente soltanto se contengono componenti condivisi ancora in uso, ma non devono essere raggiungibili da route utente.
+Esiste una sola shell canonica. La **Home canonica** deve essere la superficie quotidiana: informativa ma pulita, con patrimonio, metriche, azioni rapide e sezioni operative. La **Dashboard avanzata** può essere raggiunta dalla Home come vista secondaria personalizzabile tramite l'azione dedicata in AppBar, ma non deve introdurre una seconda bottom navigation, sostituire la Home o diventare un secondo entry point dell'app. Vecchie shell complete restano non raggiungibili.
 
 ## 15. Accessibilità
 
