@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dadafinanza/app_state.dart';
 import 'package:dadafinanza/data/app_database.dart';
 import 'package:dadafinanza/models/advance_models.dart';
@@ -19,9 +21,19 @@ void main() {
   late int personId;
   final now = DateTime(2026, 9, 5, 12);
 
-  setUpAll(() {
+  late Directory databaseRoot;
+
+  setUpAll(() async {
     ffi.sqfliteFfiInit();
     databaseFactory = ffi.databaseFactoryFfi;
+    databaseRoot = await Directory.systemTemp.createTemp(
+      'dadafinanza-advance-db-',
+    );
+    await databaseFactory.setDatabasesPath(databaseRoot.path);
+  });
+
+  tearDownAll(() async {
+    if (await databaseRoot.exists()) await databaseRoot.delete(recursive: true);
   });
 
   setUp(() async {

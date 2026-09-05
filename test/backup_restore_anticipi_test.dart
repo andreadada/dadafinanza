@@ -31,9 +31,19 @@ void main() {
   late Directory temp;
   late _TempAttachmentService attachments;
 
-  setUpAll(() {
+  late Directory databaseRoot;
+
+  setUpAll(() async {
     ffi.sqfliteFfiInit();
     databaseFactory = ffi.databaseFactoryFfi;
+    databaseRoot = await Directory.systemTemp.createTemp(
+      'dadafinanza-backup-db-',
+    );
+    await databaseFactory.setDatabasesPath(databaseRoot.path);
+  });
+
+  tearDownAll(() async {
+    if (await databaseRoot.exists()) await databaseRoot.delete(recursive: true);
   });
 
   setUp(() async {
@@ -83,9 +93,8 @@ void main() {
       );
 
       final attachmentDir = await attachments.directory();
-      await File(
-        p.join(attachmentDir.path, 'receipt-test.jpg'),
-      ).writeAsBytes([1, 2, 3, 4]);
+      await File(p.join(attachmentDir.path, 'receipt-test.jpg'))
+          .writeAsBytes([1, 2, 3, 4]);
 
       final backupService = BackupService(
         database,
