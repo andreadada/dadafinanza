@@ -1,7 +1,7 @@
 import 'package:dadafinanza/app_state.dart';
 import 'package:dadafinanza/data/app_database.dart';
 import 'package:dadafinanza/main.dart';
-import 'package:dadafinanza/screens/canonical_shell.dart';
+import 'package:dadafinanza/screens/home_screen.dart';
 import 'package:dadafinanza/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -30,14 +30,15 @@ void main() {
           notifier: state,
           child: MaterialApp(
             theme: AppTheme.light(),
-            home: const Scaffold(body: CanonicalHomeScreen()),
+            home: const Scaffold(body: DadaHomeScreen()),
           ),
         ),
       );
       await tester.pump();
 
       expect(find.text('Nessun conto'), findsOneWidget);
-      expect(find.text('Saldo totale'), findsNothing);
+      expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
+      expect(find.text('PATRIMONIO'), findsOneWidget);
       expect(tester.takeException(), isNull);
       final offset = tester.getTopLeft(find.text('Nessun conto'));
       expect(offset.dy, lessThan(size.height * .9));
@@ -59,13 +60,14 @@ void main() {
           data: const MediaQueryData(textScaler: TextScaler.linear(1.6)),
           child: MaterialApp(
             theme: AppTheme.dark(),
-            home: const Scaffold(body: CanonicalHomeScreen()),
+            home: const Scaffold(body: DadaHomeScreen()),
           ),
         ),
       ),
     );
     await tester.pump();
     expect(find.text('Nessun conto'), findsOneWidget);
+    expect(find.byTooltip('Dashboard avanzata'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
