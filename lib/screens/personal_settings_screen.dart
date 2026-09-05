@@ -11,7 +11,9 @@ import 'local_privacy_screen.dart';
 import 'notification_settings_screen.dart';
 import 'preset_management_screen.dart';
 import 'rules_management_screen.dart';
-import 'settings_screen.dart' show DashboardCustomizerScreen, SmartSuggestionsSettingsScreen;
+import 'settings_screen.dart'
+    show DashboardCustomizerScreen, SmartSuggestionsSettingsScreen;
+import 'voice_settings_screen.dart';
 
 class PersonalSettingsScreen extends StatelessWidget {
   const PersonalSettingsScreen({super.key});
@@ -39,7 +41,9 @@ class PersonalSettingsScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.visibility_off_outlined),
             title: const Text('Nascondi saldi nell’app'),
-            subtitle: const Text('Nasconde gli importi finanziari nelle viste principali.'),
+            subtitle: const Text(
+              'Nasconde gli importi finanziari nelle viste principali.',
+            ),
             value: state.hideBalance,
             onChanged: state.setHideBalance,
           ),
@@ -60,12 +64,21 @@ class PersonalSettingsScreen extends StatelessWidget {
           const SizedBox(height: 32),
           const SectionTitle('Inserimento'),
           _Link(
+            icon: Icons.mic_none_rounded,
+            title: 'Inserimento vocale',
+            subtitle: 'Parser locale · on-device quando disponibile',
+            onTap: () => _open(context, const VoiceSettingsScreen()),
+          ),
+          _Link(
             icon: Icons.bolt_outlined,
             title: 'Smart Suggestions',
             subtitle: state.smartSuggestionsEnabled
                 ? '${state.learnedPatterns.length} pattern appresi'
                 : 'Disattivate',
-            onTap: () => _open(context, const SmartSuggestionsSettingsScreen()),
+            onTap: () => _open(
+              context,
+              const SmartSuggestionsSettingsScreen(),
+            ),
           ),
           _Link(
             icon: Icons.bookmark_add_outlined,
@@ -78,7 +91,8 @@ class PersonalSettingsScreen extends StatelessWidget {
           _Link(
             icon: Icons.category_outlined,
             title: 'Categorie',
-            subtitle: '${state.categories.length} categorie · preferite e quick slot',
+            subtitle:
+                '${state.categories.length} categorie · preferite e quick slot',
             onTap: () => _open(context, const CategoryManagementScreen()),
           ),
           _Link(
@@ -96,7 +110,8 @@ class PersonalSettingsScreen extends StatelessWidget {
           _Link(
             icon: Icons.widgets_outlined,
             title: 'Widget Android',
-            subtitle: 'Saldo, Quick Add e riepilogo',
+            subtitle:
+                'Saldo, Quick Capture, importi rapidi e riepilogo configurabili',
             onTap: () => _open(context, const AndroidWidgetsScreen()),
           ),
           const SizedBox(height: 32),
@@ -113,7 +128,9 @@ class PersonalSettingsScreen extends StatelessWidget {
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.help_outline_rounded),
             title: const Text('Permetti “Non assegnato”'),
-            subtitle: const Text('Registra velocemente e assegna il conto in seguito.'),
+            subtitle: const Text(
+              'Registra velocemente e assegna il conto in seguito.',
+            ),
             value: state.allowUnassigned,
             onChanged: (value) => state.setSetting(
               'allow_unassigned',
