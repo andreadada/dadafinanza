@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../services/quick_preset_service.dart';
+import '../widgets/full_page_empty_state.dart';
 import '../widgets/ui_helpers.dart';
 
 class PresetManagementScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class PresetManagementScreen extends StatefulWidget {
 
 class _PresetManagementScreenState extends State<PresetManagementScreen> {
   List<QuickPreset>? items;
+  bool _requestedInitialLoad = false;
 
   Future<void> _load() async {
     final state = AppScope.of(context);
@@ -25,8 +27,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    items ??= const [];
-    if (items!.isEmpty) _load();
+    if (_requestedInitialLoad) return;
+    _requestedInitialLoad = true;
+    _load();
   }
 
   @override
@@ -50,7 +53,7 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
       body: presets == null
           ? const Center(child: CircularProgressIndicator())
           : presets.isEmpty
-          ? EmptyState(
+          ? FullPageEmptyState(
               icon: Icons.bookmark_add_outlined,
               title: 'Nessun preset',
               subtitle:
@@ -87,15 +90,24 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                   ),
                   subtitle: Text(_summary(state, preset)),
                   trailing: PopupMenuButton<String>(
+                    tooltip: 'Azioni preset',
                     onSelected: (value) async {
                       if (value == 'edit') {
                         await _edit(context, state, existing: preset);
                       } else if (value == 'delete') {
-                        await QuickPresetService(
-                          state.database,
-                        ).delete(preset.id);
+                        final confirmed = await confirmDestructiveAction(
+                          context,
+                          title: 'Eliminare “${preset.name}”?',
+                          message:
+                              'Il preset verrà rimosso. I movimenti già registrati non cambieranno.',
+                        );
+                        if (confirmed) {
+                          await QuickPresetService(
+                            state.database,
+                          ).delete(preset.id);
+                        }
                       }
-                      await _load();
+                      if (mounted) await _load();
                     },
                     itemBuilder: (_) => [
                       const PopupMenuItem(
@@ -115,7 +127,7 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                   ),
                   onTap: () async {
                     await _edit(context, state, existing: preset);
-                    await _load();
+                    if (mounted) await _load();
                   },
                 );
               },
@@ -219,7 +231,10 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                           ),
                         ),
                   ],
-                  onChanged: (value) => accountId = value,
+                  onChanged: (value) => setSheetState(() {
+                    accountId = value;
+                    if (toAccountId == accountId) toAccountId = null;
+                  }),
                 ),
                 if (type == TransactionType.transfer)
                   DropdownButtonFormField<int?>(
@@ -254,14 +269,12 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                         value: null,
                         child: Text('Scegli nel Quick Add'),
                       ),
-                      ...state
-                          .categoriesFor(type)
-                          .map(
-                            (item) => DropdownMenuItem<int?>(
-                              value: item.id,
-                              child: Text(item.name),
-                            ),
-                          ),
+                      ...state.categoriesFor(type).map(
+                        (item) => DropdownMenuItem<int?>(
+                          value: item.id,
+                          child: Text(item.name),
+                        ),
+                      ),
                     ],
                     onChanged: (value) => categoryId = value,
                   ),
@@ -270,9 +283,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Importo opzionale',
-                    suffixText: '€',
+                    suffixText: state.currency,
                   ),
                 ),
                 TextField(
@@ -291,18 +304,21 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                           : double.tryParse(amount.text.replaceAll(',', '.'));
                       if (name.text.trim().isEmpty ||
                           (amount.text.trim().isNotEmpty &&
-                              (parsed == null || parsed <= 0))) {
+                              (parsed == null || parsed <= 0)) ||
+                          (type == TransactionType.transfer &&
+                              accountId != null &&
+                              accountId == toAccountId)) {
                         return;
                       }
                       await service.save(
                         id: existing?.id,
-                        name: name.text,
+                        name: name.text.trim(),
                         type: type,
                         accountId: accountId,
                         toAccountId: toAccountId,
                         categoryId: categoryId,
                         amount: parsed,
-                        note: note.text,
+                        note: note.text.trim(),
                         tags: existing?.tags ?? const [],
                         position: existing?.position,
                         enabled: existing?.enabled ?? true,
