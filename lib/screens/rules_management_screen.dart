@@ -4,6 +4,7 @@ import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../services/rule_service.dart';
+import '../widgets/full_page_empty_state.dart';
 import '../widgets/ui_helpers.dart';
 
 class RulesManagementScreen extends StatefulWidget {
@@ -36,7 +37,7 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
         ],
       ),
       body: rules.isEmpty
-          ? EmptyState(
+          ? FullPageEmptyState(
               icon: Icons.auto_fix_high_outlined,
               title: 'Nessuna regola',
               subtitle: 'Esempio: descrizione contiene LIDL → Alimentari.',
@@ -148,10 +149,12 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
       conditions.add('“${rule.containsText}”');
     }
     if (rule.type != null) conditions.add(rule.type!.label);
-    if (rule.minAmount != null)
+    if (rule.minAmount != null) {
       conditions.add('≥ ${moneyFor(state, rule.minAmount!)}');
-    if (rule.maxAmount != null)
+    }
+    if (rule.maxAmount != null) {
       conditions.add('≤ ${moneyFor(state, rule.maxAmount!)}');
+    }
     final actions = <String>[];
     final category = state.categoryById(rule.categoryId);
     final account = state.accountById(rule.accountId);
@@ -188,15 +191,13 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                   : 'Questa regola corrisponde a ${preview.count} movimenti.',
             ),
             const SizedBox(height: 12),
-            ...preview.matches
-                .take(4)
-                .map(
-                  (item) => FlatMetric(
-                    label: item.note ?? item.type.label,
-                    value: moneyFor(state, item.amount),
-                    icon: Icons.receipt_long_outlined,
-                  ),
-                ),
+            ...preview.matches.take(4).map(
+              (item) => FlatMetric(
+                label: item.note ?? item.type.label,
+                value: moneyFor(state, item.amount),
+                icon: Icons.receipt_long_outlined,
+              ),
+            ),
             if (preview.count > 4)
               Text(
                 '+ ${preview.count - 4} altri',
