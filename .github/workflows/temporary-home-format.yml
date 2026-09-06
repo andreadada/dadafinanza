@@ -1,0 +1,24 @@
+name: Temporary home formatter diagnostics
+
+on:
+  push:
+    branches:
+      - 'build/fix-home-dashboard-wiring'
+
+permissions:
+  contents: read
+
+jobs:
+  format-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: Format targets
+        run: dart format lib/screens/account_context_home_screen.dart test/home_dashboard_wiring_test.dart
+      - name: Show formatter diff
+        run: git diff -- lib/screens/account_context_home_screen.dart test/home_dashboard_wiring_test.dart
