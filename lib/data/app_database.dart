@@ -7,7 +7,7 @@ import '../models/models.dart';
 import '../models/smart_models.dart';
 
 class AppDatabase {
-  static const databaseVersion = 4;
+  static const databaseVersion = 5;
   static const _unassignedName = '__UNASSIGNED__';
 
   Database? _db;
@@ -66,6 +66,7 @@ class AppDatabase {
       include_in_analytics INTEGER NOT NULL DEFAULT 1,
       recurring_id INTEGER,
       refund_of_transaction_id INTEGER,
+      kind TEXT NOT NULL DEFAULT 'normal',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       FOREIGN KEY(account_id) REFERENCES accounts(id),
@@ -376,6 +377,14 @@ class AppDatabase {
     if (oldVersion < 4) {
       await _createSmartTables(db);
       await _seedSmartSettings(db);
+    }
+    if (oldVersion < 5) {
+      await _addColumnIfMissing(
+        db,
+        'transactions',
+        'kind',
+        "TEXT NOT NULL DEFAULT 'normal'",
+      );
     }
     await _createIndexes(db);
   }
