@@ -91,8 +91,9 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                       if (value == 'edit') {
                         await _edit(context, state, existing: preset);
                       } else if (value == 'delete') {
-                        await QuickPresetService(state.database)
-                            .delete(preset.id);
+                        await QuickPresetService(
+                          state.database,
+                        ).delete(preset.id);
                       }
                       await _load();
                     },

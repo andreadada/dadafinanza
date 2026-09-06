@@ -423,8 +423,9 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(color: color),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: color),
         ),
       ),
     ],

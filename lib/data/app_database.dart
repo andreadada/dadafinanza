@@ -563,7 +563,8 @@ class AppDatabase {
   )).map(Account.fromMap).toList();
   Future<List<Category>> categories() async => (await db.query(
     'categories',
-    orderBy: 'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name',
+    orderBy:
+        'type, CASE WHEN quick_order IS NULL THEN 999 ELSE quick_order END, name',
   )).map(Category.fromMap).toList();
   Future<List<FinanceTransaction>> transactions() async => (await db.query(
     'transactions',
@@ -705,7 +706,8 @@ class AppDatabase {
       }
       await txn.delete(
         'transaction_splits',
-        where: 'transaction_id IN (SELECT id FROM transactions WHERE account_id = ? OR to_account_id = ?)',
+        where:
+            'transaction_id IN (SELECT id FROM transactions WHERE account_id = ? OR to_account_id = ?)',
         whereArgs: [id, id],
       );
       await txn.delete(
