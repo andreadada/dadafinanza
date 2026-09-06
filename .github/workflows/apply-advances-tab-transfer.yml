@@ -28,10 +28,8 @@ jobs:
           cache: true
       - name: Get dependencies
         run: flutter pub get
-      - name: Apply patch
-        run: |
-          python3 tooling/apply_advances_tab_transfer.py
-          python3 tooling/apply_advances_tab_transfer_followup.py
+      - name: Apply refinement
+        run: python3 tooling/apply_advances_tab_transfer_followup.py
       - name: Format
         run: dart format lib test
       - name: Analyze
