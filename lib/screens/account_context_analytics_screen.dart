@@ -101,6 +101,15 @@ class _AccountContextAnalyticsScreenState
     final savingsRate = income <= 0
         ? null
         : ((income - expense) / income * 100);
+    final transferNet = effectiveAccountId == null
+        ? 0.0
+        : AccountContextService.transferNetFor(
+            state,
+            effectiveAccountId,
+            from,
+            to,
+          );
+    final accountVariation = income - expense + transferNet;
     final delta = previousExpense == 0
         ? null
         : (expense - previousExpense) / previousExpense * 100;
@@ -232,10 +241,19 @@ class _AccountContextAnalyticsScreenState
               const SizedBox(width: 20),
               Expanded(
                 child: _Metric(
-                  label: 'Risparmio',
-                  value: savingsRate == null
-                      ? '—'
-                      : '${savingsRate.toStringAsFixed(0)}%',
+                  label: effectiveAccountId == null
+                      ? 'Risparmio'
+                      : 'Variazione',
+                  value: effectiveAccountId == null
+                      ? savingsRate == null
+                            ? '—'
+                            : '${savingsRate.toStringAsFixed(0)}%'
+                      : moneyFor(state, accountVariation, signed: true),
+                  color: effectiveAccountId == null
+                      ? null
+                      : accountVariation < 0
+                      ? context.financeColors.negative
+                      : context.financeColors.positive,
                 ),
               ),
             ],
@@ -252,6 +270,14 @@ class _AccountContextAnalyticsScreenState
                 : 'Spese ${delta.abs().toStringAsFixed(0)}% '
                       '${delta <= 0 ? 'più basse' : 'più alte'} del periodo precedente.',
           ),
+          if (effectiveAccountId != null) ...[
+            const SizedBox(height: 10),
+            _AnalyticsLine(
+              icon: Icons.swap_horiz_rounded,
+              text:
+                  'Giroconti netti ${moneyFor(state, transferNet, signed: true)} nel periodo.',
+            ),
+          ],
           const SizedBox(height: 10),
           _AnalyticsLine(
             icon: Icons.repeat_rounded,

@@ -14,7 +14,11 @@ class AdvancesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final open = state.advances
-        .where((item) => item.closedKind == null)
+        .where(
+          (item) =>
+              item.closedKind == null &&
+              state.advanceRemainingCents(item.id) > 0,
+        )
         .toList();
     final closed = state.advances
         .where(
