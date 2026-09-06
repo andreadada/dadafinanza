@@ -182,7 +182,8 @@ class AccountContextHomeScreen extends StatelessWidget {
                   EmptyState(
                     icon: Icons.dashboard_customize_outlined,
                     title: 'Home vuota',
-                    subtitle: 'Hai nascosto tutti i widget. Riattivane almeno uno da Personalizza Home.',
+                    subtitle:
+                        'Hai nascosto tutti i widget. Riattivane almeno uno da Personalizza Home.',
                     action: TextButton.icon(
                       onPressed: () => Navigator.push(
                         context,
@@ -550,8 +551,9 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium
-              ?.copyWith(color: color),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: color),
         ),
       ),
     ],
