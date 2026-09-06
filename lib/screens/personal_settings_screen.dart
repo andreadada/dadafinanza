@@ -140,22 +140,16 @@ class PersonalSettingsScreen extends StatelessWidget {
               'Registra velocemente e assegna il conto in seguito.',
             ),
             value: state.allowUnassigned,
-            onChanged: (value) => _setBoolSetting(
-              state,
-              'allow_unassigned',
-              value,
-            ),
+            onChanged: (value) =>
+                _setBoolSetting(state, 'allow_unassigned', value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_horiz_rounded),
             title: const Text('Trasferimenti nelle statistiche'),
             value: state.showTransfersInAnalytics,
-            onChanged: (value) => _setBoolSetting(
-              state,
-              'show_transfers_analytics',
-              value,
-            ),
+            onChanged: (value) =>
+                _setBoolSetting(state, 'show_transfers_analytics', value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
