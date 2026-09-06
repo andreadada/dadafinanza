@@ -94,6 +94,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
         accountId: effectiveAccountId,
         onAccountChanged: _selectAccount,
       ),
+      const AdvancesScreen(showFab: false),
       const PlanningScreen(),
     ];
 
@@ -107,8 +108,12 @@ class _DadaAppShellState extends State<DadaAppShell> {
         floatingActionButton: GestureDetector(
           onLongPress: _showQuickMenu,
           child: FloatingActionButton(
-            tooltip: 'Nuovo movimento. Tieni premuto per voce e preset.',
-            onPressed: () => _open(TransactionType.expense),
+            tooltip: index == 3
+                ? 'Nuovo anticipo'
+                : 'Nuovo movimento. Tieni premuto per voce e preset.',
+            onPressed: index == 3
+                ? () => showAdvanceEditor(context)
+                : () => _open(TransactionType.expense),
             child: const Icon(Icons.add_rounded),
           ),
         ),
@@ -131,6 +136,11 @@ class _DadaAppShellState extends State<DadaAppShell> {
               icon: Icon(Icons.insights_outlined),
               selectedIcon: Icon(Icons.insights_rounded),
               label: 'Analisi',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.handshake_outlined),
+              selectedIcon: Icon(Icons.handshake_rounded),
+              label: 'Anticipi',
             ),
             NavigationDestination(
               icon: Icon(Icons.event_note_outlined),

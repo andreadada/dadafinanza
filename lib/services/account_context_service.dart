@@ -72,6 +72,22 @@ class AccountContextService {
     return total;
   }
 
+  static double transferNetFor(
+    AppState state,
+    int accountId,
+    DateTime from,
+    DateTime to,
+  ) {
+    var total = 0.0;
+    for (final item in state.transactions) {
+      if (item.type != TransactionType.transfer) continue;
+      if (item.date.isBefore(from) || !item.date.isBefore(to)) continue;
+      if (item.toAccountId == accountId) total += item.amount;
+      if (item.accountId == accountId) total -= item.amount;
+    }
+    return total;
+  }
+
   static double monthTotal(
     AppState state,
     int? accountId,

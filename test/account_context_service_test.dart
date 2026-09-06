@@ -66,6 +66,64 @@ void main() {
     expect(forSecond.map((item) => item.id), isNot(contains(2)));
   });
 
+  test(
+    'single-account transfer net reconciles cash without inflating income',
+    () {
+      final state = AppState(AppDatabase())..loading = false;
+      state.accounts = [account(1, 'Portafoglio'), account(2, 'Revolut')];
+      state.transactions = [
+        transaction(
+          id: 1,
+          type: TransactionType.income,
+          amount: 40,
+          accountId: 2,
+        ),
+        transaction(
+          id: 2,
+          type: TransactionType.expense,
+          amount: 52.32,
+          accountId: 2,
+        ),
+        transaction(
+          id: 3,
+          type: TransactionType.transfer,
+          amount: 50,
+          accountId: 1,
+          toAccountId: 2,
+        ),
+      ];
+
+      final from = DateTime(2026, 9, 1);
+      final to = DateTime(2026, 10, 1);
+      final income = AccountContextService.periodTotal(
+        state,
+        2,
+        TransactionType.income,
+        from,
+        to,
+      );
+      final expense = AccountContextService.periodTotal(
+        state,
+        2,
+        TransactionType.expense,
+        from,
+        to,
+      );
+      final transferNet = AccountContextService.transferNetFor(
+        state,
+        2,
+        from,
+        to,
+      );
+
+      expect(income, 40);
+      expect(expense, 52.32);
+      expect(transferNet, 50);
+      expect(income - expense + transferNet, closeTo(37.68, 0.001));
+      expect(AccountContextService.transferNetFor(state, 1, from, to), -50);
+    },
+  );
+
   test('grouped movements report totals and percentages by category', () {
     final state = AppState(AppDatabase())..loading = false;
     state.accounts = [account(1, 'A')];

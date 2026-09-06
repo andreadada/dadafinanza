@@ -8,13 +8,19 @@ import '../models/models.dart';
 import '../widgets/ui_helpers.dart';
 
 class AdvancesScreen extends StatelessWidget {
-  const AdvancesScreen({super.key});
+  const AdvancesScreen({this.showFab = true, super.key});
+
+  final bool showFab;
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final open = state.advances
-        .where((item) => item.closedKind == null)
+        .where(
+          (item) =>
+              item.closedKind == null &&
+              state.advanceRemainingCents(item.id) > 0,
+        )
         .toList();
     final closed = state.advances
         .where(
@@ -44,11 +50,13 @@ class AdvancesScreen extends StatelessWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => showAdvanceEditor(context),
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Anticipo'),
-      ),
+      floatingActionButton: showFab
+          ? FloatingActionButton.extended(
+              onPressed: () => showAdvanceEditor(context),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Anticipo'),
+            )
+          : null,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
         children: [
