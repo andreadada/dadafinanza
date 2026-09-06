@@ -143,11 +143,7 @@ class AccountContextHomeScreen extends StatelessWidget {
                 const SizedBox(height: 32),
               ],
               _QuickActions(
-                onOpen: (type) => _openQuick(
-                  context,
-                  type,
-                  effectiveAccountId,
-                ),
+                onOpen: (type) => _openQuick(context, type, effectiveAccountId),
               ),
               if (isTotal) ...[
                 if (state.advanceReceivableCents > 0 ||
@@ -261,25 +257,30 @@ class AccountContextHomeScreen extends StatelessWidget {
                 if (upcoming.isEmpty)
                   const Text('Nessuna scadenza prevista per questo conto')
                 else
-                  ...upcoming.take(3).map(
-                    (item) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        Icons.repeat_rounded,
-                        color: transactionColor(context, item.type),
+                  ...upcoming
+                      .take(3)
+                      .map(
+                        (item) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.repeat_rounded,
+                            color: transactionColor(context, item.type),
+                          ),
+                          title: Text(item.name),
+                          subtitle: Text(
+                            DateFormat(
+                              'EEE d MMM',
+                              'it_IT',
+                            ).format(item.nextDate),
+                          ),
+                          trailing: Text(
+                            state.hideBalance
+                                ? '••••'
+                                : moneyFor(state, item.amount),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
                       ),
-                      title: Text(item.name),
-                      subtitle: Text(
-                        DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
-                      ),
-                      trailing: Text(
-                        state.hideBalance
-                            ? '••••'
-                            : moneyFor(state, item.amount),
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                    ),
-                  ),
               ],
             ],
           ),
