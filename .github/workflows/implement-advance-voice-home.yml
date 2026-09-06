@@ -30,7 +30,9 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
       - name: Apply implementation
-        run: python3 tooling/apply_advance_voice_home.py
+        run: |
+          python3 tooling/apply_advance_voice_home.py
+          sed -i "/import '..\/core\/money.dart';/a import '../app_state.dart';" lib/screens/account_context_home_screen.dart
       - name: Format
         run: dart format lib test
       - name: Analyze
