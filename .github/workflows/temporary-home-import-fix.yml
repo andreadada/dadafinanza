@@ -1,0 +1,46 @@
+name: Temporary home import repair
+
+on:
+  push:
+    branches:
+      - 'build/fix-home-dashboard-wiring'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/fix-home-dashboard-wiring
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Restore account detail import
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path('lib/screens/account_context_home_screen.dart')
+          source = path.read_text()
+          needle = "import 'account_screens.dart' show showAccountEditor;"
+          wanted = "import 'account_management_screen.dart' show SafeAccountDetailScreen;\n" + needle
+          if "account_management_screen.dart' show SafeAccountDetailScreen" not in source:
+              source = source.replace(needle, wanted)
+              path.write_text(source)
+      - name: Format target
+        run: dart format lib/screens/account_context_home_screen.dart
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet -- lib/screens/account_context_home_screen.dart; then
+            echo "Import already correct"
+            exit 0
+          fi
+          git config user.name "Dada"
+          git config user.email "63845798+andreadada@users.noreply.github.com"
+          git add lib/screens/account_context_home_screen.dart
+          git commit -m "fix: restore account detail import"
+          git push origin HEAD:build/fix-home-dashboard-wiring
