@@ -12,7 +12,7 @@ void main() {
     expect(source, contains('HomeDashboardWidget(config: config)'));
     expect(source, contains('state.dashboardWidgets'));
     expect(source, contains('item.enabled'));
-    expect(source, contains('item.orderIndex'));
+    expect(source, contains('a.orderIndex.compareTo(b.orderIndex)'));
     expect(source, contains('config.size'));
   });
 
