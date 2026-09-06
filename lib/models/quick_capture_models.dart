@@ -46,6 +46,10 @@ class TransactionDraft {
     this.tags = const [],
     this.source = QuickCaptureSource.manual,
     this.startVoice = false,
+    this.advanceShareRequested = false,
+    this.advanceWholeAmount = false,
+    this.advanceAmountCents,
+    this.advancePersonId,
     this.fieldSources = const {},
   });
 
@@ -59,6 +63,10 @@ class TransactionDraft {
   final List<String> tags;
   final QuickCaptureSource source;
   final bool startVoice;
+  final bool advanceShareRequested;
+  final bool advanceWholeAmount;
+  final int? advanceAmountCents;
+  final int? advancePersonId;
   final Map<String, VoiceFieldSource> fieldSources;
 
   TransactionDraft copyWith({
@@ -72,6 +80,10 @@ class TransactionDraft {
     List<String>? tags,
     QuickCaptureSource? source,
     bool? startVoice,
+    bool? advanceShareRequested,
+    bool? advanceWholeAmount,
+    int? advanceAmountCents,
+    int? advancePersonId,
     Map<String, VoiceFieldSource>? fieldSources,
   }) => TransactionDraft(
     type: type ?? this.type,
@@ -84,6 +96,10 @@ class TransactionDraft {
     tags: tags ?? this.tags,
     source: source ?? this.source,
     startVoice: startVoice ?? this.startVoice,
+    advanceShareRequested: advanceShareRequested ?? this.advanceShareRequested,
+    advanceWholeAmount: advanceWholeAmount ?? this.advanceWholeAmount,
+    advanceAmountCents: advanceAmountCents ?? this.advanceAmountCents,
+    advancePersonId: advancePersonId ?? this.advancePersonId,
     fieldSources: fieldSources ?? this.fieldSources,
   );
 }

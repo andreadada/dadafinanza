@@ -1,3 +1,4 @@
+import '../models/advance_models.dart';
 import '../models/models.dart';
 import '../models/quick_capture_models.dart';
 
@@ -8,6 +9,7 @@ class VoiceTransactionParser {
     String transcript, {
     required List<Account> accounts,
     required List<Category> categories,
+    List<FinancePerson> people = const [],
     DateTime? now,
   }) {
     final reference = now ?? DateTime.now();
@@ -15,7 +17,8 @@ class VoiceTransactionParser {
     final issues = <VoiceParseIssue>[];
     final sources = <String, VoiceFieldSource>{};
 
-    final amount = _parseAmount(normalized);
+    final advance = _parseAdvance(normalized);
+    final amount = _parseAmount(advance.amountScanInput);
     if (amount.ambiguous) {
       issues.add(
         const VoiceParseIssue(
@@ -104,6 +107,20 @@ class VoiceTransactionParser {
       }
     }
 
+    int? advancePersonId;
+    if (advance.requested && people.isNotEmpty) {
+      final personMatch = _matchEntity<FinancePerson>(
+        normalized,
+        people.where((item) => !item.archived).toList(),
+        (item) => item.name,
+        (item) => item.id,
+      );
+      if (!personMatch.ambiguous && personMatch.id != null) {
+        advancePersonId = personMatch.id;
+        sources['advancePerson'] = VoiceFieldSource.explicit;
+      }
+    }
+
     final parsedDate = _parseDate(normalized, reference);
     if (parsedDate.explicit) sources['date'] = VoiceFieldSource.explicit;
 
@@ -112,8 +129,16 @@ class VoiceTransactionParser {
       normalized: normalized,
       accounts: activeAccounts,
       categories: categories,
+      people: people,
     );
     if (note != null) sources['note'] = VoiceFieldSource.explicit;
+
+    final canApplyAdvance =
+        type == TransactionType.expense && advance.requested;
+    final advanceAmountCents = canApplyAdvance
+        ? advance.amountCents ?? (advance.wholeAmount ? amount.cents : null)
+        : null;
+    if (canApplyAdvance) sources['advance'] = VoiceFieldSource.explicit;
 
     return VoiceParseResult(
       transcript: transcript,
@@ -126,6 +151,10 @@ class VoiceTransactionParser {
         categoryId: categoryId,
         date: parsedDate.value,
         note: note,
+        advanceShareRequested: canApplyAdvance,
+        advanceWholeAmount: canApplyAdvance && advance.wholeAmount,
+        advanceAmountCents: advanceAmountCents,
+        advancePersonId: canApplyAdvance ? advancePersonId : null,
         source: QuickCaptureSource.voice,
         fieldSources: sources,
       ),
@@ -163,6 +192,57 @@ class VoiceTransactionParser {
       return TransactionType.expense;
     }
     return null;
+  }
+
+  _AdvanceParse _parseAdvance(String input) {
+    final marker = RegExp(
+      r'\b(?:anticipato|anticipata|anticipati|anticipate|anticipo)\b',
+    );
+    if (!marker.hasMatch(input)) {
+      return _AdvanceParse(amountScanInput: input);
+    }
+
+    final partialCue = RegExp(
+      r'\b(?:di cui|una parte|in parte|parte)\b',
+    ).hasMatch(input);
+    var amountScanInput = input;
+    int? advanceAmountCents;
+    final partialPatterns = [
+      RegExp(
+        r'\bdi cui\s+([a-z]+|\d+(?:[\.,]\d{1,2})?)\s*(?:euro|eur|€)?\s+(?:sono\s+)?(?:anticipato|anticipata|anticipati|anticipate)\b',
+      ),
+      RegExp(
+        r'\b(?:una parte|in parte)(?:\s+di)?\s+([a-z]+|\d+(?:[\.,]\d{1,2})?)\s*(?:euro|eur|€)?\s+(?:anticipato|anticipata|anticipati|anticipate)\b',
+      ),
+    ];
+    for (final pattern in partialPatterns) {
+      final match = pattern.firstMatch(input);
+      if (match == null) continue;
+      advanceAmountCents = _voiceMoneyTokenToCents(match.group(1));
+      if (advanceAmountCents != null) {
+        amountScanInput = input.replaceRange(
+          match.start,
+          match.end,
+          ' anticipo ',
+        );
+        break;
+      }
+    }
+    return _AdvanceParse(
+      requested: true,
+      wholeAmount: !partialCue,
+      amountCents: advanceAmountCents,
+      amountScanInput: amountScanInput,
+    );
+  }
+
+  int? _voiceMoneyTokenToCents(String? raw) {
+    if (raw == null || raw.isEmpty) return null;
+    if (RegExp(r'^\d+(?:[\.,]\d{1,2})?$').hasMatch(raw)) {
+      return _decimalToCents(raw);
+    }
+    final value = _parseNumberToken(raw);
+    return value == null ? null : value * 100;
   }
 
   _AmountParse _parseAmount(String input) {
@@ -481,6 +561,7 @@ class VoiceTransactionParser {
     required String normalized,
     required List<Account> accounts,
     required List<Category> categories,
+    required List<FinancePerson> people,
   }) {
     final merchant = RegExp(
       r"\b(?:al|alla|presso)\s+([A-Za-zÀ-ÿ0-9'’&. -]+?)(?=\s+(?:con|nel|sul|su|oggi|ieri|domani)\b|,|$)",
@@ -532,11 +613,20 @@ class VoiceTransactionParser {
       'al',
       'alla',
       'e',
+      'cui',
+      'parte',
+      'tutto',
+      'anticipato',
+      'anticipata',
+      'anticipati',
+      'anticipate',
+      'anticipo',
     };
     final entities = <String>{
       for (final account in accounts) ..._normalize(account.name).split(' '),
       for (final category in categories)
         ..._normalize(category.name).split(' '),
+      for (final person in people) ..._normalize(person.name).split(' '),
     };
     final remaining = words.where((word) {
       if (word.length < 2 ||
@@ -572,6 +662,20 @@ class VoiceTransactionParser {
     }
     return output;
   }
+}
+
+class _AdvanceParse {
+  const _AdvanceParse({
+    required this.amountScanInput,
+    this.requested = false,
+    this.wholeAmount = false,
+    this.amountCents,
+  });
+
+  final String amountScanInput;
+  final bool requested;
+  final bool wholeAmount;
+  final int? amountCents;
 }
 
 class _AmountParse {

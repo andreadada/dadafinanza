@@ -289,6 +289,22 @@ class _QuickAddPageState extends State<QuickAddPage> {
     _scheduleSuggestion();
   }
 
+  void _insertAmountOperator(String symbol) {
+    final current = amount.value;
+    final start = current.selection.isValid
+        ? current.selection.start.clamp(0, current.text.length)
+        : current.text.length;
+    final end = current.selection.isValid
+        ? current.selection.end.clamp(0, current.text.length)
+        : current.text.length;
+    final next = current.text.replaceRange(start, end, symbol);
+    amount.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: start + symbol.length),
+    );
+    amountFocus.requestFocus();
+  }
+
   void _scheduleSuggestion() {
     if (!mounted || widget.editing != null || !_defaultsSet) return;
     _suggestionDebounce?.cancel();
@@ -369,6 +385,7 @@ class _QuickAddPageState extends State<QuickAddPage> {
       transcript,
       accounts: state.accounts,
       categories: state.categories,
+      people: state.people,
     );
 
     for (final issue in result.issues) {
@@ -437,6 +454,20 @@ class _QuickAddPageState extends State<QuickAddPage> {
       }
       if (draft.date != null) date = draft.date!;
       if ((draft.note ?? '').trim().isNotEmpty) note.text = draft.note!;
+      if (type == TransactionType.expense && draft.advanceShareRequested) {
+        advanceShareEnabled = true;
+        if (draft.advancePersonId != null) {
+          advancePersonId = draft.advancePersonId;
+        }
+        final voiceAdvanceCents =
+            draft.advanceAmountCents ??
+            (draft.advanceWholeAmount ? draft.amountCents : null);
+        if (voiceAdvanceCents != null && voiceAdvanceCents > 0) {
+          advanceShare.text = Money.fromCents(
+            voiceAdvanceCents,
+          ).toStringAsFixed(2);
+        }
+      }
       for (final value in draft.tags) {
         if (!tags.contains(value)) tags.add(value);
       }
@@ -808,9 +839,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
       if (type != TransactionType.expense ||
           mixedAdvanceAmount == null ||
           mixedAdvanceAmount <= 0 ||
-          mixedAdvanceAmount >= parsed) {
+          mixedAdvanceAmount > parsed) {
         return _error(
-          'La quota anticipata deve essere maggiore di 0 e minore del totale.',
+          'La quota anticipata deve essere maggiore di 0 e minore o uguale al totale.',
         );
       }
       if (advancePersonId == null) {
@@ -1212,10 +1243,29 @@ class _QuickAddPageState extends State<QuickAddPage> {
               decoration: const InputDecoration(
                 hintText: '0,00',
                 suffixText: '€',
-                helperText: 'Puoi anche scrivere 12,50 + 4,20',
+                helperText: 'Calcoli rapidi: usa +  −  ×  ÷',
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 4),
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 4,
+              children: ['+', '−', '×', '÷']
+                  .map(
+                    (operator) => TextButton(
+                      onPressed: () => _insertAmountOperator(operator),
+                      child: Text(
+                        operator,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: SegmentedButton<TransactionType>(
@@ -1319,11 +1369,9 @@ class _QuickAddPageState extends State<QuickAddPage> {
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   secondary: const Icon(Icons.group_outlined),
-                  title: const Text(
-                    'Parte di questa spesa è per qualcun altro',
-                  ),
+                  title: const Text('Questa spesa include un anticipo'),
                   subtitle: const Text(
-                    'Solo la tua quota verrà conteggiata in spese, categorie e budget.',
+                    'Può essere una parte o tutto l’importo. Solo la tua quota verrà conteggiata in spese, categorie e budget.',
                   ),
                   value: advanceShareEnabled,
                   onChanged: linkedAdvanceId != null
@@ -1365,9 +1413,27 @@ class _QuickAddPageState extends State<QuickAddPage> {
                     decoration: const InputDecoration(
                       labelText: 'Quota anticipata',
                       suffixText: '€',
+                      helperText:
+                          'Inserisci una parte oppure usa tutto l’importo.',
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () {
+                        final total = Money.parseExpression(amount.text);
+                        if (total == null || total <= 0) {
+                          _error('Inserisci prima l’importo totale.');
+                          amountFocus.requestFocus();
+                          return;
+                        }
+                        advanceShare.text = total.toStringAsFixed(2);
+                      },
+                      icon: const Icon(Icons.all_inclusive_rounded, size: 18),
+                      label: const Text('Tutto l’importo'),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
                   Builder(
                     builder: (context) {
                       final total = Money.parseExpression(amount.text) ?? 0;

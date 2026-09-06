@@ -185,6 +185,26 @@ void main() {
     },
   );
 
+  test('mixed expense allows the whole amount to be advanced', () async {
+    final transactionId = await service.createMixedExpense(
+      personId: personId,
+      totalAmount: 40,
+      personalAmount: 0,
+      advanceAmount: 40,
+      accountId: accountId,
+      categoryId: expenseCategoryId,
+      date: now,
+    );
+    final item = await transaction(transactionId);
+    final advance = (await service.advances()).single;
+
+    expect(await balance(accountId), 960);
+    expect(item.amount, 40);
+    expect(item.kind, 'mixed_advance');
+    expect(advance.originalAmountCents, 4000);
+    expect(await service.remainingCents(advance.id), 4000);
+  });
+
   test('mixed expense rejects inconsistent split amounts', () async {
     expect(
       () => service.createMixedExpense(

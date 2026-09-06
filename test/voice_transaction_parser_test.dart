@@ -1,3 +1,4 @@
+import 'package:dadafinanza/models/advance_models.dart';
 import 'package:dadafinanza/models/models.dart';
 import 'package:dadafinanza/models/quick_capture_models.dart';
 import 'package:dadafinanza/services/voice_transaction_parser.dart';
@@ -11,6 +12,7 @@ void main() {
     _account(2, 'Intesa'),
     _account(3, 'Risparmio'),
   ];
+  final people = [_person(30, 'Marco'), _person(31, 'Andrea')];
   final categories = [
     const Category(
       id: 10,
@@ -150,6 +152,77 @@ void main() {
     }
   });
 
+  test('voice marks the whole expense as fully advanced', () {
+    final result = parser.parse(
+      'Ho speso 30 euro anticipati a Marco con Revolut',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.amountCents, 3000);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isTrue);
+    expect(result.draft.advanceAmountCents, 3000);
+    expect(result.draft.advancePersonId, 30);
+  });
+
+  test(
+    'voice parses a partial advanced share without making totals ambiguous',
+    () {
+      final result = parser.parse(
+        'Ho speso 30 euro di cui 12 euro anticipati a Marco',
+        accounts: accounts,
+        categories: categories,
+        people: people,
+        now: now,
+      );
+      expect(result.draft.amountCents, 3000);
+      expect(result.draft.advanceShareRequested, isTrue);
+      expect(result.draft.advanceWholeAmount, isFalse);
+      expect(result.draft.advanceAmountCents, 1200);
+      expect(result.draft.advancePersonId, 30);
+      expect(
+        result.issues.any(
+          (issue) => issue.type == VoiceIssueType.ambiguousAmount,
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test('voice keeps partial advance intent when the share is omitted', () {
+    final result = parser.parse(
+      'Ho speso 30 euro di cui anticipati',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.amountCents, 3000);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isFalse);
+    expect(result.draft.advanceAmountCents, isNull);
+  });
+
+  test('voice understands anticipati una parte as advance intent', () {
+    final result = parser.parse(
+      'Anticipati una parte a Marco',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.type, TransactionType.expense);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isFalse);
+    expect(result.draft.advancePersonId, 30);
+    expect(
+      result.issues.any((issue) => issue.type == VoiceIssueType.missingAmount),
+      isTrue,
+    );
+  });
+
   test('similar account names are surfaced as ambiguous', () {
     final result = parser.parse(
       'Ho speso 10 euro con Revolut',
@@ -214,6 +287,16 @@ Account _account(int id, String name) => Account(
   isArchived: false,
   hideBalance: false,
   isSystem: false,
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
+
+FinancePerson _person(int id, String name) => FinancePerson(
+  id: id,
+  name: name,
+  colorValue: 0xff000000,
+  iconKey: 'person',
+  archived: false,
   createdAt: DateTime(2026),
   updatedAt: DateTime(2026),
 );

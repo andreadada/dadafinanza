@@ -36,7 +36,12 @@ abstract final class Money {
   /// Parses a compact arithmetic expression used by Quick Add.
   /// Supports +, -, *, / and decimal comma/dot without evaluating code.
   static double? parseExpression(String raw) {
-    final input = raw.replaceAll(',', '.').replaceAll(' ', '');
+    final input = raw
+        .replaceAll(',', '.')
+        .replaceAll('×', '*')
+        .replaceAll('÷', '/')
+        .replaceAll('−', '-')
+        .replaceAll(' ', '');
     if (input.isEmpty || !RegExp(r'^[0-9.+\-*/]+$').hasMatch(input)) {
       return null;
     }

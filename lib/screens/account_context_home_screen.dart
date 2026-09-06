@@ -1,6 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../core/money.dart';
+import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../services/account_context_service.dart';
@@ -9,6 +13,7 @@ import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
 import 'account_management_screen.dart';
 import 'account_screens.dart' show showAccountEditor;
+import 'advances_screen.dart';
 import 'personal_settings_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
@@ -54,6 +59,9 @@ class AccountContextHomeScreen extends StatelessWidget {
       state,
       effectiveAccountId,
     );
+    final isTotal = effectiveAccountId == null;
+    final budget = isTotal ? _priorityBudget(state) : null;
+    final smartInsight = isTotal ? _smartInsight(state) : null;
     final visibleAccounts = effectiveAccountId == null
         ? state.activeAccounts.take(4).toList()
         : state.activeAccounts
@@ -227,6 +235,35 @@ class AccountContextHomeScreen extends StatelessWidget {
                   ),
                 ),
               ],
+              if (isTotal &&
+                  (state.advanceReceivableCents > 0 ||
+                      state.advancePayableCents > 0 ||
+                      smartInsight != null)) ...[
+                const SizedBox(height: 28),
+                const SectionTitle('Per te'),
+                if (state.advanceReceivableCents > 0 ||
+                    state.advancePayableCents > 0)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.handshake_outlined),
+                    title: const Text(
+                      'Anticipi',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    subtitle: Text(
+                      state.hideBalance
+                          ? '•••• da ricevere · •••• da restituire'
+                          : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · ${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AdvancesScreen()),
+                    ),
+                  ),
+                if (smartInsight case final insight?)
+                  _InsightRow(insight: insight),
+              ],
               const SizedBox(height: 32),
               SectionTitle(
                 effectiveAccountId == null ? 'Conti' : 'Conto selezionato',
@@ -277,6 +314,10 @@ class AccountContextHomeScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+              if (budget != null) ...[
+                const SizedBox(height: 32),
+                _BudgetSummary(budget: budget),
+              ],
               const SizedBox(height: 32),
               const SectionTitle('Ultimi movimenti'),
               if (recent.isEmpty)
@@ -332,6 +373,54 @@ class AccountContextHomeScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Budget? _priorityBudget(AppState state) {
+    final enabled = state.budgets.where((item) => item.enabled).toList();
+    if (enabled.isEmpty) return null;
+    enabled.sort(
+      (a, b) =>
+          state.budgetProgressFor(b).compareTo(state.budgetProgressFor(a)),
+    );
+    return enabled.first;
+  }
+
+  _HomeInsight? _smartInsight(AppState state) {
+    if (!state.smartSuggestionsEnabled) return null;
+    if (state.smartGoalSuggestions) {
+      for (final goal in state.goals.where(
+        (item) => !item.archived && !item.completed,
+      )) {
+        final plan = state.goalPlan(goal);
+        if (plan.status.name == 'slightlyBehind' ||
+            plan.status.name == 'unrealistic') {
+          return _HomeInsight(
+            icon: Icons.flag_outlined,
+            title: goal.name,
+            detail: plan.realisticWeekly > 0
+                ? '${moneyFor(state, plan.realisticWeekly)}/settimana è il ritmo realistico stimato.'
+                : 'Il cash-flow attuale non lascia ancora un margine stabile.',
+            open: (context) => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const GoalsScreen()),
+            ),
+          );
+        }
+      }
+    }
+    if (state.detectedRecurringPatterns.isNotEmpty) {
+      final pattern = state.detectedRecurringPatterns.first;
+      return _HomeInsight(
+        icon: Icons.event_repeat_rounded,
+        title: 'Possibile ricorrenza',
+        detail: '${pattern.normalizedText} · ${pattern.frequency}',
+        open: (context) => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const RecurringScreen()),
+        ),
+      );
+    }
+    return null;
   }
 
   Future<void> _openQuick(
@@ -428,5 +517,82 @@ class _Metric extends StatelessWidget {
         ),
       ),
     ],
+  );
+}
+
+class _BudgetSummary extends StatelessWidget {
+  const _BudgetSummary({required this.budget});
+
+  final Budget budget;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final spent = state.budgetSpent(budget);
+    final progress = state.budgetProgressFor(budget);
+    final remaining = math.max(0, budget.limit - spent).toDouble();
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BudgetsScreen()),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            'Budget',
+            trailing: Text('${(progress * 100).round()}%'),
+          ),
+          Text(budget.name, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text('${moneyFor(state, remaining)} ancora disponibili'),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0).toDouble(),
+            minHeight: 7,
+            borderRadius: BorderRadius.circular(99),
+            color: progress >= 1
+                ? context.financeColors.negative
+                : progress >= .8
+                ? context.financeColors.warning
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeInsight {
+  const _HomeInsight({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.open,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final void Function(BuildContext context) open;
+}
+
+class _InsightRow extends StatelessWidget {
+  const _InsightRow({required this.insight});
+
+  final _HomeInsight insight;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    leading: Icon(insight.icon),
+    title: Text(
+      insight.title,
+      style: const TextStyle(fontWeight: FontWeight.w700),
+    ),
+    subtitle: Text(insight.detail),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: () => insight.open(context),
   );
 }
