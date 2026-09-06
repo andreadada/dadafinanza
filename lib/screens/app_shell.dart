@@ -94,7 +94,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
         accountId: effectiveAccountId,
         onAccountChanged: _selectAccount,
       ),
-      const AdvancesScreen(),
+      const AdvancesScreen(showFab: false),
       const PlanningScreen(),
     ];
 

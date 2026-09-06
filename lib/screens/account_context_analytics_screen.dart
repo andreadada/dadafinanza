@@ -343,6 +343,12 @@ class _AccountContextAnalyticsScreenState
                         TransactionType.expense,
                         from,
                         to,
+                      ) +
+                      AccountContextService.transferNetFor(
+                        state,
+                        account.id,
+                        from,
+                        to,
                       ),
                   signed: true,
                 ),
