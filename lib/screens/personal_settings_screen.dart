@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
 import '../main.dart';
 import '../models/models.dart';
+import '../services/haptic_service.dart';
 import '../widgets/ui_helpers.dart';
 import 'android_widgets_screen.dart';
 import 'advances_screen.dart';
@@ -46,7 +49,7 @@ class PersonalSettingsScreen extends StatelessWidget {
               'Nasconde gli importi finanziari nelle viste principali.',
             ),
             value: state.hideBalance,
-            onChanged: state.setHideBalance,
+            onChanged: (value) => _setHideBalance(state, value),
           ),
           const SizedBox(height: 32),
           const SectionTitle('Privacy locale'),
@@ -137,24 +140,32 @@ class PersonalSettingsScreen extends StatelessWidget {
               'Registra velocemente e assegna il conto in seguito.',
             ),
             value: state.allowUnassigned,
-            onChanged: (value) =>
-                state.setSetting('allow_unassigned', value ? '1' : '0'),
+            onChanged: (value) => _setBoolSetting(
+              state,
+              'allow_unassigned',
+              value,
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.swap_horiz_rounded),
             title: const Text('Trasferimenti nelle statistiche'),
             value: state.showTransfersInAnalytics,
-            onChanged: (value) =>
-                state.setSetting('show_transfers_analytics', value ? '1' : '0'),
+            onChanged: (value) => _setBoolSetting(
+              state,
+              'show_transfers_analytics',
+              value,
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             secondary: const Icon(Icons.vibration_rounded),
             title: const Text('Feedback aptico'),
+            subtitle: const Text(
+              'Vibrazione leggera su navigazione, azioni rapide e impostazioni.',
+            ),
             value: state.haptics,
-            onChanged: (value) =>
-                state.setSetting('haptics', value ? '1' : '0'),
+            onChanged: (value) => _setHaptics(state, value),
           ),
         ],
       ),
@@ -162,7 +173,30 @@ class PersonalSettingsScreen extends StatelessWidget {
   }
 
   void _open(BuildContext context, Widget page) {
+    final state = AppScope.of(context);
+    unawaited(HapticService.light(enabled: state.haptics));
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  Future<void> _setHideBalance(AppState state, bool value) async {
+    await HapticService.light(enabled: state.haptics);
+    await state.setHideBalance(value);
+  }
+
+  Future<void> _setBoolSetting(
+    AppState state,
+    String key,
+    bool value,
+  ) async {
+    await HapticService.light(enabled: state.haptics);
+    await state.setSetting(key, value ? '1' : '0');
+  }
+
+  Future<void> _setHaptics(AppState state, bool value) async {
+    // Give one final confirmation when disabling, and immediate proof when
+    // enabling, before persisting the new preference.
+    await HapticService.medium(enabled: state.haptics || value);
+    await state.setSetting('haptics', value ? '1' : '0');
   }
 
   Future<void> _pickTheme(BuildContext context, AppState state) async {
@@ -199,7 +233,10 @@ class PersonalSettingsScreen extends StatelessWidget {
         ),
       ),
     );
-    if (selected != null) await state.setThemePreference(selected);
+    if (selected != null) {
+      await HapticService.light(enabled: state.haptics);
+      await state.setThemePreference(selected);
+    }
   }
 }
 
