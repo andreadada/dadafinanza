@@ -227,9 +227,8 @@ class AppState extends ChangeNotifier {
   int advanceRemainingCents(int advanceId) {
     final advance = advances.where((item) => item.id == advanceId).firstOrNull;
     if (advance == null) return 0;
-    final settled = settlementsForAdvance(
-      advanceId,
-    ).fold<int>(0, (sum, item) => sum + item.amountCents);
+    final settled = settlementsForAdvance(advanceId)
+        .fold<int>(0, (sum, item) => sum + item.amountCents);
     return math.max(0, advance.originalAmountCents - settled).toInt();
   }
 
@@ -869,9 +868,9 @@ class AppState extends ChangeNotifier {
     required TransactionType type,
     required double amount,
     String? note,
-  }) => AdvanceService(
-    database,
-  ).suggestMatch(type: type, amount: amount, note: note);
+  }) =>
+      AdvanceService(database)
+          .suggestMatch(type: type, amount: amount, note: note);
 
   Future<void> _reloadAdvances() async {
     final service = AdvanceService(database);

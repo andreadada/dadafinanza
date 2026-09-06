@@ -353,8 +353,7 @@ class AdvanceDetailScreen extends StatelessWidget {
                           final confirmed = await confirmDestructiveAction(
                             context,
                             title: 'Eliminare questo rimborso?',
-                            message:
-                                'Il saldo del conto e il residuo dell’anticipo verranno ripristinati automaticamente.',
+                            message: 'Il saldo del conto e il residuo dell’anticipo verranno ripristinati automaticamente.',
                           );
                           if (confirmed) {
                             await state.deleteAdvanceSettlement(settlement.id);
@@ -788,9 +787,8 @@ Future<void> showAdvanceEditor(
   amount.dispose();
   note.dispose();
   if (saved == true && context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Anticipo registrato.')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Anticipo registrato.')));
   }
 }
 
@@ -1061,9 +1059,8 @@ Future<void> showSettlementEditor(
   amount.dispose();
   note.dispose();
   if (saved == true && context.mounted) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Anticipo aggiornato.')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Anticipo aggiornato.')));
   }
 }
 
@@ -1085,8 +1082,7 @@ class FinancePeopleScreen extends StatelessWidget {
           ? const EmptyState(
               icon: Icons.people_outline_rounded,
               title: 'Nessuna persona',
-              subtitle:
-                  'Le persone servono solo per organizzare gli anticipi e restano sul dispositivo.',
+              subtitle: 'Le persone servono solo per organizzare gli anticipi e restano sul dispositivo.',
             )
           : ListView(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),

@@ -11,6 +11,7 @@ import 'quick_add_page.dart';
 import 'transaction_screens.dart';
 
 enum _MovementView { list, grouped }
+
 enum _MovementSort { newest, oldest, amountDesc, amountAsc }
 
 class AccountContextTransactionsScreen extends StatefulWidget {
@@ -49,34 +50,42 @@ class _AccountContextTransactionsScreenState
     final lowered = query.trim().toLowerCase();
     final items = AccountContextService.transactionsFor(state, widget.accountId)
         .where((item) {
-      if (type != null && item.type != type) return false;
-      if (categoryId != null) {
-        final direct = item.categoryId == categoryId;
-        final split = state
-            .splitsFor(item.id)
-            .any((part) => part.categoryId == categoryId);
-        if (!direct && !split) return false;
-      }
-      if (from != null && item.date.isBefore(from!)) return false;
-      if (to != null) {
-        final inclusiveEnd = DateTime(to!.year, to!.month, to!.day, 23, 59, 59);
-        if (item.date.isAfter(inclusiveEnd)) return false;
-      }
-      if (lowered.isNotEmpty) {
-        final account = state.accountById(item.accountId);
-        final destination = state.accountById(item.toAccountId);
-        final category = state.categoryById(item.categoryId);
-        final text = [
-          item.note ?? '',
-          account?.name ?? '',
-          destination?.name ?? '',
-          category?.name ?? '',
-          ...item.tags,
-        ].join(' ').toLowerCase();
-        if (!text.contains(lowered)) return false;
-      }
-      return true;
-    }).toList();
+          if (type != null && item.type != type) return false;
+          if (categoryId != null) {
+            final direct = item.categoryId == categoryId;
+            final split = state
+                .splitsFor(item.id)
+                .any((part) => part.categoryId == categoryId);
+            if (!direct && !split) return false;
+          }
+          if (from != null && item.date.isBefore(from!)) return false;
+          if (to != null) {
+            final inclusiveEnd = DateTime(
+              to!.year,
+              to!.month,
+              to!.day,
+              23,
+              59,
+              59,
+            );
+            if (item.date.isAfter(inclusiveEnd)) return false;
+          }
+          if (lowered.isNotEmpty) {
+            final account = state.accountById(item.accountId);
+            final destination = state.accountById(item.toAccountId);
+            final category = state.categoryById(item.categoryId);
+            final text = [
+              item.note ?? '',
+              account?.name ?? '',
+              destination?.name ?? '',
+              category?.name ?? '',
+              ...item.tags,
+            ].join(' ').toLowerCase();
+            if (!text.contains(lowered)) return false;
+          }
+          return true;
+        })
+        .toList();
 
     switch (sort) {
       case _MovementSort.newest:
@@ -92,7 +101,10 @@ class _AccountContextTransactionsScreenState
   }
 
   bool get hasFilters =>
-      type != null || categoryId != null || from != null || to != null ||
+      type != null ||
+      categoryId != null ||
+      from != null ||
+      to != null ||
       sort != _MovementSort.newest;
 
   void _clearFilters() {
@@ -200,67 +212,67 @@ class _AccountContextTransactionsScreenState
                         ? 'Aggiungi una spesa o un’entrata.'
                         : 'Prova a modificare ricerca o filtri.',
                     action: FilledButton.icon(
-                      onPressed: () => _openNew(context, TransactionType.expense),
+                      onPressed: () =>
+                          _openNew(context, TransactionType.expense),
                       icon: const Icon(Icons.add_rounded),
                       label: const Text('Nuovo movimento'),
                     ),
                   )
                 : view == _MovementView.list
-                    ? ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                        itemCount: items.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) =>
-                            TransactionListTile(item: items[index]),
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
-                        itemCount: groups.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, index) {
-                          final group = groups[index];
-                          final category = state.categoryById(group.categoryId);
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            minVerticalPadding: 10,
-                            leading: Icon(
-                              group.type == TransactionType.transfer
-                                  ? Icons.swap_horiz_rounded
-                                  : category == null
-                                      ? Icons.receipt_long_outlined
-                                      : categoryIcon(category.iconKey),
-                              color: category == null
-                                  ? transactionColor(context, group.type)
-                                  : Color(category.colorValue),
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) =>
+                        TransactionListTile(item: items[index]),
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
+                    itemCount: groups.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final group = groups[index];
+                      final category = state.categoryById(group.categoryId);
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        minVerticalPadding: 10,
+                        leading: Icon(
+                          group.type == TransactionType.transfer
+                              ? Icons.swap_horiz_rounded
+                              : category == null
+                              ? Icons.receipt_long_outlined
+                              : categoryIcon(category.iconKey),
+                          color: category == null
+                              ? transactionColor(context, group.type)
+                              : Color(category.colorValue),
+                        ),
+                        title: Text(
+                          group.title,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          '${group.count} ${group.count == 1 ? 'movimento' : 'movimenti'} · '
+                          '${group.percentage.toStringAsFixed(0)}% ${_typeShareLabel(group.type)}',
+                        ),
+                        trailing: Text(
+                          _groupAmount(state, group),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: transactionColor(context, group.type),
+                          ),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => _GroupedMovementsPage(
+                              title: group.title,
+                              ids: group.transactionIds,
                             ),
-                            title: Text(
-                              group.title,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            subtitle: Text(
-                              '${group.count} ${group.count == 1 ? 'movimento' : 'movimenti'} · '
-                              '${group.percentage.toStringAsFixed(0)}% ${_typeShareLabel(group.type)}',
-                            ),
-                            trailing: Text(
-                              _groupAmount(state, group),
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: transactionColor(context, group.type),
-                              ),
-                            ),
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => _GroupedMovementsPage(
-                                  title: group.title,
-                                  ids: group.transactionIds,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -268,10 +280,10 @@ class _AccountContextTransactionsScreenState
   }
 
   String _typeShareLabel(TransactionType type) => switch (type) {
-        TransactionType.expense => 'delle spese',
-        TransactionType.income => 'delle entrate',
-        TransactionType.transfer => 'dei trasferimenti',
-      };
+    TransactionType.expense => 'delle spese',
+    TransactionType.income => 'delle entrate',
+    TransactionType.transfer => 'dei trasferimenti',
+  };
 
   String _groupAmount(AppState state, AccountCategoryGroup group) =>
       switch (group.type) {
@@ -305,8 +317,8 @@ class _AccountContextTransactionsScreenState
       useSafeArea: true,
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
-          final availableCategories = draftType == null ||
-                  draftType == TransactionType.transfer
+          final availableCategories =
+              draftType == null || draftType == TransactionType.transfer
               ? state.categories
               : state.categoriesFor(draftType!);
           if (draftCategory != null &&
@@ -346,7 +358,9 @@ class _AccountContextTransactionsScreenState
                     }),
                   ),
                   DropdownButtonFormField<int?>(
-                    key: ValueKey('movement-category-$draftType-$draftCategory'),
+                    key: ValueKey(
+                      'movement-category-$draftType-$draftCategory',
+                    ),
                     initialValue: draftCategory,
                     decoration: const InputDecoration(labelText: 'Categoria'),
                     items: [
@@ -475,8 +489,9 @@ class _GroupedMovementsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final items = state.transactions.where((item) => ids.contains(item.id)).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final items =
+        state.transactions.where((item) => ids.contains(item.id)).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: items.isEmpty

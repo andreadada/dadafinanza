@@ -71,9 +71,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final effectiveAccountId = state.activeAccounts.any((a) => a.id == accountId)
-        ? accountId
-        : null;
+    final effectiveAccountId =
+        state.activeAccounts.any((a) => a.id == accountId) ? accountId : null;
     if (effectiveAccountId != accountId) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && accountId != effectiveAccountId) {
@@ -180,8 +179,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
       source: voice
           ? QuickCaptureSource.voice
           : preset == null
-              ? QuickCaptureSource.manual
-              : QuickCaptureSource.preset,
+          ? QuickCaptureSource.manual
+          : QuickCaptureSource.preset,
       startVoice: voice,
     );
     await Navigator.push(
@@ -192,9 +191,8 @@ class _DadaAppShellState extends State<DadaAppShell> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
-    final presets = await QuickPresetService(
-      state.database,
-    ).all(enabledOnly: true);
+    final presets = await QuickPresetService(state.database)
+        .all(enabledOnly: true);
     if (!mounted) return;
     final choice = await showModalBottomSheet<Object>(
       context: context,
@@ -257,20 +255,23 @@ class _DadaAppShellState extends State<DadaAppShell> {
               if (presets.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const SectionTitle('Preset'),
-                ...presets.take(6).map(
-                  (preset) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.bookmark_outline_rounded),
-                    title: Text(preset.name),
-                    subtitle: Text(
-                      [
-                        preset.type.label,
-                        if (preset.amount != null) moneyFor(state, preset.amount!),
-                      ].join(' · '),
+                ...presets
+                    .take(6)
+                    .map(
+                      (preset) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.bookmark_outline_rounded),
+                        title: Text(preset.name),
+                        subtitle: Text(
+                          [
+                            preset.type.label,
+                            if (preset.amount != null)
+                              moneyFor(state, preset.amount!),
+                          ].join(' · '),
+                        ),
+                        onTap: () => Navigator.pop(sheetContext, preset),
+                      ),
                     ),
-                    onTap: () => Navigator.pop(sheetContext, preset),
-                  ),
-                ),
               ],
             ],
           ),

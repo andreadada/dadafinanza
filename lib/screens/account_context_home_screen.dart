@@ -30,7 +30,8 @@ class AccountContextHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final selectedAccount = state.accountById(accountId);
-    final effectiveAccountId = selectedAccount == null ||
+    final effectiveAccountId =
+        selectedAccount == null ||
             selectedAccount.isArchived ||
             selectedAccount.isSystem
         ? null
@@ -46,14 +47,19 @@ class AccountContextHomeScreen extends StatelessWidget {
       TransactionType.expense,
     );
     final balance = AccountContextService.balanceFor(state, effectiveAccountId);
-    final recent = AccountContextService.transactionsFor(state, effectiveAccountId)
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final upcoming = AccountContextService.recurringFor(state, effectiveAccountId);
+    final recent = AccountContextService.transactionsFor(
+      state,
+      effectiveAccountId,
+    )..sort((a, b) => b.date.compareTo(a.date));
+    final upcoming = AccountContextService.recurringFor(
+      state,
+      effectiveAccountId,
+    );
     final visibleAccounts = effectiveAccountId == null
         ? state.activeAccounts.take(4).toList()
         : state.activeAccounts
-            .where((item) => item.id == effectiveAccountId)
-            .toList();
+              .where((item) => item.id == effectiveAccountId)
+              .toList();
 
     return CustomScrollView(
       slivers: [
@@ -117,7 +123,10 @@ class AccountContextHomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
               ],
-              Text('PATRIMONIO', style: Theme.of(context).textTheme.labelMedium),
+              Text(
+                'PATRIMONIO',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
               const SizedBox(height: 6),
               Text(
                 state.hideBalance ? '••••••' : moneyFor(state, balance),
@@ -130,7 +139,9 @@ class AccountContextHomeScreen extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: 'Entrate',
-                      value: state.hideBalance ? '••••' : moneyFor(state, income),
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, income),
                       color: context.financeColors.positive,
                     ),
                   ),
@@ -138,7 +149,9 @@ class AccountContextHomeScreen extends StatelessWidget {
                   Expanded(
                     child: _Metric(
                       label: 'Spese',
-                      value: state.hideBalance ? '••••' : moneyFor(state, expense),
+                      value: state.hideBalance
+                          ? '••••'
+                          : moneyFor(state, expense),
                       color: context.financeColors.negative,
                     ),
                   ),
@@ -274,7 +287,9 @@ class AccountContextHomeScreen extends StatelessWidget {
                   subtitle: 'Registra una spesa o un’entrata per iniziare.',
                 )
               else
-                ...recent.take(5).map((item) => TransactionListTile(item: item)),
+                ...recent
+                    .take(5)
+                    .map((item) => TransactionListTile(item: item)),
               const SizedBox(height: 32),
               SectionTitle(
                 'Prossime scadenze',
@@ -289,23 +304,30 @@ class AccountContextHomeScreen extends StatelessWidget {
               if (upcoming.isEmpty)
                 const Text('Nessuna scadenza prevista')
               else
-                ...upcoming.take(3).map(
-                  (item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      Icons.repeat_rounded,
-                      color: transactionColor(context, item.type),
+                ...upcoming
+                    .take(3)
+                    .map(
+                      (item) => ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.repeat_rounded,
+                          color: transactionColor(context, item.type),
+                        ),
+                        title: Text(item.name),
+                        subtitle: Text(
+                          DateFormat(
+                            'EEE d MMM',
+                            'it_IT',
+                          ).format(item.nextDate),
+                        ),
+                        trailing: Text(
+                          state.hideBalance
+                              ? '••••'
+                              : moneyFor(state, item.amount),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
                     ),
-                    title: Text(item.name),
-                    subtitle: Text(
-                      DateFormat('EEE d MMM', 'it_IT').format(item.nextDate),
-                    ),
-                    trailing: Text(
-                      state.hideBalance ? '••••' : moneyFor(state, item.amount),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -358,7 +380,10 @@ class _SetupBlock extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      Text('Configura DadaFinanza', style: Theme.of(context).textTheme.headlineSmall),
+      Text(
+        'Configura DadaFinanza',
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
       const SizedBox(height: 8),
       const Text('Parti dal primo conto oppure registra subito un movimento.'),
       const SizedBox(height: 16),
@@ -398,7 +423,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color),
         ),
       ),
     ],

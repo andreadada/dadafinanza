@@ -38,8 +38,11 @@ class _AccountContextAnalyticsScreenState
       case _AnalyticsPeriod.week:
         final startWeekday = state.weekStart.clamp(1, 7);
         final offset = (now.weekday - startWeekday) % 7;
-        final start = DateTime(now.year, now.month, now.day)
-            .subtract(Duration(days: offset));
+        final start = DateTime(
+          now.year,
+          now.month,
+          now.day,
+        ).subtract(Duration(days: offset));
         return (start, start.add(const Duration(days: 7)));
       case _AnalyticsPeriod.month:
         final day = state.financialMonthStart.clamp(1, 28);
@@ -67,7 +70,8 @@ class _AccountContextAnalyticsScreenState
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final selected = state.accountById(widget.accountId);
-    final effectiveAccountId = selected == null || selected.isArchived || selected.isSystem
+    final effectiveAccountId =
+        selected == null || selected.isArchived || selected.isSystem
         ? null
         : selected.id;
     final (from, to) = _bounds(state);
@@ -94,7 +98,9 @@ class _AccountContextAnalyticsScreenState
       previousFrom,
       from,
     );
-    final savingsRate = income <= 0 ? null : ((income - expense) / income * 100);
+    final savingsRate = income <= 0
+        ? null
+        : ((income - expense) / income * 100);
     final delta = previousExpense == 0
         ? null
         : (expense - previousExpense) / previousExpense * 100;
@@ -106,34 +112,38 @@ class _AccountContextAnalyticsScreenState
       to: to,
     );
     final categoryTotals = <int, double>{};
-    for (final item in analytic.where((t) => t.type == TransactionType.expense)) {
+    for (final item in analytic.where(
+      (t) => t.type == TransactionType.expense,
+    )) {
       final splits = state.splitsFor(item.id);
       if (splits.isNotEmpty) {
         for (final split in splits) {
           categoryTotals[split.categoryId] =
               (categoryTotals[split.categoryId] ?? 0) +
-                  state.analyticsAmountForSplit(item.id, split);
+              state.analyticsAmountForSplit(item.id, split);
         }
       } else if (item.categoryId != null) {
         categoryTotals[item.categoryId!] =
-            (categoryTotals[item.categoryId!] ?? 0) + state.effectiveExpense(item);
+            (categoryTotals[item.categoryId!] ?? 0) +
+            state.effectiveExpense(item);
       }
     }
     final categories = categoryTotals.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
 
-    final recurringMonthly = AccountContextService.recurringFor(state, effectiveAccountId)
-        .where((item) => item.type == TransactionType.expense)
-        .fold<double>(0, (sum, item) {
-      return sum +
-          switch (item.frequency) {
-            'Settimanale' => item.amount * 52 / 12,
-            'Quindicinale' => item.amount * 26 / 12,
-            'Trimestrale' => item.amount / 3,
-            'Annuale' => item.amount / 12,
-            _ => item.amount,
-          };
-    });
+    final recurringMonthly =
+        AccountContextService.recurringFor(state, effectiveAccountId)
+            .where((item) => item.type == TransactionType.expense)
+            .fold<double>(0, (sum, item) {
+              return sum +
+                  switch (item.frequency) {
+                    'Settimanale' => item.amount * 52 / 12,
+                    'Quindicinale' => item.amount * 26 / 12,
+                    'Trimestrale' => item.amount / 3,
+                    'Annuale' => item.amount / 12,
+                    _ => item.amount,
+                  };
+            });
 
     return Scaffold(
       appBar: AppBar(
@@ -150,10 +160,22 @@ class _AccountContextAnalyticsScreenState
             child: SegmentedButton<_AnalyticsPeriod>(
               showSelectedIcon: false,
               segments: const [
-                ButtonSegment(value: _AnalyticsPeriod.week, label: Text('Settimana')),
-                ButtonSegment(value: _AnalyticsPeriod.month, label: Text('Mese')),
-                ButtonSegment(value: _AnalyticsPeriod.year, label: Text('Anno')),
-                ButtonSegment(value: _AnalyticsPeriod.custom, label: Text('Custom')),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.week,
+                  label: Text('Settimana'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.month,
+                  label: Text('Mese'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.year,
+                  label: Text('Anno'),
+                ),
+                ButtonSegment(
+                  value: _AnalyticsPeriod.custom,
+                  label: Text('Custom'),
+                ),
               ],
               selected: {period},
               onSelectionChanged: (value) async {
@@ -167,7 +189,8 @@ class _AccountContextAnalyticsScreenState
                   context: context,
                   firstDate: DateTime(2000),
                   lastDate: now.add(const Duration(days: 3650)),
-                  initialDateRange: custom ??
+                  initialDateRange:
+                      custom ??
                       DateTimeRange(
                         start: DateTime(now.year, now.month),
                         end: now,
@@ -222,17 +245,18 @@ class _AccountContextAnalyticsScreenState
             icon: delta == null
                 ? Icons.horizontal_rule_rounded
                 : delta <= 0
-                    ? Icons.trending_down_rounded
-                    : Icons.trending_up_rounded,
+                ? Icons.trending_down_rounded
+                : Icons.trending_up_rounded,
             text: delta == null
                 ? 'Servono più dati per confrontare il periodo precedente.'
                 : 'Spese ${delta.abs().toStringAsFixed(0)}% '
-                    '${delta <= 0 ? 'più basse' : 'più alte'} del periodo precedente.',
+                      '${delta <= 0 ? 'più basse' : 'più alte'} del periodo precedente.',
           ),
           const SizedBox(height: 10),
           _AnalyticsLine(
             icon: Icons.repeat_rounded,
-            text: 'Ricorrenti di spesa ≈ ${moneyFor(state, recurringMonthly)}/mese.',
+            text:
+                'Ricorrenti di spesa ≈ ${moneyFor(state, recurringMonthly)}/mese.',
           ),
           const SizedBox(height: 32),
           const SectionTitle('Dove stai spendendo'),
@@ -305,13 +329,16 @@ class _AccountContextAnalyticsScreenState
             const SectionTitle('Conto selezionato'),
             FlatMetric(
               label: selected!.name,
-              value: state.hideBalance ? '••••' : moneyFor(state, selected.balance),
+              value: state.hideBalance
+                  ? '••••'
+                  : moneyFor(state, selected.balance),
               icon: accountIcon(selected.iconKey),
               color: Color(selected.colorValue),
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SafeAccountDetailScreen(accountId: selected.id),
+                  builder: (_) =>
+                      SafeAccountDetailScreen(accountId: selected.id),
                 ),
               ),
             ),
@@ -340,13 +367,15 @@ class _CategoryPeriodPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
-    final items = AccountContextService.transactionsFor(state, accountId)
-        .where((item) {
-      if (item.date.isBefore(from) || !item.date.isBefore(to)) return false;
-      if (item.categoryId == categoryId) return true;
-      return state.splitsFor(item.id).any((split) => split.categoryId == categoryId);
-    }).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final items = AccountContextService.transactionsFor(state, accountId).where(
+      (item) {
+        if (item.date.isBefore(from) || !item.date.isBefore(to)) return false;
+        if (item.categoryId == categoryId) return true;
+        return state
+            .splitsFor(item.id)
+            .any((split) => split.categoryId == categoryId);
+      },
+    ).toList()..sort((a, b) => b.date.compareTo(a.date));
     return Scaffold(
       appBar: AppBar(title: Text(title)),
       body: items.isEmpty
@@ -379,7 +408,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color),
         ),
       ),
     ],

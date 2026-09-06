@@ -65,11 +65,7 @@ class AccountContextSelector extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
             const SizedBox(width: 4),
             const Icon(Icons.keyboard_arrow_down_rounded, size: 20),

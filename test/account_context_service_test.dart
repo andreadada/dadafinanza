@@ -6,21 +6,21 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Account account(int id, String name) => Account(
-        id: id,
-        name: name,
-        balance: id == 1 ? 100 : 200,
-        colorValue: 0xFF000000,
-        iconKey: 'wallet',
-        accountType: AccountType.checking,
-        includeInTotal: true,
-        includeInAnalytics: true,
-        isLocked: false,
-        isArchived: false,
-        hideBalance: false,
-        isSystem: false,
-        createdAt: DateTime(2026),
-        updatedAt: DateTime(2026),
-      );
+    id: id,
+    name: name,
+    balance: id == 1 ? 100 : 200,
+    colorValue: 0xFF000000,
+    iconKey: 'wallet',
+    accountType: AccountType.checking,
+    includeInTotal: true,
+    includeInAnalytics: true,
+    isLocked: false,
+    isArchived: false,
+    hideBalance: false,
+    isSystem: false,
+    createdAt: DateTime(2026),
+    updatedAt: DateTime(2026),
+  );
 
   FinanceTransaction transaction({
     required int id,
@@ -30,17 +30,17 @@ void main() {
     int? toAccountId,
     int? categoryId,
   }) => FinanceTransaction(
-        id: id,
-        type: type,
-        amount: amount,
-        accountId: accountId,
-        toAccountId: toAccountId,
-        categoryId: categoryId,
-        date: DateTime(2026, 9, 1),
-        includeInAnalytics: true,
-        createdAt: DateTime(2026, 9, 1),
-        updatedAt: DateTime(2026, 9, 1),
-      );
+    id: id,
+    type: type,
+    amount: amount,
+    accountId: accountId,
+    toAccountId: toAccountId,
+    categoryId: categoryId,
+    date: DateTime(2026, 9, 1),
+    includeInAnalytics: true,
+    createdAt: DateTime(2026, 9, 1),
+    updatedAt: DateTime(2026, 9, 1),
+  );
 
   test('account context includes transfers where account is destination', () {
     final state = AppState(AppDatabase())..loading = false;

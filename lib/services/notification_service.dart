@@ -230,8 +230,7 @@ class NotificationService {
           title: advance.direction.name == 'receivable'
               ? '${person?.name ?? 'Qualcuno'} deve ancora restituirti $amount €'
               : 'Devi ancora restituire $amount € a ${person?.name ?? 'qualcuno'}',
-          body:
-              'Apri Anticipi per registrare un rimborso o aggiornare il promemoria.',
+          body: 'Apri Anticipi per registrare un rimborso o aggiornare il promemoria.',
           notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(
               'finance_advances',
@@ -289,8 +288,7 @@ class NotificationService {
     await plugin.show(
       id: 400001,
       title: 'Saldo previsto basso',
-      body:
-          'La previsione di fine mese è sotto la soglia che hai impostato. Apri Pianifica per i dettagli.',
+      body: 'La previsione di fine mese è sotto la soglia che hai impostato. Apri Pianifica per i dettagli.',
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           'finance_forecast',

@@ -204,9 +204,8 @@ class _NotificationSettingsScreenState
     );
     await service.sync(state);
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Soglia salvata.')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Soglia salvata.')));
     }
   }
 }

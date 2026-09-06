@@ -61,7 +61,8 @@ class AccountContextService {
     var total = 0.0;
     for (final item in state.analyticTransactions(from: from, to: to)) {
       if (item.accountId != accountId || item.type != type) continue;
-      if (type == TransactionType.income && item.refundOfTransactionId != null) {
+      if (type == TransactionType.income &&
+          item.refundOfTransactionId != null) {
         continue;
       }
       total += type == TransactionType.expense

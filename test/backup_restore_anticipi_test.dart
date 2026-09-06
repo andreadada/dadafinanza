@@ -93,9 +93,8 @@ void main() {
       );
 
       final attachmentDir = await attachments.directory();
-      await File(
-        p.join(attachmentDir.path, 'receipt-test.jpg'),
-      ).writeAsBytes([1, 2, 3, 4]);
+      await File(p.join(attachmentDir.path, 'receipt-test.jpg'))
+          .writeAsBytes([1, 2, 3, 4]);
 
       final backupService = BackupService(
         database,
