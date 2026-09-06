@@ -7,6 +7,128 @@ import '../services/data_integrity_service.dart';
 import '../widgets/ui_helpers.dart';
 import 'transaction_screens.dart';
 
+Future<void> showCategoryEditor(
+  BuildContext context,
+  AppState state,
+  Category existing,
+) async {
+  final name = TextEditingController(text: existing.name);
+  var iconKey = existing.iconKey;
+  var color = Color(existing.colorValue);
+
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (sheetContext, setSheetState) => Padding(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          4,
+          20,
+          MediaQuery.viewInsetsOf(sheetContext).bottom + 20,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Modifica categoria',
+                style: Theme.of(sheetContext).textTheme.titleLarge,
+              ),
+              TextField(
+                controller: name,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(labelText: 'Nome'),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(categoryIcon(iconKey), color: color),
+                title: const Text('Icona'),
+                subtitle: const Text('Puoi cambiarla in qualsiasi momento'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  final selected = await showIconPicker(
+                    sheetContext,
+                    options: categoryIconOptions,
+                    selected: iconKey,
+                  );
+                  if (selected != null) {
+                    setSheetState(() => iconKey = selected);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
+              Text('Colore', style: Theme.of(sheetContext).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: categoryPalette
+                    .map(
+                      (item) => Semantics(
+                        button: true,
+                        selected: item == color,
+                        label: 'Colore categoria',
+                        child: InkWell(
+                          customBorder: const CircleBorder(),
+                          onTap: () => setSheetState(() => color = item),
+                          child: SizedBox.square(
+                            dimension: 48,
+                            child: Center(
+                              child: Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: item,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: item == color
+                                    ? const Icon(
+                                        Icons.check_rounded,
+                                        size: 18,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () async {
+                    final trimmed = name.text.trim();
+                    if (trimmed.isEmpty) return;
+                    await state.updateCategory(
+                      existing.copyWith(
+                        name: trimmed,
+                        iconKey: iconKey,
+                        colorValue: color.toARGB32(),
+                      ),
+                    );
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  },
+                  child: const Text('Salva modifiche'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+  name.dispose();
+}
+
 class CategoryManagementScreen extends StatelessWidget {
   const CategoryManagementScreen({super.key});
 
@@ -83,7 +205,9 @@ class CategoryManagementScreen extends StatelessWidget {
               trailing: PopupMenuButton<String>(
                 tooltip: 'Azioni categoria',
                 onSelected: (value) async {
-                  if (value == 'favorite') {
+                  if (value == 'edit') {
+                    await showCategoryEditor(context, state, item);
+                  } else if (value == 'favorite') {
                     await DataIntegrityService.setCategoryFavorite(
                       state,
                       item,
@@ -96,6 +220,10 @@ class CategoryManagementScreen extends StatelessWidget {
                   }
                 },
                 itemBuilder: (_) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Text('Modifica'),
+                  ),
                   PopupMenuItem(
                     value: 'favorite',
                     child: Text(
@@ -330,7 +458,16 @@ class CategoryDetailScreen extends StatelessWidget {
               )
               .fold<double>(0, (sum, item) => sum + item.amount);
     return Scaffold(
-      appBar: AppBar(title: Text(category.name)),
+      appBar: AppBar(
+        title: Text(category.name),
+        actions: [
+          IconButton(
+            tooltip: 'Modifica categoria',
+            onPressed: () => showCategoryEditor(context, state, category),
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
