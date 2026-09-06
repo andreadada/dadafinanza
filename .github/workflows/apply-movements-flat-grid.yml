@@ -1,0 +1,49 @@
+name: Apply movements flat grid
+
+on:
+  push:
+    branches:
+      - build/movements-flat-grid
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apply-movements-flat-grid
+  cancel-in-progress: true
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/movements-flat-grid
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Apply patch
+        run: python3 tooling/apply_movements_flat_grid.py
+      - name: Format
+        run: dart format lib test
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Test
+        run: flutter test
+      - name: Commit implementation
+        run: |
+          if git diff --quiet; then
+            echo "No functional changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "feat: restyle grouped movements as flat grid"
+          git push origin HEAD:build/movements-flat-grid
