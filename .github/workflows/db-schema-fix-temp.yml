@@ -188,7 +188,7 @@ jobs:
               expect(movements.single.kind, 'normal');
             });
           }
-          '''.replaceAll(RegExp(r'^ {10}', multiLine: true), ''))
+          ''')
           PY
           flutter pub get
           dart format lib/data/app_database.dart test/database_schema_test.dart
