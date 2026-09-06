@@ -1,0 +1,42 @@
+name: Format account context branch
+
+on:
+  push:
+    branches:
+      - build/account-context-navigation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: format-account-context-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/account-context-navigation
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Pub get
+        run: flutter pub get
+      - name: Format
+        run: dart format lib test
+      - name: Commit formatting if needed
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "style: apply resolved dart format"
+          git push origin HEAD:build/account-context-navigation
