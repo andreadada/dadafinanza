@@ -1,0 +1,462 @@
+name: Implement advance voice and home improvements
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: implement-advance-voice-home
+  cancel-in-progress: true
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.2'
+          channel: stable
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Apply implementation
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          def read(path):
+              return Path(path).read_text()
+
+          def write(path, text):
+              Path(path).write_text(text)
+
+          def replace_once(path, old, new):
+              text = read(path)
+              if old in text:
+                  text = text.replace(old, new, 1)
+                  write(path, text)
+                  return
+              if new in text:
+                  return
+              raise SystemExit(f'Pattern not found in {path}: {old[:120]!r}')
+
+          # Money expressions: make the four visible operators genuinely usable.
+          replace_once(
+              'lib/core/money.dart',
+              "    final input = raw.replaceAll(',', '.').replaceAll(' ', '');",
+              "    final input = raw\n        .replaceAll(',', '.')\n        .replaceAll('×', '*')\n        .replaceAll('÷', '/')\n        .replaceAll('−', '-')\n        .replaceAll(' ', '');",
+          )
+
+          # Voice draft carries advance intent without touching persistence models.
+          replace_once(
+              'lib/models/quick_capture_models.dart',
+              "    this.startVoice = false,\n    this.fieldSources = const {},",
+              "    this.startVoice = false,\n    this.advanceShareRequested = false,\n    this.advanceWholeAmount = false,\n    this.advanceAmountCents,\n    this.advancePersonId,\n    this.fieldSources = const {},",
+          )
+          replace_once(
+              'lib/models/quick_capture_models.dart',
+              "  final bool startVoice;\n  final Map<String, VoiceFieldSource> fieldSources;",
+              "  final bool startVoice;\n  final bool advanceShareRequested;\n  final bool advanceWholeAmount;\n  final int? advanceAmountCents;\n  final int? advancePersonId;\n  final Map<String, VoiceFieldSource> fieldSources;",
+          )
+          replace_once(
+              'lib/models/quick_capture_models.dart',
+              "    bool? startVoice,\n    Map<String, VoiceFieldSource>? fieldSources,",
+              "    bool? startVoice,\n    bool? advanceShareRequested,\n    bool? advanceWholeAmount,\n    int? advanceAmountCents,\n    int? advancePersonId,\n    Map<String, VoiceFieldSource>? fieldSources,",
+          )
+          replace_once(
+              'lib/models/quick_capture_models.dart',
+              "    startVoice: startVoice ?? this.startVoice,\n    fieldSources: fieldSources ?? this.fieldSources,",
+              "    startVoice: startVoice ?? this.startVoice,\n    advanceShareRequested:\n        advanceShareRequested ?? this.advanceShareRequested,\n    advanceWholeAmount: advanceWholeAmount ?? this.advanceWholeAmount,\n    advanceAmountCents: advanceAmountCents ?? this.advanceAmountCents,\n    advancePersonId: advancePersonId ?? this.advancePersonId,\n    fieldSources: fieldSources ?? this.fieldSources,",
+          )
+
+          # Deterministic voice parser: full advance, partial advance and optional person.
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "import '../models/models.dart';",
+              "import '../models/advance_models.dart';\nimport '../models/models.dart';",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "    required List<Category> categories,\n    DateTime? now,",
+              "    required List<Category> categories,\n    List<FinancePerson> people = const [],\n    DateTime? now,",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "    final sources = <String, VoiceFieldSource>{};\n\n    final amount = _parseAmount(normalized);",
+              "    final sources = <String, VoiceFieldSource>{};\n\n    final advance = _parseAdvance(normalized);\n    final amount = _parseAmount(advance.amountScanInput);",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "    final parsedDate = _parseDate(normalized, reference);",
+              "    int? advancePersonId;\n    if (advance.requested && people.isNotEmpty) {\n      final personMatch = _matchEntity<FinancePerson>(\n        normalized,\n        people.where((item) => !item.archived).toList(),\n        (item) => item.name,\n        (item) => item.id,\n      );\n      if (!personMatch.ambiguous && personMatch.id != null) {\n        advancePersonId = personMatch.id;\n        sources['advancePerson'] = VoiceFieldSource.explicit;\n      }\n    }\n\n    final parsedDate = _parseDate(normalized, reference);",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "      accounts: activeAccounts,\n      categories: categories,\n    );",
+              "      accounts: activeAccounts,\n      categories: categories,\n      people: people,\n    );",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "    return VoiceParseResult(\n      transcript: transcript,",
+              "    final canApplyAdvance =\n        type == TransactionType.expense && advance.requested;\n    final advanceAmountCents = canApplyAdvance\n        ? advance.amountCents ??\n              (advance.wholeAmount ? amount.cents : null)\n        : null;\n    if (canApplyAdvance) sources['advance'] = VoiceFieldSource.explicit;\n\n    return VoiceParseResult(\n      transcript: transcript,",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "        note: note,\n        source: QuickCaptureSource.voice,",
+              "        note: note,\n        advanceShareRequested: canApplyAdvance,\n        advanceWholeAmount: canApplyAdvance && advance.wholeAmount,\n        advanceAmountCents: advanceAmountCents,\n        advancePersonId: canApplyAdvance ? advancePersonId : null,\n        source: QuickCaptureSource.voice,",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "  _AmountParse _parseAmount(String input) {",
+              "  _AdvanceParse _parseAdvance(String input) {\n    final marker = RegExp(\n      r'\\b(?:anticipato|anticipata|anticipati|anticipate|anticipo)\\b',\n    );\n    if (!marker.hasMatch(input)) {\n      return _AdvanceParse(amountScanInput: input);\n    }\n\n    final partialCue = RegExp(\n      r'\\b(?:di cui|una parte|in parte|parte)\\b',\n    ).hasMatch(input);\n    var amountScanInput = input;\n    int? advanceAmountCents;\n    final partialPatterns = [\n      RegExp(\n        r'\\bdi cui\\s+([a-z]+|\\d+(?:[\\.,]\\d{1,2})?)\\s*(?:euro|eur|€)?\\s+(?:sono\\s+)?(?:anticipato|anticipata|anticipati|anticipate)\\b',\n      ),\n      RegExp(\n        r'\\b(?:una parte|in parte)(?:\\s+di)?\\s+([a-z]+|\\d+(?:[\\.,]\\d{1,2})?)\\s*(?:euro|eur|€)?\\s+(?:anticipato|anticipata|anticipati|anticipate)\\b',\n      ),\n    ];\n    for (final pattern in partialPatterns) {\n      final match = pattern.firstMatch(input);\n      if (match == null) continue;\n      advanceAmountCents = _voiceMoneyTokenToCents(match.group(1));\n      if (advanceAmountCents != null) {\n        amountScanInput = input.replaceRange(match.start, match.end, ' anticipo ');\n        break;\n      }\n    }\n    return _AdvanceParse(\n      requested: true,\n      wholeAmount: !partialCue,\n      amountCents: advanceAmountCents,\n      amountScanInput: amountScanInput,\n    );\n  }\n\n  int? _voiceMoneyTokenToCents(String? raw) {\n    if (raw == null || raw.isEmpty) return null;\n    if (RegExp(r'^\\d+(?:[\\.,]\\d{1,2})?$').hasMatch(raw)) {\n      return _decimalToCents(raw);\n    }\n    final value = _parseNumberToken(raw);\n    return value == null ? null : value * 100;\n  }\n\n  _AmountParse _parseAmount(String input) {",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "    required List<Category> categories,\n  }) {",
+              "    required List<Category> categories,\n    required List<FinancePerson> people,\n  }) {",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "      'e',\n    };\n    final entities = <String>{",
+              "      'e',\n      'cui',\n      'parte',\n      'tutto',\n      'anticipato',\n      'anticipata',\n      'anticipati',\n      'anticipate',\n      'anticipo',\n    };\n    final entities = <String>{",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "      for (final category in categories)\n        ..._normalize(category.name).split(' '),\n    };",
+              "      for (final category in categories)\n        ..._normalize(category.name).split(' '),\n      for (final person in people) ..._normalize(person.name).split(' '),\n    };",
+          )
+          replace_once(
+              'lib/services/voice_transaction_parser.dart',
+              "class _AmountParse {",
+              "class _AdvanceParse {\n  const _AdvanceParse({\n    required this.amountScanInput,\n    this.requested = false,\n    this.wholeAmount = false,\n    this.amountCents,\n  });\n\n  final String amountScanInput;\n  final bool requested;\n  final bool wholeAmount;\n  final int? amountCents;\n}\n\nclass _AmountParse {",
+          )
+
+          # Quick Add: full advance, voice auto-fill and direct arithmetic operator controls.
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "      accounts: state.accounts,\n      categories: state.categories,\n    );",
+              "      accounts: state.accounts,\n      categories: state.categories,\n      people: state.people,\n    );",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "      if ((draft.note ?? '').trim().isNotEmpty) note.text = draft.note!;\n      for (final value in draft.tags) {",
+              "      if ((draft.note ?? '').trim().isNotEmpty) note.text = draft.note!;\n      if (type == TransactionType.expense && draft.advanceShareRequested) {\n        advanceShareEnabled = true;\n        if (draft.advancePersonId != null) {\n          advancePersonId = draft.advancePersonId;\n        }\n        final voiceAdvanceCents =\n            draft.advanceAmountCents ??\n            (draft.advanceWholeAmount ? draft.amountCents : null);\n        if (voiceAdvanceCents != null && voiceAdvanceCents > 0) {\n          advanceShare.text = Money.fromCents(voiceAdvanceCents).toStringAsFixed(2);\n        }\n      }\n      for (final value in draft.tags) {",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "  void _scheduleSuggestion() {",
+              "  void _insertAmountOperator(String symbol) {\n    final current = amount.value;\n    final start = current.selection.isValid\n        ? current.selection.start.clamp(0, current.text.length)\n        : current.text.length;\n    final end = current.selection.isValid\n        ? current.selection.end.clamp(0, current.text.length)\n        : current.text.length;\n    final next = current.text.replaceRange(start, end, symbol);\n    amount.value = TextEditingValue(\n      text: next,\n      selection: TextSelection.collapsed(offset: start + symbol.length),\n    );\n    amountFocus.requestFocus();\n  }\n\n  void _scheduleSuggestion() {",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "          mixedAdvanceAmount <= 0 ||\n          mixedAdvanceAmount >= parsed) {\n        return _error(\n          'La quota anticipata deve essere maggiore di 0 e minore del totale.',",
+              "          mixedAdvanceAmount <= 0 ||\n          mixedAdvanceAmount > parsed) {\n        return _error(\n          'La quota anticipata deve essere maggiore di 0 e minore o uguale al totale.',",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "                helperText: 'Puoi anche scrivere 12,50 + 4,20',\n              ),\n            ),\n            const SizedBox(height: 18),",
+              "                helperText: 'Calcoli rapidi: usa +  −  ×  ÷',\n              ),\n            ),\n            const SizedBox(height: 4),\n            Wrap(\n              alignment: WrapAlignment.center,\n              spacing: 4,\n              children: ['+', '−', '×', '÷']\n                  .map(\n                    (operator) => TextButton(\n                      onPressed: () => _insertAmountOperator(operator),\n                      child: Text(\n                        operator,\n                        style: const TextStyle(\n                          fontSize: 22,\n                          fontWeight: FontWeight.w700,\n                        ),\n                      ),\n                    ),\n                  )\n                  .toList(),\n            ),\n            const SizedBox(height: 10),",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "                    'Parte di questa spesa è per qualcun altro',\n                  ),\n                  subtitle: const Text(\n                    'Solo la tua quota verrà conteggiata in spese, categorie e budget.',",
+              "                    'Questa spesa include un anticipo',\n                  ),\n                  subtitle: const Text(\n                    'Può essere una parte o tutto l’importo. Solo la tua quota verrà conteggiata in spese, categorie e budget.',",
+          )
+          replace_once(
+              'lib/screens/quick_add_page.dart',
+              "                  TextField(\n                    controller: advanceShare,\n                    keyboardType: const TextInputType.numberWithOptions(\n                      decimal: true,\n                    ),\n                    decoration: const InputDecoration(\n                      labelText: 'Quota anticipata',\n                      suffixText: '€',\n                    ),\n                  ),\n                  const SizedBox(height: 8),",
+              "                  TextField(\n                    controller: advanceShare,\n                    keyboardType: const TextInputType.numberWithOptions(\n                      decimal: true,\n                    ),\n                    decoration: const InputDecoration(\n                      labelText: 'Quota anticipata',\n                      suffixText: '€',\n                      helperText: 'Inserisci una parte oppure usa tutto l’importo.',\n                    ),\n                  ),\n                  Align(\n                    alignment: Alignment.centerRight,\n                    child: TextButton.icon(\n                      onPressed: () {\n                        final total = Money.parseExpression(amount.text);\n                        if (total == null || total <= 0) {\n                          _error('Inserisci prima l’importo totale.');\n                          amountFocus.requestFocus();\n                          return;\n                        }\n                        advanceShare.text = total.toStringAsFixed(2);\n                      },\n                      icon: const Icon(Icons.all_inclusive_rounded, size: 18),\n                      label: const Text('Tutto l’importo'),\n                    ),\n                  ),\n                  const SizedBox(height: 4),",
+          )
+
+          # Restore the richer sectioned Home while keeping account-scoped data pure.
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "import 'package:flutter/material.dart';",
+              "import 'dart:math' as math;\n\nimport 'package:flutter/material.dart';",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "import '../main.dart';",
+              "import '../core/money.dart';\nimport '../main.dart';",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "import 'account_screens.dart' show showAccountEditor;",
+              "import 'account_screens.dart' show showAccountEditor;\nimport 'advances_screen.dart';",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "    final upcoming = AccountContextService.recurringFor(\n      state,\n      effectiveAccountId,\n    );",
+              "    final upcoming = AccountContextService.recurringFor(\n      state,\n      effectiveAccountId,\n    );\n    final isTotal = effectiveAccountId == null;\n    final budget = isTotal ? _priorityBudget(state) : null;\n    final smartInsight = isTotal ? _smartInsight(state) : null;",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "              ],\n              const SizedBox(height: 32),\n              SectionTitle(\n                effectiveAccountId == null ? 'Conti' : 'Conto selezionato',",
+              "              ],\n              if (isTotal &&\n                  (state.advanceReceivableCents > 0 ||\n                      state.advancePayableCents > 0 ||\n                      smartInsight != null)) ...[\n                const SizedBox(height: 28),\n                const SectionTitle('Per te'),\n                if (state.advanceReceivableCents > 0 ||\n                    state.advancePayableCents > 0)\n                  ListTile(\n                    contentPadding: EdgeInsets.zero,\n                    leading: const Icon(Icons.handshake_outlined),\n                    title: const Text(\n                      'Anticipi',\n                      style: TextStyle(fontWeight: FontWeight.w700),\n                    ),\n                    subtitle: Text(\n                      state.hideBalance\n                          ? '•••• da ricevere · •••• da restituire'\n                          : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · ${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',\n                    ),\n                    trailing: const Icon(Icons.chevron_right_rounded),\n                    onTap: () => Navigator.push(\n                      context,\n                      MaterialPageRoute(builder: (_) => const AdvancesScreen()),\n                    ),\n                  ),\n                if (smartInsight case final insight?)\n                  _InsightRow(insight: insight),\n              ],\n              const SizedBox(height: 32),\n              SectionTitle(\n                effectiveAccountId == null ? 'Conti' : 'Conto selezionato',",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "              const SizedBox(height: 32),\n              const SectionTitle('Ultimi movimenti'),",
+              "              if (budget != null) ...[\n                const SizedBox(height: 32),\n                _BudgetSummary(budget: budget),\n              ],\n              const SizedBox(height: 32),\n              const SectionTitle('Ultimi movimenti'),",
+          )
+          replace_once(
+              'lib/screens/account_context_home_screen.dart',
+              "  Future<void> _openQuick(\n",
+              "  Budget? _priorityBudget(AppState state) {\n    final enabled = state.budgets.where((item) => item.enabled).toList();\n    if (enabled.isEmpty) return null;\n    enabled.sort(\n      (a, b) =>\n          state.budgetProgressFor(b).compareTo(state.budgetProgressFor(a)),\n    );\n    return enabled.first;\n  }\n\n  _HomeInsight? _smartInsight(AppState state) {\n    if (!state.smartSuggestionsEnabled) return null;\n    if (state.smartGoalSuggestions) {\n      for (final goal in state.goals.where(\n        (item) => !item.archived && !item.completed,\n      )) {\n        final plan = state.goalPlan(goal);\n        if (plan.status.name == 'slightlyBehind' ||\n            plan.status.name == 'unrealistic') {\n          return _HomeInsight(\n            icon: Icons.flag_outlined,\n            title: goal.name,\n            detail: plan.realisticWeekly > 0\n                ? '${moneyFor(state, plan.realisticWeekly)}/settimana è il ritmo realistico stimato.'\n                : 'Il cash-flow attuale non lascia ancora un margine stabile.',\n            open: (context) => Navigator.push(\n              context,\n              MaterialPageRoute(builder: (_) => const GoalsScreen()),\n            ),\n          );\n        }\n      }\n    }\n    if (state.detectedRecurringPatterns.isNotEmpty) {\n      final pattern = state.detectedRecurringPatterns.first;\n      return _HomeInsight(\n        icon: Icons.event_repeat_rounded,\n        title: 'Possibile ricorrenza',\n        detail: '${pattern.normalizedText} · ${pattern.frequency}',\n        open: (context) => Navigator.push(\n          context,\n          MaterialPageRoute(builder: (_) => const RecurringScreen()),\n        ),\n      );\n    }\n    return null;\n  }\n\n  Future<void> _openQuick(\n",
+          )
+
+          home = read('lib/screens/account_context_home_screen.dart')
+          if 'class _BudgetSummary extends StatelessWidget' not in home:
+              home += r'''
+
+class _BudgetSummary extends StatelessWidget {
+  const _BudgetSummary({required this.budget});
+
+  final Budget budget;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    final spent = state.budgetSpent(budget);
+    final progress = state.budgetProgressFor(budget);
+    final remaining = math.max(0, budget.limit - spent).toDouble();
+    return InkWell(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const BudgetsScreen()),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionTitle(
+            'Budget',
+            trailing: Text('${(progress * 100).round()}%'),
+          ),
+          Text(budget.name, style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 4),
+          Text('${moneyFor(state, remaining)} ancora disponibili'),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: progress.clamp(0.0, 1.0).toDouble(),
+            minHeight: 7,
+            borderRadius: BorderRadius.circular(99),
+            color: progress >= 1
+                ? context.financeColors.negative
+                : progress >= .8
+                ? context.financeColors.warning
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeInsight {
+  const _HomeInsight({
+    required this.icon,
+    required this.title,
+    required this.detail,
+    required this.open,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+  final void Function(BuildContext context) open;
+}
+
+class _InsightRow extends StatelessWidget {
+  const _InsightRow({required this.insight});
+
+  final _HomeInsight insight;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    contentPadding: EdgeInsets.zero,
+    minVerticalPadding: 10,
+    leading: Icon(insight.icon),
+    title: Text(
+      insight.title,
+      style: const TextStyle(fontWeight: FontWeight.w700),
+    ),
+    subtitle: Text(insight.detail),
+    trailing: const Icon(Icons.chevron_right_rounded),
+    onTap: () => insight.open(context),
+  );
+}
+'''
+              write('lib/screens/account_context_home_screen.dart', home)
+
+          # Tests: arithmetic operators, full/partial voice advances and full mixed advance.
+          money_test = Path('test/money_expression_test.dart')
+          if not money_test.exists():
+              money_test.write_text(r'''import 'package:dadafinanza/core/money.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('quick amount expressions support all four arithmetic operators', () {
+    expect(Money.parseExpression('12,50 + 4,20'), 16.70);
+    expect(Money.parseExpression('20 - 3,50'), 16.50);
+    expect(Money.parseExpression('7 * 3'), 21);
+    expect(Money.parseExpression('8 / 4'), 2);
+    expect(Money.parseExpression('7 × 3'), 21);
+    expect(Money.parseExpression('8 ÷ 4'), 2);
+    expect(Money.parseExpression('20 − 3,50'), 16.50);
+    expect(Money.parseExpression('10 + 2 * 3'), 16);
+  });
+}
+''')
+
+          voice_test = read('test/voice_transaction_parser_test.dart')
+          if "models/advance_models.dart" not in voice_test:
+              voice_test = voice_test.replace(
+                  "import 'package:dadafinanza/models/models.dart';",
+                  "import 'package:dadafinanza/models/advance_models.dart';\nimport 'package:dadafinanza/models/models.dart';",
+                  1,
+              )
+          if "final people = [" not in voice_test:
+              voice_test = voice_test.replace(
+                  "  final categories = [",
+                  "  final people = [\n    _person(30, 'Marco'),\n    _person(31, 'Andrea'),\n  ];\n  final categories = [",
+                  1,
+              )
+          marker = "  test('similar account names are surfaced as ambiguous', () {"
+          if "voice marks the whole expense as fully advanced" not in voice_test:
+              tests = r'''  test('voice marks the whole expense as fully advanced', () {
+    final result = parser.parse(
+      'Ho speso 30 euro anticipati a Marco con Revolut',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.amountCents, 3000);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isTrue);
+    expect(result.draft.advanceAmountCents, 3000);
+    expect(result.draft.advancePersonId, 30);
+  });
+
+  test('voice parses a partial advanced share without making totals ambiguous', () {
+    final result = parser.parse(
+      'Ho speso 30 euro di cui 12 euro anticipati a Marco',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.amountCents, 3000);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isFalse);
+    expect(result.draft.advanceAmountCents, 1200);
+    expect(result.draft.advancePersonId, 30);
+    expect(
+      result.issues.any((issue) => issue.type == VoiceIssueType.ambiguousAmount),
+      isFalse,
+    );
+  });
+
+  test('voice keeps partial advance intent when the share is omitted', () {
+    final result = parser.parse(
+      'Ho speso 30 euro di cui anticipati',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.amountCents, 3000);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isFalse);
+    expect(result.draft.advanceAmountCents, isNull);
+  });
+
+  test('voice understands anticipati una parte as advance intent', () {
+    final result = parser.parse(
+      'Anticipati una parte a Marco',
+      accounts: accounts,
+      categories: categories,
+      people: people,
+      now: now,
+    );
+    expect(result.draft.type, TransactionType.expense);
+    expect(result.draft.advanceShareRequested, isTrue);
+    expect(result.draft.advanceWholeAmount, isFalse);
+    expect(result.draft.advancePersonId, 30);
+    expect(
+      result.issues.any((issue) => issue.type == VoiceIssueType.missingAmount),
+      isTrue,
+    );
+  });
+
+'''
+              voice_test = voice_test.replace(marker, tests + marker, 1)
+          if "FinancePerson _person" not in voice_test:
+              voice_test += r'''
+
+FinancePerson _person(int id, String name) => FinancePerson(
+  id: id,
+  name: name,
+  colorValue: 0xff000000,
+  iconKey: 'person',
+  archived: false,
+  createdAt: DateTime(2026),
+  updatedAt: DateTime(2026),
+);
+'''
+          write('test/voice_transaction_parser_test.dart', voice_test)
+
+          advance_test = read('test/advance_service_test.dart')
+          if "mixed expense allows the whole amount to be advanced" not in advance_test:
+              marker = "  test('mixed expense rejects inconsistent split amounts', () async {"
+              block = r'''  test('mixed expense allows the whole amount to be advanced', () async {
+    final transactionId = await service.createMixedExpense(
+      personId: personId,
+      totalAmount: 40,
+      personalAmount: 0,
+      advanceAmount: 40,
+      accountId: accountId,
+      categoryId: expenseCategoryId,
+      date: now,
+    );
+    final item = await transaction(transactionId);
+    final advance = (await service.advances()).single;
+
+    expect(await balance(accountId), 960);
+    expect(item.amount, 40);
+    expect(item.kind, 'mixed_advance');
+    expect(advance.originalAmountCents, 4000);
+    expect(await service.remainingCents(advance.id), 4000);
+  });
+
+'''
+              advance_test = advance_test.replace(marker, block + marker, 1)
+              write('test/advance_service_test.dart', advance_test)
+          PY
+      - name: Format
+        run: dart format lib test
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Test
+        run: flutter test
+      - name: Commit implementation
+        run: |
+          if git diff --quiet; then
+            echo "No implementation changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib test
+          git commit -m "feat: improve advances voice math and home sections"
+          git push origin HEAD:main
