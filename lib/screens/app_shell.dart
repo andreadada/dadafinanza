@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../models/quick_capture_models.dart';
+import '../services/haptic_service.dart';
 import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
@@ -39,10 +40,16 @@ class _DadaAppShellState extends State<DadaAppShell> {
 
   void _selectAccount(int? value) {
     if (accountId == value) return;
+    final state = AppScope.of(context);
+    unawaited(HapticService.light(enabled: state.haptics));
     setState(() => accountId = value);
   }
 
   void _selectTab(int value) {
+    if (index != value) {
+      final state = AppScope.of(context);
+      unawaited(HapticService.light(enabled: state.haptics));
+    }
     _exitTimer?.cancel();
     setState(() {
       index = value;
@@ -112,7 +119,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
                 ? 'Nuovo anticipo'
                 : 'Nuovo movimento. Tieni premuto per voce e preset.',
             onPressed: index == 3
-                ? () => showAdvanceEditor(context)
+                ? () => _openAdvance()
                 : () => _open(TransactionType.expense),
             child: const Icon(Icons.add_rounded),
           ),
@@ -153,12 +160,20 @@ class _DadaAppShellState extends State<DadaAppShell> {
     );
   }
 
+  Future<void> _openAdvance() async {
+    final state = AppScope.of(context);
+    await HapticService.light(enabled: state.haptics);
+    if (!mounted) return;
+    await showAdvanceEditor(context);
+  }
+
   Future<void> _open(
     TransactionType type, {
     QuickPreset? preset,
     bool voice = false,
   }) async {
     final state = AppScope.of(context);
+    await HapticService.light(enabled: state.haptics);
     int? selectedAccount = preset?.accountId ?? accountId;
     int? destinationId = preset?.toAccountId;
     if (selectedAccount == null) {
@@ -201,6 +216,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
 
   Future<void> _showQuickMenu() async {
     final state = AppScope.of(context);
+    await HapticService.medium(enabled: state.haptics);
     final presets = await QuickPresetService(
       state.database,
     ).all(enabledOnly: true);
@@ -291,7 +307,7 @@ class _DadaAppShellState extends State<DadaAppShell> {
     );
     if (!mounted || choice == null) return;
     if (choice == 'advance') {
-      await showAdvanceEditor(context);
+      await _openAdvance();
     } else if (choice is QuickPreset) {
       await _open(choice.type, preset: choice);
     } else if (choice is TransactionType) {
