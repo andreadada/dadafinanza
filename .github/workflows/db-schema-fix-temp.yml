@@ -1,0 +1,206 @@
+name: Temporary database schema repair
+
+on:
+  push:
+    branches:
+      - build/fix-settings-dashboard-20260906
+
+permissions:
+  contents: write
+
+concurrency:
+  group: db-schema-repair-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Repair transaction schema and add regression coverage
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lib/data/app_database.dart')
+          source = path.read_text()
+
+          old = 'static const databaseVersion = 4;'
+          new = 'static const databaseVersion = 5;'
+          if old not in source:
+              raise SystemExit('databaseVersion=4 marker not found')
+          source = source.replace(old, new, 1)
+
+          old = '''      recurring_id INTEGER,
+                refund_of_transaction_id INTEGER,
+                created_at INTEGER NOT NULL,'''
+          new = '''      recurring_id INTEGER,
+                refund_of_transaction_id INTEGER,
+                kind TEXT NOT NULL DEFAULT 'normal',
+                created_at INTEGER NOT NULL,'''
+          if old not in source:
+              raise SystemExit('fresh transactions schema marker not found')
+          source = source.replace(old, new, 1)
+
+          old = '''    if (oldVersion < 4) {
+                await _createSmartTables(db);
+                await _seedSmartSettings(db);
+              }
+              await _createIndexes(db);'''
+          new = '''    if (oldVersion < 4) {
+                await _createSmartTables(db);
+                await _seedSmartSettings(db);
+              }
+              if (oldVersion < 5) {
+                await _addColumnIfMissing(
+                  db,
+                  'transactions',
+                  'kind',
+                  "TEXT NOT NULL DEFAULT 'normal'",
+                );
+              }
+              await _createIndexes(db);'''
+          if old not in source:
+              raise SystemExit('upgrade marker not found')
+          source = source.replace(old, new, 1)
+          path.write_text(source)
+
+          test = Path('test/database_schema_test.dart')
+          test.write_text(r'''import 'dart:io';
+
+          import 'package:dadafinanza/data/app_database.dart';
+          import 'package:dadafinanza/models/models.dart';
+          import 'package:flutter_test/flutter_test.dart';
+          import 'package:path/path.dart' as p;
+          import 'package:sqflite/sqflite.dart';
+          import 'package:sqflite_common_ffi/sqflite_ffi.dart' as ffi;
+
+          void main() {
+            late Directory databaseRoot;
+
+            setUpAll(() async {
+              ffi.sqfliteFfiInit();
+              databaseFactory = ffi.databaseFactoryFfi;
+              databaseRoot = await Directory.systemTemp.createTemp(
+                'dadafinanza-schema-db-',
+              );
+              await databaseFactory.setDatabasesPath(databaseRoot.path);
+            });
+
+            tearDownAll(() async {
+              if (await databaseRoot.exists()) {
+                await databaseRoot.delete(recursive: true);
+              }
+            });
+
+            Future<void> resetDatabase() async {
+              final root = await getDatabasesPath();
+              await databaseFactory.deleteDatabase(p.join(root, 'dadafinanza.db'));
+            }
+
+            test('fresh database includes transaction kind', () async {
+              await resetDatabase();
+              final database = AppDatabase();
+              await database.init();
+              addTearDown(() async {
+                if (database.db.isOpen) await database.db.close();
+              });
+
+              expect(AppDatabase.databaseVersion, 5);
+              final columns = await database.db.rawQuery(
+                'PRAGMA table_info(transactions)',
+              );
+              expect(columns.map((row) => row['name']), contains('kind'));
+
+              final accountId = await database.addAccount(
+                name: 'Test',
+                balance: 20,
+                colorValue: 0xFF8E8E93,
+                iconKey: 'wallet',
+                type: AccountType.cash,
+                includeInTotal: true,
+                includeInAnalytics: true,
+                hideBalance: false,
+              );
+              await database.addTransaction(
+                type: TransactionType.expense,
+                amount: 2,
+                accountId: accountId,
+                date: DateTime.utc(2026, 9, 6),
+              );
+              final rows = await database.db.query(
+                'transactions',
+                columns: ['kind'],
+              );
+              expect(rows.single['kind'], 'normal');
+            });
+
+            test('version 4 database upgrades kind without losing movements', () async {
+              await resetDatabase();
+              final original = AppDatabase();
+              await original.init();
+              final accountId = await original.addAccount(
+                name: 'Legacy',
+                balance: 50,
+                colorValue: 0xFF8E8E93,
+                iconKey: 'wallet',
+                type: AccountType.cash,
+                includeInTotal: true,
+                includeInAnalytics: true,
+                hideBalance: false,
+              );
+              await original.addTransaction(
+                type: TransactionType.expense,
+                amount: 7.5,
+                accountId: accountId,
+                date: DateTime.utc(2026, 9, 5),
+                note: 'legacy movement',
+              );
+              final path = await original.databaseFilePath();
+              await original.db.close();
+
+              final legacy = await databaseFactory.openDatabase(path);
+              await legacy.execute('ALTER TABLE transactions DROP COLUMN kind');
+              await legacy.execute('PRAGMA user_version = 4');
+              await legacy.close();
+
+              final upgraded = AppDatabase();
+              await upgraded.init();
+              addTearDown(() async {
+                if (upgraded.db.isOpen) await upgraded.db.close();
+              });
+
+              final columns = await upgraded.db.rawQuery(
+                'PRAGMA table_info(transactions)',
+              );
+              expect(columns.map((row) => row['name']), contains('kind'));
+              final movements = await upgraded.transactions();
+              expect(movements, hasLength(1));
+              expect(movements.single.note, 'legacy movement');
+              expect(movements.single.kind, 'normal');
+            });
+          }
+          '''.replaceAll(RegExp(r'^ {10}', multiLine: true), ''))
+          PY
+          flutter pub get
+          dart format lib/data/app_database.dart test/database_schema_test.dart
+      - name: Commit repair
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "Repair already applied"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/data/app_database.dart test/database_schema_test.dart
+          git commit -m "fix: migrate transaction kind schema"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
