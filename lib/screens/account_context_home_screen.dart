@@ -1,23 +1,23 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../core/money.dart';
 import '../app_state.dart';
+import '../core/money.dart';
 import '../main.dart';
 import '../models/models.dart';
 import '../services/account_context_service.dart';
 import '../widgets/account_context_selector.dart';
 import '../widgets/finance_quick_action.dart';
+import '../widgets/home_dashboard_widget.dart';
 import '../widgets/ui_helpers.dart';
-import 'account_management_screen.dart';
+import 'account_management_screen.dart' show SafeAccountDetailScreen;
 import 'account_screens.dart' show showAccountEditor;
 import 'advances_screen.dart';
 import 'personal_settings_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
 import 'root_screen.dart' as advanced;
+import 'settings_screen.dart' show DashboardCustomizerScreen;
 import 'transaction_screens.dart';
 
 class AccountContextHomeScreen extends StatelessWidget {
@@ -26,6 +26,20 @@ class AccountContextHomeScreen extends StatelessWidget {
     required this.onAccountChanged,
     super.key,
   });
+
+  static const _fallbackTypes = <DashboardWidgetType>[
+    DashboardWidgetType.totalBalance,
+    DashboardWidgetType.monthlyCashFlow,
+    DashboardWidgetType.safeToSpend,
+    DashboardWidgetType.accounts,
+    DashboardWidgetType.monthlyBudget,
+    DashboardWidgetType.recentTransactions,
+    DashboardWidgetType.upcomingRecurring,
+    DashboardWidgetType.goals,
+    DashboardWidgetType.topCategories,
+    DashboardWidgetType.endMonthForecast,
+    DashboardWidgetType.unassignedTransactions,
+  ];
 
   final int? accountId;
   final ValueChanged<int?> onAccountChanged;
@@ -40,6 +54,8 @@ class AccountContextHomeScreen extends StatelessWidget {
             selectedAccount.isSystem
         ? null
         : selectedAccount.id;
+    final isTotal = effectiveAccountId == null;
+    final balance = AccountContextService.balanceFor(state, effectiveAccountId);
     final income = AccountContextService.monthTotal(
       state,
       effectiveAccountId,
@@ -50,7 +66,6 @@ class AccountContextHomeScreen extends StatelessWidget {
       effectiveAccountId,
       TransactionType.expense,
     );
-    final balance = AccountContextService.balanceFor(state, effectiveAccountId);
     final recent = AccountContextService.transactionsFor(
       state,
       effectiveAccountId,
@@ -59,14 +74,10 @@ class AccountContextHomeScreen extends StatelessWidget {
       state,
       effectiveAccountId,
     );
-    final isTotal = effectiveAccountId == null;
-    final budget = isTotal ? _priorityBudget(state) : null;
     final smartInsight = isTotal ? _smartInsight(state) : null;
-    final visibleAccounts = effectiveAccountId == null
-        ? state.activeAccounts.take(4).toList()
-        : state.activeAccounts
-              .where((item) => item.id == effectiveAccountId)
-              .toList();
+    final dashboardWidgets = isTotal
+        ? _visibleDashboardWidgets(state)
+        : const <DashboardWidgetConfig>[];
 
     return CustomScrollView(
       slivers: [
@@ -99,7 +110,9 @@ class AccountContextHomeScreen extends StatelessWidget {
               tooltip: 'Dashboard avanzata',
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const advanced.HomeScreen()),
+                MaterialPageRoute(
+                  builder: (_) => const Scaffold(body: advanced.HomeScreen()),
+                ),
               ),
               icon: const Icon(Icons.dashboard_customize_outlined),
             ),
@@ -130,244 +143,146 @@ class AccountContextHomeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
               ],
-              Text(
-                'PATRIMONIO',
-                style: Theme.of(context).textTheme.labelMedium,
+              _QuickActions(
+                onOpen: (type) => _openQuick(context, type, effectiveAccountId),
               ),
-              const SizedBox(height: 6),
-              Text(
-                state.hideBalance ? '••••••' : moneyFor(state, balance),
-                style: Theme.of(context).textTheme.displaySmall,
-              ),
-              const SizedBox(height: 20),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _Metric(
-                      label: 'Entrate',
-                      value: state.hideBalance
-                          ? '••••'
-                          : moneyFor(state, income),
-                      color: context.financeColors.positive,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _Metric(
-                      label: 'Spese',
-                      value: state.hideBalance
-                          ? '••••'
-                          : moneyFor(state, expense),
-                      color: context.financeColors.negative,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _Metric(
-                      label: 'Disponibile',
-                      value: state.hideBalance
-                          ? '••••'
-                          : moneyFor(
-                              state,
-                              effectiveAccountId == null
-                                  ? state.safeToSpend
-                                  : balance,
-                            ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: FinanceQuickAction(
-                      icon: Icons.arrow_upward_rounded,
-                      label: 'Spesa',
-                      color: context.financeColors.negative,
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.expense,
-                        effectiveAccountId,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: FinanceQuickAction(
-                      icon: Icons.arrow_downward_rounded,
-                      label: 'Entrata',
-                      color: context.financeColors.positive,
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.income,
-                        effectiveAccountId,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: FinanceQuickAction(
-                      icon: Icons.swap_horiz_rounded,
-                      label: 'Trasferisci',
-                      onTap: () => _openQuick(
-                        context,
-                        TransactionType.transfer,
-                        effectiveAccountId,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (effectiveAccountId == null && state.unassignedCount > 0) ...[
-                const SizedBox(height: 24),
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                    Icons.rule_folder_outlined,
-                    color: context.financeColors.warning,
-                  ),
-                  title: Text(
-                    '${state.unassignedCount} movimenti da assegnare',
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  subtitle: const Text(
-                    'Completa il conto per mantenere saldi e analisi ordinati.',
-                  ),
-                ),
-              ],
-              if (isTotal &&
-                  (state.advanceReceivableCents > 0 ||
-                      state.advancePayableCents > 0 ||
-                      smartInsight != null)) ...[
-                const SizedBox(height: 28),
-                const SectionTitle('Per te'),
+              if (isTotal) ...[
                 if (state.advanceReceivableCents > 0 ||
-                    state.advancePayableCents > 0)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.handshake_outlined),
-                    title: const Text(
-                      'Anticipi',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                    state.advancePayableCents > 0 ||
+                    smartInsight != null) ...[
+                  const SizedBox(height: 28),
+                  const SectionTitle('Per te'),
+                  if (state.advanceReceivableCents > 0 ||
+                      state.advancePayableCents > 0)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.handshake_outlined),
+                      title: const Text(
+                        'Anticipi',
+                        style: TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text(
+                        state.hideBalance
+                            ? '•••• da ricevere · •••• da restituire'
+                            : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · ${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
+                      ),
+                      trailing: const Icon(Icons.chevron_right_rounded),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdvancesScreen(),
+                        ),
+                      ),
                     ),
-                    subtitle: Text(
-                      state.hideBalance
-                          ? '•••• da ricevere · •••• da restituire'
-                          : '${moneyFor(state, Money.fromCents(state.advanceReceivableCents))} da ricevere · ${moneyFor(state, Money.fromCents(state.advancePayableCents))} da restituire',
+                  if (smartInsight case final insight?)
+                    _InsightRow(insight: insight),
+                ],
+                const SizedBox(height: 30),
+                if (dashboardWidgets.isEmpty)
+                  EmptyState(
+                    icon: Icons.dashboard_customize_outlined,
+                    title: 'Home vuota',
+                    subtitle:
+                        'Hai nascosto tutti i widget. Riattivane almeno uno da Personalizza Home.',
+                    action: TextButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DashboardCustomizerScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.tune_rounded),
+                      label: const Text('Personalizza Home'),
                     ),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const AdvancesScreen()),
+                  )
+                else
+                  ...dashboardWidgets.map(
+                    (config) => Padding(
+                      key: ValueKey('context-home-${config.type.name}'),
+                      padding: EdgeInsets.only(
+                        bottom: switch (config.size) {
+                          DashboardWidgetSize.small => 20,
+                          DashboardWidgetSize.medium => 28,
+                          DashboardWidgetSize.large => 36,
+                        },
+                      ),
+                      child: HomeDashboardWidget(config: config),
                     ),
                   ),
-                if (smartInsight case final insight?)
-                  _InsightRow(insight: insight),
-              ],
-              const SizedBox(height: 32),
-              SectionTitle(
-                effectiveAccountId == null ? 'Conti' : 'Conto selezionato',
-                trailing: TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AccountManagementScreen(),
-                    ),
-                  ),
-                  child: const Text('Tutti'),
+              ] else ...[
+                const SizedBox(height: 28),
+                _SelectedAccountSummary(
+                  account: selectedAccount!,
+                  balance: balance,
+                  income: income,
+                  expense: expense,
                 ),
-              ),
-              if (visibleAccounts.isEmpty)
-                EmptyState(
-                  icon: Icons.account_balance_wallet_outlined,
-                  title: 'Nessun conto',
-                  subtitle: 'Aggiungi il conto che usi davvero.',
-                  action: TextButton.icon(
-                    onPressed: () => showAccountEditor(context),
-                    icon: const Icon(Icons.add_rounded),
-                    label: const Text('Crea conto'),
-                  ),
-                )
-              else
-                ...visibleAccounts.map(
-                  (account) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    minVerticalPadding: 10,
-                    leading: Icon(
-                      accountIcon(account.iconKey),
-                      color: Color(account.colorValue),
-                    ),
-                    title: Text(account.name),
-                    subtitle: Text(account.accountType.label),
-                    trailing: Text(
-                      state.hideBalance || account.hideBalance
-                          ? '••••'
-                          : moneyFor(state, account.balance),
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    onTap: () => Navigator.push(
+                const SizedBox(height: 32),
+                SectionTitle(
+                  'Ultimi movimenti',
+                  trailing: TextButton(
+                    onPressed: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) =>
-                            SafeAccountDetailScreen(accountId: account.id),
+                        builder: (_) => SafeAccountDetailScreen(
+                          accountId: selectedAccount.id,
+                        ),
                       ),
                     ),
+                    child: const Text('Apri conto'),
                   ),
                 ),
-              if (budget != null) ...[
+                if (recent.isEmpty)
+                  const EmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'Nessun movimento',
+                    subtitle: 'Non ci sono ancora movimenti per questo conto.',
+                  )
+                else
+                  ...recent
+                      .take(5)
+                      .map((item) => TransactionListTile(item: item)),
                 const SizedBox(height: 32),
-                _BudgetSummary(budget: budget),
-              ],
-              const SizedBox(height: 32),
-              const SectionTitle('Ultimi movimenti'),
-              if (recent.isEmpty)
-                const EmptyState(
-                  icon: Icons.receipt_long_outlined,
-                  title: 'Nessun movimento',
-                  subtitle: 'Registra una spesa o un’entrata per iniziare.',
-                )
-              else
-                ...recent
-                    .take(5)
-                    .map((item) => TransactionListTile(item: item)),
-              const SizedBox(height: 32),
-              SectionTitle(
-                'Prossime scadenze',
-                trailing: TextButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const RecurringScreen()),
-                  ),
-                  child: const Text('Apri'),
-                ),
-              ),
-              if (upcoming.isEmpty)
-                const Text('Nessuna scadenza prevista')
-              else
-                ...upcoming
-                    .take(3)
-                    .map(
-                      (item) => ListTile(
-                        contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.repeat_rounded,
-                          color: transactionColor(context, item.type),
-                        ),
-                        title: Text(item.name),
-                        subtitle: Text(
-                          DateFormat(
-                            'EEE d MMM',
-                            'it_IT',
-                          ).format(item.nextDate),
-                        ),
-                        trailing: Text(
-                          state.hideBalance
-                              ? '••••'
-                              : moneyFor(state, item.amount),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
+                SectionTitle(
+                  'Prossime scadenze',
+                  trailing: TextButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const RecurringScreen(),
                       ),
                     ),
+                    child: const Text('Apri'),
+                  ),
+                ),
+                if (upcoming.isEmpty)
+                  const Text('Nessuna scadenza prevista per questo conto')
+                else
+                  ...upcoming
+                      .take(3)
+                      .map(
+                        (item) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.repeat_rounded,
+                            color: transactionColor(context, item.type),
+                          ),
+                          title: Text(item.name),
+                          subtitle: Text(
+                            DateFormat(
+                              'EEE d MMM',
+                              'it_IT',
+                            ).format(item.nextDate),
+                          ),
+                          trailing: Text(
+                            state.hideBalance
+                                ? '••••'
+                                : moneyFor(state, item.amount),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ),
+              ],
             ],
           ),
         ),
@@ -375,14 +290,22 @@ class AccountContextHomeScreen extends StatelessWidget {
     );
   }
 
-  Budget? _priorityBudget(AppState state) {
-    final enabled = state.budgets.where((item) => item.enabled).toList();
-    if (enabled.isEmpty) return null;
-    enabled.sort(
-      (a, b) =>
-          state.budgetProgressFor(b).compareTo(state.budgetProgressFor(a)),
-    );
-    return enabled.first;
+  List<DashboardWidgetConfig> _visibleDashboardWidgets(AppState state) {
+    if (state.dashboardWidgets.isEmpty) {
+      return [
+        for (var i = 0; i < _fallbackTypes.length; i++)
+          DashboardWidgetConfig(
+            type: _fallbackTypes[i],
+            enabled: true,
+            orderIndex: i,
+            size: DashboardWidgetSize.medium,
+          ),
+      ];
+    }
+    final items = state.dashboardWidgets
+        .where((item) => item.enabled)
+        .toList(growable: false);
+    return [...items]..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
   }
 
   _HomeInsight? _smartInsight(AppState state) {
@@ -459,8 +382,124 @@ class AccountContextHomeScreen extends StatelessWidget {
   }
 }
 
+class _QuickActions extends StatelessWidget {
+  const _QuickActions({required this.onOpen});
+
+  final ValueChanged<TransactionType> onOpen;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: FinanceQuickAction(
+          icon: Icons.arrow_upward_rounded,
+          label: 'Spesa',
+          color: context.financeColors.negative,
+          onTap: () => onOpen(TransactionType.expense),
+        ),
+      ),
+      Expanded(
+        child: FinanceQuickAction(
+          icon: Icons.arrow_downward_rounded,
+          label: 'Entrata',
+          color: context.financeColors.positive,
+          onTap: () => onOpen(TransactionType.income),
+        ),
+      ),
+      Expanded(
+        child: FinanceQuickAction(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Trasferisci',
+          onTap: () => onOpen(TransactionType.transfer),
+        ),
+      ),
+    ],
+  );
+}
+
+class _SelectedAccountSummary extends StatelessWidget {
+  const _SelectedAccountSummary({
+    required this.account,
+    required this.balance,
+    required this.income,
+    required this.expense,
+  });
+
+  final Account account;
+  final double balance;
+  final double income;
+  final double expense;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = AppScope.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('PATRIMONIO', style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(height: 6),
+        Text(
+          state.hideBalance || account.hideBalance
+              ? '••••••'
+              : moneyFor(state, balance),
+          style: Theme.of(context).textTheme.displaySmall,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: _Metric(
+                label: 'Entrate',
+                value: state.hideBalance ? '••••' : moneyFor(state, income),
+                color: context.financeColors.positive,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Metric(
+                label: 'Spese',
+                value: state.hideBalance ? '••••' : moneyFor(state, expense),
+                color: context.financeColors.negative,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _Metric(
+                label: 'Disponibile',
+                value: state.hideBalance ? '••••' : moneyFor(state, balance),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            accountIcon(account.iconKey),
+            color: Color(account.colorValue),
+          ),
+          title: Text(
+            account.name,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: Text(account.accountType.label),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => SafeAccountDetailScreen(accountId: account.id),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _SetupBlock extends StatelessWidget {
   const _SetupBlock({required this.onAccount, required this.onMovement});
+
   final VoidCallback onAccount;
   final VoidCallback onMovement;
 
@@ -496,6 +535,7 @@ class _SetupBlock extends StatelessWidget {
 
 class _Metric extends StatelessWidget {
   const _Metric({required this.label, required this.value, this.color});
+
   final String label;
   final String value;
   final Color? color;
@@ -518,49 +558,6 @@ class _Metric extends StatelessWidget {
       ),
     ],
   );
-}
-
-class _BudgetSummary extends StatelessWidget {
-  const _BudgetSummary({required this.budget});
-
-  final Budget budget;
-
-  @override
-  Widget build(BuildContext context) {
-    final state = AppScope.of(context);
-    final spent = state.budgetSpent(budget);
-    final progress = state.budgetProgressFor(budget);
-    final remaining = math.max(0, budget.limit - spent).toDouble();
-    return InkWell(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const BudgetsScreen()),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SectionTitle(
-            'Budget',
-            trailing: Text('${(progress * 100).round()}%'),
-          ),
-          Text(budget.name, style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 4),
-          Text('${moneyFor(state, remaining)} ancora disponibili'),
-          const SizedBox(height: 10),
-          LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0).toDouble(),
-            minHeight: 7,
-            borderRadius: BorderRadius.circular(99),
-            color: progress >= 1
-                ? context.financeColors.negative
-                : progress >= .8
-                ? context.financeColors.warning
-                : null,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _HomeInsight {
