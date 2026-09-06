@@ -176,7 +176,8 @@ class _AccountsBlock extends StatelessWidget {
           EmptyState(
             icon: Icons.account_balance_wallet_outlined,
             title: 'Nessun conto',
-            subtitle: 'Aggiungi il conto che usi davvero oppure continua con movimenti Non assegnati.',
+            subtitle:
+                'Aggiungi il conto che usi davvero oppure continua con movimenti Non assegnati.',
             action: TextButton.icon(
               onPressed: () => showAccountEditor(context),
               icon: const Icon(Icons.add_rounded),

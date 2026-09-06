@@ -161,7 +161,8 @@ class DadaHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.dashboard_customize_outlined,
                   title: 'Home vuota',
-                  subtitle: 'Hai nascosto tutti i widget. Riattivane almeno uno dalla personalizzazione Home.',
+                  subtitle:
+                      'Hai nascosto tutti i widget. Riattivane almeno uno dalla personalizzazione Home.',
                   action: TextButton.icon(
                     onPressed: () => Navigator.push(
                       context,
