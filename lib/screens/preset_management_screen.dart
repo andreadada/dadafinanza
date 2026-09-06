@@ -98,13 +98,11 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                         final confirmed = await confirmDestructiveAction(
                           context,
                           title: 'Eliminare “${preset.name}”?',
-                          message:
-                              'Il preset verrà rimosso. I movimenti già registrati non cambieranno.',
+                          message: 'Il preset verrà rimosso. I movimenti già registrati non cambieranno.',
                         );
                         if (confirmed) {
-                          await QuickPresetService(
-                            state.database,
-                          ).delete(preset.id);
+                          await QuickPresetService(state.database)
+                              .delete(preset.id);
                         }
                       }
                       if (mounted) await _load();
@@ -269,12 +267,14 @@ class _PresetManagementScreenState extends State<PresetManagementScreen> {
                         value: null,
                         child: Text('Scegli nel Quick Add'),
                       ),
-                      ...state.categoriesFor(type).map(
-                        (item) => DropdownMenuItem<int?>(
-                          value: item.id,
-                          child: Text(item.name),
-                        ),
-                      ),
+                      ...state
+                          .categoriesFor(type)
+                          .map(
+                            (item) => DropdownMenuItem<int?>(
+                              value: item.id,
+                              child: Text(item.name),
+                            ),
+                          ),
                     ],
                     onChanged: (value) => categoryId = value,
                   ),

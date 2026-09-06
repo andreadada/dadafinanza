@@ -161,8 +161,7 @@ class DadaHomeScreen extends StatelessWidget {
                 EmptyState(
                   icon: Icons.dashboard_customize_outlined,
                   title: 'Home vuota',
-                  subtitle:
-                      'Hai nascosto tutti i widget. Riattivane almeno uno dalla personalizzazione Home.',
+                  subtitle: 'Hai nascosto tutti i widget. Riattivane almeno uno dalla personalizzazione Home.',
                   action: TextButton.icon(
                     onPressed: () => Navigator.push(
                       context,
@@ -210,8 +209,7 @@ class DadaHomeScreen extends StatelessWidget {
     final items = state.dashboardWidgets
         .where((item) => item.enabled)
         .toList(growable: false);
-    return [...items]
-      ..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
+    return [...items]..sort((a, b) => a.orderIndex.compareTo(b.orderIndex));
   }
 
   _HomeInsight? _smartInsight(AppState state) {

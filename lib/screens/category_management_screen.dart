@@ -62,7 +62,10 @@ Future<void> showCategoryEditor(
                 },
               ),
               const SizedBox(height: 8),
-              Text('Colore', style: Theme.of(sheetContext).textTheme.titleSmall),
+              Text(
+                'Colore',
+                style: Theme.of(sheetContext).textTheme.titleSmall,
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -220,10 +223,7 @@ class CategoryManagementScreen extends StatelessWidget {
                   }
                 },
                 itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Text('Modifica'),
-                  ),
+                  const PopupMenuItem(value: 'edit', child: Text('Modifica')),
                   PopupMenuItem(
                     value: 'favorite',
                     child: Text(

@@ -191,13 +191,15 @@ class _RulesManagementScreenState extends State<RulesManagementScreen> {
                   : 'Questa regola corrisponde a ${preview.count} movimenti.',
             ),
             const SizedBox(height: 12),
-            ...preview.matches.take(4).map(
-              (item) => FlatMetric(
-                label: item.note ?? item.type.label,
-                value: moneyFor(state, item.amount),
-                icon: Icons.receipt_long_outlined,
-              ),
-            ),
+            ...preview.matches
+                .take(4)
+                .map(
+                  (item) => FlatMetric(
+                    label: item.note ?? item.type.label,
+                    value: moneyFor(state, item.amount),
+                    icon: Icons.receipt_long_outlined,
+                  ),
+                ),
             if (preview.count > 4)
               Text(
                 '+ ${preview.count - 4} altri',
