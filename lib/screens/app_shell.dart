@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -6,17 +8,16 @@ import '../models/quick_capture_models.dart';
 import '../services/quick_preset_service.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/ui_helpers.dart';
+import 'account_context_analytics_screen.dart';
+import 'account_context_home_screen.dart';
+import 'account_context_transactions_screen.dart';
 import 'advances_screen.dart';
-import 'canonical_shell.dart';
-import 'home_screen.dart';
 import 'planning_screens.dart';
 import 'quick_add_page.dart';
-import 'root_screen.dart' show TransactionsScreen;
 
 /// The single navigation shell exposed by DadaFinanza.
 ///
-/// Legacy RootScreen/HomeScreen classes remain only as implementation debt for
-/// shared screens and are never used as an application entry point.
+/// Home, Movimenti and Analisi share one account context. `null` means Totale.
 class DadaAppShell extends StatefulWidget {
   const DadaAppShell({super.key});
 
@@ -26,53 +27,118 @@ class DadaAppShell extends StatefulWidget {
 
 class _DadaAppShellState extends State<DadaAppShell> {
   int index = 0;
+  int? accountId;
+  bool _allowExit = false;
+  Timer? _exitTimer;
+
+  @override
+  void dispose() {
+    _exitTimer?.cancel();
+    super.dispose();
+  }
+
+  void _selectAccount(int? value) {
+    if (accountId == value) return;
+    setState(() => accountId = value);
+  }
+
+  void _selectTab(int value) {
+    _exitTimer?.cancel();
+    setState(() {
+      index = value;
+      _allowExit = false;
+    });
+  }
+
+  void _handleBack(bool didPop) {
+    if (didPop) return;
+    if (index != 0) {
+      _selectTab(0);
+      return;
+    }
+    _exitTimer?.cancel();
+    setState(() => _allowExit = true);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Premi di nuovo Indietro per chiudere.')),
+      );
+    _exitTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _allowExit = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    const pages = [
-      DadaHomeScreen(),
-      TransactionsScreen(),
-      CanonicalAnalyticsScreen(),
-      PlanningScreen(),
+    final state = AppScope.of(context);
+    final effectiveAccountId =
+        state.activeAccounts.any((a) => a.id == accountId) ? accountId : null;
+    if (effectiveAccountId != accountId) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && accountId != effectiveAccountId) {
+          setState(() => accountId = effectiveAccountId);
+        }
+      });
+    }
+
+    final pages = [
+      AccountContextHomeScreen(
+        accountId: effectiveAccountId,
+        onAccountChanged: _selectAccount,
+      ),
+      AccountContextTransactionsScreen(
+        accountId: effectiveAccountId,
+        onAccountChanged: _selectAccount,
+      ),
+      AccountContextAnalyticsScreen(
+        accountId: effectiveAccountId,
+        onAccountChanged: _selectAccount,
+      ),
+      const PlanningScreen(),
     ];
-    return Scaffold(
-      body: SafeArea(
-        child: IndexedStack(index: index, children: pages),
-      ),
-      floatingActionButton: GestureDetector(
-        onLongPress: _showQuickMenu,
-        child: FloatingActionButton(
-          tooltip: 'Nuovo movimento. Tieni premuto per voce e preset.',
-          onPressed: () => _open(TransactionType.expense),
-          child: const Icon(Icons.add_rounded),
+
+    return PopScope(
+      canPop: _allowExit,
+      onPopInvoked: _handleBack,
+      child: Scaffold(
+        body: SafeArea(
+          child: IndexedStack(index: index, children: pages),
         ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: index,
-        onDestinationSelected: (value) => setState(() => index = value),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded),
-            label: 'Home',
+        floatingActionButton: GestureDetector(
+          onLongPress: _showQuickMenu,
+          child: FloatingActionButton(
+            tooltip: 'Nuovo movimento. Tieni premuto per voce e preset.',
+            onPressed: () => _open(TransactionType.expense),
+            child: const Icon(Icons.add_rounded),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded),
-            label: 'Movimenti',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights_rounded),
-            label: 'Analisi',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.event_note_outlined),
-            selectedIcon: Icon(Icons.event_note_rounded),
-            label: 'Pianifica',
-          ),
-        ],
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: index,
+          onDestinationSelected: _selectTab,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              label: 'Home',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long_rounded),
+              label: 'Movimenti',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.insights_outlined),
+              selectedIcon: Icon(Icons.insights_rounded),
+              label: 'Analisi',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.event_note_outlined),
+              selectedIcon: Icon(Icons.event_note_rounded),
+              label: 'Pianifica',
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -83,28 +149,31 @@ class _DadaAppShellState extends State<DadaAppShell> {
     bool voice = false,
   }) async {
     final state = AppScope.of(context);
-    int? accountId = preset?.accountId;
+    int? selectedAccount = preset?.accountId ?? accountId;
     int? destinationId = preset?.toAccountId;
-    if (accountId == null) {
+    if (selectedAccount == null) {
       final key = switch (type) {
         TransactionType.expense => 'preferred_expense_account',
         TransactionType.income => 'preferred_income_account',
         TransactionType.transfer => 'preferred_transfer_source',
       };
-      accountId = int.tryParse(await state.database.getSetting(key) ?? '');
+      selectedAccount = int.tryParse(
+        await state.database.getSetting(key) ?? '',
+      );
     }
     if (type == TransactionType.transfer && destinationId == null) {
       destinationId = int.tryParse(
         await state.database.getSetting('preferred_transfer_destination') ?? '',
       );
     }
+    if (destinationId == selectedAccount) destinationId = null;
     if (!mounted) return;
     final draft = TransactionDraft(
       type: type,
       amountCents: preset?.amount == null
           ? null
           : (preset!.amount! * 100).round(),
-      accountId: accountId,
+      accountId: selectedAccount,
       toAccountId: destinationId,
       categoryId: type == TransactionType.transfer ? null : preset?.categoryId,
       source: voice
