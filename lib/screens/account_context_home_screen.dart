@@ -10,7 +10,6 @@ import '../widgets/account_context_selector.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/home_dashboard_widget.dart';
 import '../widgets/ui_helpers.dart';
-import 'account_management_screen.dart';
 import 'account_screens.dart' show showAccountEditor;
 import 'advances_screen.dart';
 import 'personal_settings_screen.dart';
@@ -144,7 +143,6 @@ class AccountContextHomeScreen extends StatelessWidget {
                 const SizedBox(height: 32),
               ],
               _QuickActions(
-                accountId: effectiveAccountId,
                 onOpen: (type) => _openQuick(
                   context,
                   type,
@@ -383,9 +381,8 @@ class AccountContextHomeScreen extends StatelessWidget {
 }
 
 class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.accountId, required this.onOpen});
+  const _QuickActions({required this.onOpen});
 
-  final int? accountId;
   final ValueChanged<TransactionType> onOpen;
 
   @override
