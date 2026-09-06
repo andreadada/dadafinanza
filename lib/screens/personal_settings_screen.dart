@@ -183,11 +183,7 @@ class PersonalSettingsScreen extends StatelessWidget {
     await state.setHideBalance(value);
   }
 
-  Future<void> _setBoolSetting(
-    AppState state,
-    String key,
-    bool value,
-  ) async {
+  Future<void> _setBoolSetting(AppState state, String key, bool value) async {
     await HapticService.light(enabled: state.haptics);
     await state.setSetting(key, value ? '1' : '0');
   }
