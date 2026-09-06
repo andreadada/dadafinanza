@@ -10,6 +10,7 @@ import '../widgets/account_context_selector.dart';
 import '../widgets/finance_quick_action.dart';
 import '../widgets/home_dashboard_widget.dart';
 import '../widgets/ui_helpers.dart';
+import 'account_management_screen.dart' show SafeAccountDetailScreen;
 import 'account_screens.dart' show showAccountEditor;
 import 'advances_screen.dart';
 import 'personal_settings_screen.dart';
@@ -181,8 +182,7 @@ class AccountContextHomeScreen extends StatelessWidget {
                   EmptyState(
                     icon: Icons.dashboard_customize_outlined,
                     title: 'Home vuota',
-                    subtitle:
-                        'Hai nascosto tutti i widget. Riattivane almeno uno da Personalizza Home.',
+                    subtitle: 'Hai nascosto tutti i widget. Riattivane almeno uno da Personalizza Home.',
                     action: TextButton.icon(
                       onPressed: () => Navigator.push(
                         context,
@@ -550,9 +550,8 @@ class _Metric extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           value,
-          style: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(color: color),
+          style: Theme.of(context).textTheme.titleMedium
+              ?.copyWith(color: color),
         ),
       ),
     ],
