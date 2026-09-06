@@ -1,0 +1,38 @@
+name: Fix account context lint warnings
+
+on:
+  push:
+    branches:
+      - build/account-context-navigation
+
+permissions:
+  contents: write
+
+concurrency:
+  group: fix-account-context-lints-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: build/account-context-navigation
+          fetch-depth: 0
+      - name: Remove verified unused imports
+        run: |
+          sed -i "/import '\.\.\/app_state\.dart';/d" lib/screens/account_context_home_screen.dart
+          sed -i "/import '\.\.\/app_state\.dart';/d" lib/widgets/account_context_selector.dart
+      - name: Commit fixes if needed
+        run: |
+          if git diff --quiet; then
+            echo "No lint changes needed."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add lib/screens/account_context_home_screen.dart lib/widgets/account_context_selector.dart
+          git commit -m "fix: remove unused account context imports"
+          git push origin HEAD:build/account-context-navigation
